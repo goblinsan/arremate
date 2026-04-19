@@ -1,0 +1,28 @@
+import Fastify from 'fastify';
+import cors from '@fastify/cors';
+import helmet from '@fastify/helmet';
+
+const server = Fastify({ logger: true });
+
+server.register(cors, { origin: process.env.CORS_ORIGIN ?? '*' });
+server.register(helmet);
+
+server.get('/health', async () => {
+  return { status: 'ok', service: 'arremate-api', timestamp: new Date().toISOString() };
+});
+
+server.get('/api/v1/ping', async () => ({ pong: true }));
+
+const start = async () => {
+  try {
+    const port = Number(process.env.PORT ?? 4000);
+    await server.listen({ port, host: '0.0.0.0' });
+  } catch (err) {
+    server.log.error(err);
+    process.exit(1);
+  }
+};
+
+start();
+
+export { server };

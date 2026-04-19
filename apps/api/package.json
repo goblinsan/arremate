@@ -1,0 +1,27 @@
+{
+  "name": "@arremate/api",
+  "private": true,
+  "version": "0.0.0",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "lint": "eslint src --ext ts",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests"
+  },
+  "dependencies": {
+    "@arremate/config": "workspace:*",
+    "@arremate/observability": "workspace:*",
+    "@arremate/types": "workspace:*",
+    "fastify": "^5.8.5",
+    "@fastify/cors": "^10.0.2",
+    "@fastify/helmet": "^12.0.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.12.12",
+    "tsx": "^4.10.5",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}
