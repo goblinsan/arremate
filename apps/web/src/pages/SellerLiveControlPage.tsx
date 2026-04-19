@@ -65,7 +65,7 @@ export default function SellerLiveControlPage() {
       })
       .catch(() => setError('Erro ao carregar show.'))
       .finally(() => setIsLoading(false));
-  }, [isAuthenticated, showId]);
+  }, [isAuthenticated, showId, loadShow, loadSession]);
 
   async function handleGoLive() {
     if (!show) return;

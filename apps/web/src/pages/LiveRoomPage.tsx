@@ -59,16 +59,17 @@ export default function LiveRoomPage() {
       })
       .catch(() => {/* show load error handled via null state */})
       .finally(() => setIsLoadingShow(false));
-  }, [showId]);
+  }, [showId, fetchSession]);
 
   // Poll session state every POLL_INTERVAL_MS while the show is LIVE
+  const showStatus = show?.status;
   useEffect(() => {
-    if (!show || show.status !== 'LIVE') return;
+    if (showStatus !== 'LIVE') return;
 
     fetchSession();
     const interval = setInterval(fetchSession, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
-  }, [show?.status, fetchSession]);
+  }, [showStatus, fetchSession]);
 
   if (isLoadingShow) {
     return <div className="max-w-4xl mx-auto px-4 py-16 text-center text-gray-400">Carregando…</div>;
