@@ -11,6 +11,11 @@ interface ShowForm {
   scheduledAt: string;
 }
 
+// Queue entries as returned by the API always include the inventoryItem relation
+interface QueueEntry extends ShowInventoryItem {
+  inventoryItem: InventoryItem;
+}
+
 export default function SellerShowFormPage() {
   const { id } = useParams<{ id: string }>();
   const isNew = id === 'new';
@@ -19,7 +24,7 @@ export default function SellerShowFormPage() {
 
   const [form, setForm] = useState<ShowForm>({ title: '', description: '', scheduledAt: '' });
   const [show, setShow] = useState<Show | null>(null);
-  const [queue, setQueue] = useState<ShowInventoryItem[]>([]);
+  const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
@@ -51,7 +56,7 @@ export default function SellerShowFormPage() {
           ? new Date(data.scheduledAt).toISOString().slice(0, 16)
           : '',
       });
-      setQueue((data.queueItems ?? []) as ShowInventoryItem[]);
+      setQueue((data.queueItems ?? []) as QueueEntry[]);
     } catch {
       setError('Erro ao carregar show.');
     } finally {
@@ -158,7 +163,7 @@ export default function SellerShowFormPage() {
         const body = await res.json();
         throw new Error(body.message ?? 'Erro ao adicionar item.');
       }
-      const entry = await res.json() as ShowInventoryItem;
+      const entry = await res.json() as QueueEntry;
       setQueue((prev) => [...prev, entry]);
       setAddItemId('');
     } catch (err) {
@@ -324,7 +329,7 @@ export default function SellerShowFormPage() {
                 >
                   <span className="text-xs font-bold text-gray-400 w-5 text-center">{index + 1}</span>
                   <span className="flex-1 text-sm font-medium text-gray-800 truncate">
-                    {(entry.inventoryItem as InventoryItem | undefined)?.title ?? entry.inventoryItemId}
+                    {entry.inventoryItem.title}
                   </span>
                   <div className="flex items-center gap-1">
                     <button

@@ -53,7 +53,6 @@ export async function publicShowRoutes(fastify: FastifyInstance): Promise<void> 
         createdAt: true,
         seller: { select: { id: true, name: true } },
         queueItems: {
-          where: {},
           orderBy: { position: 'asc' },
           select: {
             id: true,

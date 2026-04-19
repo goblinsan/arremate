@@ -52,6 +52,10 @@ export async function showQueueRoutes(fastify: FastifyInstance): Promise<void> {
         position?: number;
       };
 
+      if (!inventoryItemId) {
+        return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'inventoryItemId is required' });
+      }
+
       const [show, inventoryItem] = await Promise.all([
         prisma.show.findUnique({ where: { id: showId } }),
         prisma.inventoryItem.findUnique({ where: { id: inventoryItemId } }),
@@ -64,12 +68,6 @@ export async function showQueueRoutes(fastify: FastifyInstance): Promise<void> {
       if (!inventoryItem || inventoryItem.sellerId !== user.id) {
         return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Inventory item not found' });
       }
-
-      if (!inventoryItemId) {
-        return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'inventoryItemId is required' });
-      }
-
-      // Auto-assign position at end of queue if not provided
       let queuePosition = position ?? 0;
       if (position === undefined) {
         const lastItem = await prisma.showInventoryItem.findFirst({
