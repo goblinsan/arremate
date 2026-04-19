@@ -1,7 +1,11 @@
 import { Routes, Route, Link, NavLink } from 'react-router-dom';
 import HomePage from './pages/HomePage';
+import LoginPage from './pages/LoginPage';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 
-export default function App() {
+function AppShell() {
+  const { isAuthenticated, user, signOut } = useAuth();
+
   return (
     <div className="min-h-screen bg-white">
       <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
@@ -46,12 +50,29 @@ export default function App() {
             </nav>
 
             <div className="flex items-center gap-3">
-              <button className="text-sm font-medium text-gray-600 hover:text-brand-500 transition-colors">
-                Entrar
-              </button>
-              <button className="bg-brand-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
-                Cadastrar
-              </button>
+              {isAuthenticated ? (
+                <>
+                  <span className="text-sm text-gray-600">{user?.email}</span>
+                  <button
+                    onClick={signOut}
+                    className="text-sm font-medium text-gray-600 hover:text-brand-500 transition-colors"
+                  >
+                    Sair
+                  </button>
+                </>
+              ) : (
+                <>
+                  <Link
+                    to="/login"
+                    className="text-sm font-medium text-gray-600 hover:text-brand-500 transition-colors"
+                  >
+                    Entrar
+                  </Link>
+                  <button className="bg-brand-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                    Cadastrar
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -60,6 +81,7 @@ export default function App() {
       <main>
         <Routes>
           <Route path="/" element={<HomePage />} />
+          <Route path="/login" element={<LoginPage />} />
           <Route
             path="/auctions"
             element={
@@ -88,3 +110,12 @@ export default function App() {
     </div>
   );
 }
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppShell />
+    </AuthProvider>
+  );
+}
+

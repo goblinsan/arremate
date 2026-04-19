@@ -29,6 +29,9 @@ importers:
 
   apps/admin:
     dependencies:
+      '@arremate/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -72,9 +75,15 @@ importers:
 
   apps/api:
     dependencies:
+      '@arremate/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       '@arremate/config':
         specifier: workspace:*
         version: link:../../packages/config
+      '@arremate/database':
+        specifier: workspace:*
+        version: link:../../packages/database
       '@arremate/observability':
         specifier: workspace:*
         version: link:../../packages/observability
@@ -106,6 +115,9 @@ importers:
 
   apps/web:
     dependencies:
+      '@arremate/auth':
+        specifier: workspace:*
+        version: link:../../packages/auth
       react:
         specifier: ^18.3.1
         version: 18.3.1
@@ -148,6 +160,10 @@ importers:
         version: 1.6.1(@types/node@20.19.39)
 
   packages/auth:
+    dependencies:
+      jose:
+        specifier: ^6.2.2
+        version: 6.2.2
     devDependencies:
       '@types/node':
         specifier: ^20.12.12
@@ -1476,6 +1492,9 @@ packages:
   jiti@1.21.7:
     resolution: {integrity: sha512-/imKNG4EbWNrVjoNC/1H5/9GFy+tqjGBHCaSsN+P2RnPqjsLmv6UD3Ej+Kj8nBWaRAwyk7kK5ZUc+OEatnTR3A==}
     hasBin: true
+
+  jose@6.2.2:
+    resolution: {integrity: sha512-d7kPDd34KO/YnzaDOlikGpOurfF0ByC2sEV4cANCtdqLlTfBlw2p14O/5d/zv40gJPbIQxfES3nSx1/oYNyuZQ==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
@@ -3304,6 +3323,8 @@ snapshots:
   isexe@2.0.0: {}
 
   jiti@1.21.7: {}
+
+  jose@6.2.2: {}
 
   js-tokens@4.0.0: {}
 

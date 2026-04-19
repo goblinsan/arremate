@@ -9,6 +9,9 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run --passWithNoTests"
   },
+  "dependencies": {
+    "jose": "^6.2.2"
+  },
   "devDependencies": {
     "@types/node": "^20.12.12",
     "typescript": "^5.4.5",

@@ -11,7 +11,9 @@
     "test": "vitest run --passWithNoTests"
   },
   "dependencies": {
+    "@arremate/auth": "workspace:*",
     "@arremate/config": "workspace:*",
+    "@arremate/database": "workspace:*",
     "@arremate/observability": "workspace:*",
     "@arremate/types": "workspace:*",
     "fastify": "^5.8.5",

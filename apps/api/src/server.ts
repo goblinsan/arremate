@@ -1,6 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import { meRoutes } from './routes/me.js';
 
 const server = Fastify({ logger: true });
 
@@ -12,6 +13,9 @@ server.get('/health', async () => {
 });
 
 server.get('/api/v1/ping', async () => ({ pong: true }));
+
+// Auth routes
+server.register(meRoutes);
 
 const start = async () => {
   try {

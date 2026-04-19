@@ -11,12 +11,13 @@ datasource db {
 // Core domain models
 
 model User {
-  id        String   @id @default(cuid())
-  email     String   @unique
-  name      String?
-  role      Role     @default(BUYER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String   @id @default(cuid())
+  cognitoSub String?  @unique
+  email      String   @unique
+  name       String?
+  role       Role     @default(BUYER)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
 
   auctions Auction[] @relation("SellerAuctions")
   bids     Bid[]
