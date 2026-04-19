@@ -4,6 +4,10 @@ import helmet from '@fastify/helmet';
 import { meRoutes } from './routes/me.js';
 import { sellerApplicationRoutes } from './routes/seller-applications.js';
 import { adminSellerApplicationRoutes } from './routes/admin-seller-applications.js';
+import { sellerShowRoutes } from './routes/seller-shows.js';
+import { sellerInventoryRoutes } from './routes/seller-inventory.js';
+import { showQueueRoutes } from './routes/show-queue.js';
+import { publicShowRoutes } from './routes/public-shows.js';
 
 const server = Fastify({ logger: true });
 
@@ -22,6 +26,14 @@ server.register(meRoutes);
 // Seller onboarding routes
 server.register(sellerApplicationRoutes);
 server.register(adminSellerApplicationRoutes);
+
+// Show & inventory routes
+server.register(sellerShowRoutes);
+server.register(sellerInventoryRoutes);
+server.register(showQueueRoutes);
+
+// Public routes
+server.register(publicShowRoutes);
 
 const start = async () => {
   try {

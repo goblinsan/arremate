@@ -24,6 +24,8 @@ model User {
   sellerApplication SellerApplication?
   sellerAccount     SellerAccount?
   auditEvents       AuditEvent[]
+  shows             Show[]             @relation("SellerShows")
+  inventoryItems    InventoryItem[]    @relation("SellerInventory")
 
   @@map("users")
 }
@@ -147,6 +149,81 @@ model SellerAccount {
   updatedAt     DateTime          @updatedAt
 
   @@map("seller_accounts")
+}
+
+// ─── Shows & Inventory ────────────────────────────────────────────────────────
+
+enum ShowStatus {
+  DRAFT
+  SCHEDULED
+  LIVE
+  ENDED
+  CANCELLED
+}
+
+model Show {
+  id          String     @id @default(cuid())
+  sellerId    String
+  seller      User       @relation("SellerShows", fields: [sellerId], references: [id])
+  title       String
+  description String?
+  status      ShowStatus @default(DRAFT)
+  scheduledAt DateTime?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  queueItems  ShowInventoryItem[]
+
+  @@map("shows")
+}
+
+enum ItemCondition {
+  NEW
+  USED
+  REFURBISHED
+}
+
+model InventoryItem {
+  id           String        @id @default(cuid())
+  sellerId     String
+  seller       User          @relation("SellerInventory", fields: [sellerId], references: [id])
+  title        String
+  description  String?
+  condition    ItemCondition @default(NEW)
+  startingPrice Decimal      @db.Decimal(12, 2)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  images       InventoryImage[]
+  showItems    ShowInventoryItem[]
+
+  @@map("inventory_items")
+}
+
+model InventoryImage {
+  id          String        @id @default(cuid())
+  itemId      String
+  item        InventoryItem @relation(fields: [itemId], references: [id], onDelete: Cascade)
+  s3Key       String
+  contentType String
+  fileName    String
+  position    Int           @default(0)
+  uploadedAt  DateTime      @default(now())
+
+  @@map("inventory_images")
+}
+
+model ShowInventoryItem {
+  id              String        @id @default(cuid())
+  showId          String
+  show            Show          @relation(fields: [showId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  position        Int
+  createdAt       DateTime      @default(now())
+
+  @@unique([showId, inventoryItemId])
+  @@map("show_inventory_items")
 }
 
 // ─── Audit ────────────────────────────────────────────────────────────────────

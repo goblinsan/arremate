@@ -124,6 +124,55 @@ export interface UploadUrlResponse {
   expiresAt: string;
 }
 
+// ─── Shows ────────────────────────────────────────────────────────────────────
+
+export type ShowStatus = 'DRAFT' | 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED';
+export type ItemCondition = 'NEW' | 'USED' | 'REFURBISHED';
+
+export interface Show {
+  id: string;
+  sellerId: string;
+  seller?: Pick<User, 'id' | 'name' | 'email'>;
+  title: string;
+  description: string | null;
+  status: ShowStatus;
+  scheduledAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  queueItems?: ShowInventoryItem[];
+}
+
+export interface InventoryImage {
+  id: string;
+  itemId: string;
+  s3Key: string;
+  contentType: string;
+  fileName: string;
+  position: number;
+  uploadedAt: Date;
+}
+
+export interface InventoryItem {
+  id: string;
+  sellerId: string;
+  title: string;
+  description: string | null;
+  condition: ItemCondition;
+  startingPrice: number;
+  createdAt: Date;
+  updatedAt: Date;
+  images?: InventoryImage[];
+}
+
+export interface ShowInventoryItem {
+  id: string;
+  showId: string;
+  inventoryItemId: string;
+  inventoryItem?: InventoryItem;
+  position: number;
+  createdAt: Date;
+}
+
 // ─── Audit ────────────────────────────────────────────────────────────────────
 
 export interface AuditEvent {
