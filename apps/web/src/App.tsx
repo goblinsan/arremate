@@ -1,0 +1,90 @@
+import { Routes, Route, Link, NavLink } from 'react-router-dom';
+import HomePage from './pages/HomePage';
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-white">
+      <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            <Link to="/" className="flex items-center gap-2">
+              <span className="text-2xl font-extrabold text-brand-500">Arremate</span>
+              <span className="text-xs font-medium text-gray-400 hidden sm:block">Live Shopping</span>
+            </Link>
+
+            <nav className="hidden md:flex items-center gap-8">
+              <NavLink
+                to="/"
+                className={({ isActive }) =>
+                  `text-sm font-medium transition-colors ${
+                    isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                  }`
+                }
+              >
+                Home
+              </NavLink>
+              <NavLink
+                to="/auctions"
+                className={({ isActive }) =>
+                  `text-sm font-medium transition-colors ${
+                    isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                  }`
+                }
+              >
+                Leilões
+              </NavLink>
+              <NavLink
+                to="/sellers"
+                className={({ isActive }) =>
+                  `text-sm font-medium transition-colors ${
+                    isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                  }`
+                }
+              >
+                Vendedores
+              </NavLink>
+            </nav>
+
+            <div className="flex items-center gap-3">
+              <button className="text-sm font-medium text-gray-600 hover:text-brand-500 transition-colors">
+                Entrar
+              </button>
+              <button className="bg-brand-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                Cadastrar
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          <Route
+            path="/auctions"
+            element={
+              <div className="max-w-7xl mx-auto px-4 py-16 text-center text-gray-500">
+                Leilões em breve…
+              </div>
+            }
+          />
+          <Route
+            path="/sellers"
+            element={
+              <div className="max-w-7xl mx-auto px-4 py-16 text-center text-gray-500">
+                Vendedores em breve…
+              </div>
+            }
+          />
+        </Routes>
+      </main>
+
+      <footer className="bg-gray-900 text-gray-400 text-sm py-10 mt-20">
+        <div className="max-w-7xl mx-auto px-4 text-center">
+          <p className="font-semibold text-white mb-1">Arremate</p>
+          <p>© {new Date().getFullYear()} Arremate Tecnologia Ltda. Todos os direitos reservados.</p>
+        </div>
+      </footer>
+    </div>
+  );
+}
