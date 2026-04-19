@@ -1,12 +1,15 @@
 import { NavLink, Routes, Route } from 'react-router-dom';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
+import SellerApplicationsPage from './pages/SellerApplicationsPage';
+import SellerApplicationDetailPage from './pages/SellerApplicationDetailPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 
 const navItems = [
   { to: '/', label: 'Dashboard', emoji: '📊' },
   { to: '/auctions', label: 'Leilões', emoji: '🔨' },
+  { to: '/seller-applications', label: 'Vendedores', emoji: '🏪' },
   { to: '/users', label: 'Usuários', emoji: '👥' },
   { to: '/payments', label: 'Pagamentos', emoji: '💳' },
   { to: '/settings', label: 'Configurações', emoji: '⚙️' },
@@ -74,6 +77,8 @@ function AdminShell() {
               path="/auctions"
               element={<PlaceholderPage title="Leilões" />}
             />
+            <Route path="/seller-applications" element={<SellerApplicationsPage />} />
+            <Route path="/seller-applications/:id" element={<SellerApplicationDetailPage />} />
             <Route
               path="/users"
               element={<PlaceholderPage title="Usuários" />}

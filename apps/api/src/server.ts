@@ -2,6 +2,8 @@ import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
 import { meRoutes } from './routes/me.js';
+import { sellerApplicationRoutes } from './routes/seller-applications.js';
+import { adminSellerApplicationRoutes } from './routes/admin-seller-applications.js';
 
 const server = Fastify({ logger: true });
 
@@ -16,6 +18,10 @@ server.get('/api/v1/ping', async () => ({ pong: true }));
 
 // Auth routes
 server.register(meRoutes);
+
+// Seller onboarding routes
+server.register(sellerApplicationRoutes);
+server.register(adminSellerApplicationRoutes);
 
 const start = async () => {
   try {
