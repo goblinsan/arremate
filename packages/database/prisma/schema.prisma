@@ -19,8 +19,11 @@ model User {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  auctions Auction[] @relation("SellerAuctions")
-  bids     Bid[]
+  auctions          Auction[]          @relation("SellerAuctions")
+  bids              Bid[]
+  sellerApplication SellerApplication?
+  sellerAccount     SellerAccount?
+  auditEvents       AuditEvent[]
 
   @@map("users")
 }
@@ -67,4 +70,96 @@ model Bid {
   createdAt DateTime @default(now())
 
   @@map("bids")
+}
+
+// ─── Seller Onboarding ────────────────────────────────────────────────────────
+
+enum ApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+}
+
+enum DocumentType {
+  IDENTITY
+  ADDRESS_PROOF
+  BUSINESS_REGISTRATION
+  OTHER
+}
+
+model SellerApplication {
+  id              String            @id @default(cuid())
+  userId          String            @unique
+  user            User              @relation(fields: [userId], references: [id])
+  status          ApplicationStatus @default(DRAFT)
+
+  // Business info
+  businessName    String?
+  businessType    String?
+  taxId           String?
+  phone           String?
+  addressLine1    String?
+  addressLine2    String?
+  city            String?
+  state           String?
+  postalCode      String?
+
+  // Review metadata
+  reviewedById    String?
+  reviewNotes     String?
+  reviewedAt      DateTime?
+
+  submittedAt     DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  documents       SellerDocument[]
+  sellerAccount   SellerAccount?
+  auditEvents     AuditEvent[]
+
+  @@map("seller_applications")
+}
+
+model SellerDocument {
+  id            String            @id @default(cuid())
+  applicationId String
+  application   SellerApplication @relation(fields: [applicationId], references: [id])
+  documentType  DocumentType
+  fileName      String
+  s3Key         String
+  contentType   String
+  sizeBytes     Int?
+  uploadedAt    DateTime          @default(now())
+
+  @@map("seller_documents")
+}
+
+model SellerAccount {
+  id            String            @id @default(cuid())
+  userId        String            @unique
+  user          User              @relation(fields: [userId], references: [id])
+  applicationId String            @unique
+  application   SellerApplication @relation(fields: [applicationId], references: [id])
+  isActive      Boolean           @default(true)
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+
+  @@map("seller_accounts")
+}
+
+// ─── Audit ────────────────────────────────────────────────────────────────────
+
+model AuditEvent {
+  id            String             @id @default(cuid())
+  action        String
+  actorId       String
+  actor         User               @relation(fields: [actorId], references: [id])
+  applicationId String?
+  application   SellerApplication? @relation(fields: [applicationId], references: [id])
+  metadata      Json?
+  createdAt     DateTime           @default(now())
+
+  @@map("audit_events")
 }

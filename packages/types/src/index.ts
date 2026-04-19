@@ -55,6 +55,86 @@ export interface Product {
   updatedAt: Date;
 }
 
+// ─── Seller Onboarding ────────────────────────────────────────────────────────
+
+export type ApplicationStatus =
+  | 'DRAFT'
+  | 'SUBMITTED'
+  | 'UNDER_REVIEW'
+  | 'APPROVED'
+  | 'REJECTED';
+
+export type DocumentType =
+  | 'IDENTITY'
+  | 'ADDRESS_PROOF'
+  | 'BUSINESS_REGISTRATION'
+  | 'OTHER';
+
+export interface SellerApplication {
+  id: string;
+  userId: string;
+  status: ApplicationStatus;
+  businessName: string | null;
+  businessType: string | null;
+  taxId: string | null;
+  phone: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  state: string | null;
+  postalCode: string | null;
+  reviewedById: string | null;
+  reviewNotes: string | null;
+  reviewedAt: Date | null;
+  submittedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  documents?: SellerDocument[];
+}
+
+export interface SellerDocument {
+  id: string;
+  applicationId: string;
+  documentType: DocumentType;
+  fileName: string;
+  s3Key: string;
+  contentType: string;
+  sizeBytes: number | null;
+  uploadedAt: Date;
+}
+
+export interface SellerAccount {
+  id: string;
+  userId: string;
+  applicationId: string;
+  isActive: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UploadUrlRequest {
+  documentType: DocumentType;
+  fileName: string;
+  contentType: string;
+}
+
+export interface UploadUrlResponse {
+  uploadUrl: string;
+  s3Key: string;
+  expiresAt: string;
+}
+
+// ─── Audit ────────────────────────────────────────────────────────────────────
+
+export interface AuditEvent {
+  id: string;
+  action: string;
+  actorId: string;
+  applicationId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: Date;
+}
+
 // ─── API helpers ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {

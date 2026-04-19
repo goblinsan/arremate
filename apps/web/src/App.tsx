@@ -1,6 +1,7 @@
 import { Routes, Route, Link, NavLink } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import SellerApplicationPage from './pages/SellerApplicationPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function AppShell() {
@@ -98,6 +99,7 @@ function AppShell() {
               </div>
             }
           />
+          <Route path="/seller-application" element={<SellerApplicationPage />} />
         </Routes>
       </main>
 

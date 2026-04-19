@@ -1,3 +1,5 @@
+import { Link } from 'react-router-dom';
+
 export default function HomePage() {
   return (
     <div>
@@ -19,9 +21,12 @@ export default function HomePage() {
             <button className="bg-brand-500 hover:bg-orange-600 text-white font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg shadow-brand-500/30">
               Ver leilões ao vivo
             </button>
-            <button className="border-2 border-gray-200 hover:border-brand-500 text-gray-700 font-semibold px-8 py-4 rounded-xl text-lg transition-colors">
+            <Link
+              to="/seller-application"
+              className="border-2 border-gray-200 hover:border-brand-500 text-gray-700 font-semibold px-8 py-4 rounded-xl text-lg transition-colors"
+            >
               Quero vender
-            </button>
+            </Link>
           </div>
         </div>
       </section>
