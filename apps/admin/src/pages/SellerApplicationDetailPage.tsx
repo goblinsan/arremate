@@ -65,6 +65,12 @@ function Field({ label, value }: { label: string; value: string | null }) {
   );
 }
 
+function formatFileSize(bytes: number): string {
+  if (bytes >= 1024 * 1024) return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  if (bytes >= 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${bytes} B`;
+}
+
 export default function SellerApplicationDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -272,7 +278,7 @@ export default function SellerApplicationDetailPage() {
                       </p>
                       <p className="text-xs text-gray-400">
                         {doc.fileName}
-                        {doc.sizeBytes && ` · ${(doc.sizeBytes / 1024).toFixed(0)} KB`}
+                        {doc.sizeBytes != null && ` · ${formatFileSize(doc.sizeBytes)}`}
                       </p>
                     </div>
                     <p className="text-xs text-gray-400">

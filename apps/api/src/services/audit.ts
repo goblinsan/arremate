@@ -14,9 +14,7 @@ export async function createAuditEvent(params: {
       action: params.action,
       actorId: params.actorId,
       applicationId: params.applicationId ?? null,
-      metadata: params.metadata !== undefined
-        ? (params.metadata as Prisma.InputJsonValue)
-        : Prisma.JsonNull,
+      metadata: (params.metadata ?? Prisma.JsonNull) as Prisma.InputJsonValue,
     },
   });
 }

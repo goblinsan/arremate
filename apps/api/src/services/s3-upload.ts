@@ -15,6 +15,10 @@ function getS3Config() {
 
   const expiresIn = Number(process.env.S3_UPLOAD_URL_EXPIRY_SECONDS ?? 300);
 
+  if (!Number.isFinite(expiresIn) || expiresIn <= 0) {
+    throw new Error('S3_UPLOAD_URL_EXPIRY_SECONDS must be a positive number');
+  }
+
   return { region, bucket, expiresIn };
 }
 

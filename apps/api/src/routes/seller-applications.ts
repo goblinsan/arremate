@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { prisma } from '@arremate/database';
+import { prisma, type DocumentType } from '@arremate/database';
 import { authenticate } from '../plugins/authenticate.js';
 import { generateUploadUrl } from '../services/s3-upload.js';
 import { randomUUID } from 'crypto';
@@ -264,7 +264,7 @@ export async function sellerApplicationRoutes(fastify: FastifyInstance): Promise
       const doc = await prisma.sellerDocument.create({
         data: {
           applicationId: application.id,
-          documentType: documentType as 'IDENTITY' | 'ADDRESS_PROOF' | 'BUSINESS_REGISTRATION' | 'OTHER',
+          documentType: documentType as DocumentType,
           fileName,
           s3Key,
           contentType,
