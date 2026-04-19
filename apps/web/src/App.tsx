@@ -4,10 +4,12 @@ import LoginPage from './pages/LoginPage';
 import SellerApplicationPage from './pages/SellerApplicationPage';
 import SellerShowsPage from './pages/SellerShowsPage';
 import SellerShowFormPage from './pages/SellerShowFormPage';
+import SellerLiveControlPage from './pages/SellerLiveControlPage';
 import SellerInventoryPage from './pages/SellerInventoryPage';
 import SellerInventoryFormPage from './pages/SellerInventoryFormPage';
 import UpcomingShowsPage from './pages/UpcomingShowsPage';
 import ShowDetailPage from './pages/ShowDetailPage';
+import LiveRoomPage from './pages/LiveRoomPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function AppShell() {
@@ -126,8 +128,10 @@ function AppShell() {
           <Route path="/seller-application" element={<SellerApplicationPage />} />
           <Route path="/seller/shows" element={<SellerShowsPage />} />
           <Route path="/seller/shows/:id" element={<SellerShowFormPage />} />
+          <Route path="/seller/shows/:id/live" element={<SellerLiveControlPage />} />
           <Route path="/seller/inventory" element={<SellerInventoryPage />} />
           <Route path="/seller/inventory/:id" element={<SellerInventoryFormPage />} />
+          <Route path="/shows/:id/live" element={<LiveRoomPage />} />
         </Routes>
       </main>
 

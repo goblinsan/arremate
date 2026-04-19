@@ -105,6 +105,14 @@ export default function ShowDetailPage() {
               )}
             </div>
           </div>
+          {show.status === 'LIVE' && (
+            <Link
+              to={`/shows/${show.id}/live`}
+              className="shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+            >
+              🔴 Entrar na sala
+            </Link>
+          )}
         </div>
       </div>
 

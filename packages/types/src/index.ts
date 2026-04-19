@@ -170,7 +170,26 @@ export interface ShowInventoryItem {
   inventoryItemId: string;
   inventoryItem?: InventoryItem;
   position: number;
+  soldOut: boolean;
   createdAt: Date;
+}
+
+// ─── Live Sessions ────────────────────────────────────────────────────────────
+
+export type SessionStatus = 'STARTING' | 'LIVE' | 'ENDED';
+
+export interface ShowSession {
+  id: string;
+  showId: string;
+  status: SessionStatus;
+  providerSessionId: string | null;
+  playbackUrl: string | null;
+  pinnedItemId: string | null;
+  pinnedItem?: ShowInventoryItem & { inventoryItem: InventoryItem };
+  startedAt: Date | null;
+  endedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ─── Audit ────────────────────────────────────────────────────────────────────
