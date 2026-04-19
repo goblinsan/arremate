@@ -6,9 +6,33 @@ export interface JwtPayload {
   exp?: number;
 }
 
+/**
+ * Cognito ID-token / access-token claims.
+ * Only a subset of standard Cognito claims is listed here.
+ */
+export interface CognitoJwtPayload {
+  sub: string;
+  /** Present on ID tokens */
+  email?: string;
+  /** Present on ID tokens */
+  'cognito:username'?: string;
+  /** Group membership (e.g. ["ADMIN", "SELLER"]) */
+  'cognito:groups'?: string[];
+  /** "id" for ID tokens, "access" for access tokens */
+  token_use: 'id' | 'access';
+  iss: string;
+  /** Audience – app client ID, present on ID tokens */
+  aud?: string;
+  /** App client ID, present on access tokens */
+  client_id?: string;
+  iat: number;
+  exp: number;
+}
+
 export interface AuthTokens {
   accessToken: string;
   refreshToken: string;
+  idToken?: string;
 }
 
 /**
@@ -18,7 +42,11 @@ export interface AuthTokens {
 export function decodeJwtPayload(token: string): JwtPayload | null {
   try {
     const [, payloadB64] = token.split('.');
-    const json = Buffer.from(payloadB64, 'base64url').toString('utf-8');
+    if (!payloadB64) return null;
+    // Convert base64url → base64 then decode. atob is available in Node ≥16 and all browsers.
+    const base64 = payloadB64.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = base64 + '=='.slice(0, (4 - (base64.length % 4)) % 4);
+    const json = atob(padded);
     return JSON.parse(json) as JwtPayload;
   } catch {
     return null;
@@ -36,3 +64,6 @@ export function extractBearerToken(authHeader: string | undefined): string | nul
   if (!authHeader?.startsWith('Bearer ')) return null;
   return authHeader.slice(7);
 }
+
+export { verifyCognitoToken } from './cognito-verifier.js';
+export type { CognitoVerifierOptions } from './cognito-verifier.js';
