@@ -2,6 +2,12 @@ import { Routes, Route, Link, NavLink } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SellerApplicationPage from './pages/SellerApplicationPage';
+import SellerShowsPage from './pages/SellerShowsPage';
+import SellerShowFormPage from './pages/SellerShowFormPage';
+import SellerInventoryPage from './pages/SellerInventoryPage';
+import SellerInventoryFormPage from './pages/SellerInventoryFormPage';
+import UpcomingShowsPage from './pages/UpcomingShowsPage';
+import ShowDetailPage from './pages/ShowDetailPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function AppShell() {
@@ -29,6 +35,16 @@ function AppShell() {
                 Home
               </NavLink>
               <NavLink
+                to="/shows"
+                className={({ isActive }) =>
+                  `text-sm font-medium transition-colors ${
+                    isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                  }`
+                }
+              >
+                Shows
+              </NavLink>
+              <NavLink
                 to="/auctions"
                 className={({ isActive }) =>
                   `text-sm font-medium transition-colors ${
@@ -38,16 +54,30 @@ function AppShell() {
               >
                 Leilões
               </NavLink>
-              <NavLink
-                to="/sellers"
-                className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${
-                    isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                  }`
-                }
-              >
-                Vendedores
-              </NavLink>
+              {isAuthenticated && (
+                <>
+                  <NavLink
+                    to="/seller/shows"
+                    className={({ isActive }) =>
+                      `text-sm font-medium transition-colors ${
+                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                      }`
+                    }
+                  >
+                    Meus Shows
+                  </NavLink>
+                  <NavLink
+                    to="/seller/inventory"
+                    className={({ isActive }) =>
+                      `text-sm font-medium transition-colors ${
+                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                      }`
+                    }
+                  >
+                    Inventário
+                  </NavLink>
+                </>
+              )}
             </nav>
 
             <div className="flex items-center gap-3">
@@ -83,6 +113,8 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/shows" element={<UpcomingShowsPage />} />
+          <Route path="/shows/:id" element={<ShowDetailPage />} />
           <Route
             path="/auctions"
             element={
@@ -91,15 +123,11 @@ function AppShell() {
               </div>
             }
           />
-          <Route
-            path="/sellers"
-            element={
-              <div className="max-w-7xl mx-auto px-4 py-16 text-center text-gray-500">
-                Vendedores em breve…
-              </div>
-            }
-          />
           <Route path="/seller-application" element={<SellerApplicationPage />} />
+          <Route path="/seller/shows" element={<SellerShowsPage />} />
+          <Route path="/seller/shows/:id" element={<SellerShowFormPage />} />
+          <Route path="/seller/inventory" element={<SellerInventoryPage />} />
+          <Route path="/seller/inventory/:id" element={<SellerInventoryFormPage />} />
         </Routes>
       </main>
 
@@ -120,4 +148,3 @@ export default function App() {
     </AuthProvider>
   );
 }
-
