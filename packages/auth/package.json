@@ -7,9 +7,10 @@
     "build": "tsc",
     "lint": "eslint src --ext ts",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run --passWithNoTests"
   },
   "devDependencies": {
+    "@types/node": "^20.12.12",
     "typescript": "^5.4.5",
     "vitest": "^1.6.0"
   }
