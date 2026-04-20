@@ -47,7 +47,12 @@ export async function webhookRoutes(fastify: FastifyInstance): Promise<void> {
       return reply.send({ received: true });
     }
 
-    const dbPaymentStatus = event.status === 'PAID' ? 'PAID' : event.status === 'REFUNDED' ? 'REFUNDED' : 'FAILED';
+    const dbPaymentStatus = ((): 'PAID' | 'FAILED' | 'REFUNDED' => {
+      if (event.status === 'PAID') return 'PAID';
+      if (event.status === 'REFUNDED') return 'REFUNDED';
+      return 'FAILED';
+    })();
+
     const dbOrderStatus = event.status === 'PAID' ? 'PAID' : 'CANCELLED';
 
     await prisma.$transaction([

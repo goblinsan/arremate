@@ -15,7 +15,7 @@ const CLAIM_EXPIRY_MINUTES = 15;
  * Lazily expire a PENDING claim if its expiresAt has passed.
  * Returns the effective claim status.
  */
-async function expireIfOverdue(claimId: string, expiresAt: Date, currentStatus: string) {
+async function expireIfOverdue(claimId: string, expiresAt: Date, currentStatus: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'CANCELLED') {
   if (currentStatus !== 'PENDING') return currentStatus;
   if (expiresAt > new Date()) return currentStatus;
 

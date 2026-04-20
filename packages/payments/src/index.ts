@@ -88,7 +88,16 @@ export class StubPixAdapter implements PaymentProviderAdapter {
     const expiresAt = new Date(Date.now() + expiresInMinutes * 60 * 1000);
     const providerId = `stub_pix_${params.orderId}_${Date.now()}`;
 
-    // Deterministic fake Pix EMV code
+    // Fake Pix EMV code segments:
+    // 000201   – Payload format indicator (version 01)
+    // 26...    – Merchant account info (BR Pix: br.gov.bcb.pix, with transaction key)
+    // 5204...  – Merchant category code (0000 = generic)
+    // 5303986  – Transaction currency (986 = BRL)
+    // 5802BR   – Country code
+    // 59...    – Merchant name (max 25 chars)
+    // 60...    – Merchant city
+    // 6207...  – Additional data (reference label)
+    // 6304...  – CRC-16 checksum (placeholder ABCD)
     const pixCode =
       `00020126580014br.gov.bcb.pix0136${providerId}` +
       `5204000053039865802BR5913Arremate STUB` +
