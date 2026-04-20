@@ -47,11 +47,12 @@ const server = Fastify({
 server.setErrorHandler((error, request, reply) => {
   captureException(error, { requestId: request.id, url: request.url, method: request.method });
   request.log.error({ err: error, requestId: request.id }, 'Unhandled request error');
-  const statusCode = (error as { statusCode?: number }).statusCode ?? 500;
+  const err = error as Error & { statusCode?: number };
+  const statusCode = err.statusCode ?? 500;
   reply.status(statusCode).send({
     statusCode,
-    error: error.name ?? 'Internal Server Error',
-    message: statusCode < 500 ? error.message : 'An unexpected error occurred',
+    error: err.name ?? 'Internal Server Error',
+    message: statusCode < 500 ? err.message : 'An unexpected error occurred',
   });
 });
 
