@@ -173,6 +173,7 @@ model Show {
   updatedAt   DateTime   @updatedAt
 
   queueItems  ShowInventoryItem[]
+  sessions    ShowSession[]
 
   @@map("shows")
 }
@@ -220,10 +221,38 @@ model ShowInventoryItem {
   inventoryItemId String
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   position        Int
+  soldOut         Boolean       @default(false)
   createdAt       DateTime      @default(now())
+
+  pinnedSessions  ShowSession[] @relation("PinnedSession")
 
   @@unique([showId, inventoryItemId])
   @@map("show_inventory_items")
+}
+
+// ─── Live Sessions ────────────────────────────────────────────────────────────
+
+enum SessionStatus {
+  STARTING
+  LIVE
+  ENDED
+}
+
+model ShowSession {
+  id                String            @id @default(cuid())
+  showId            String
+  show              Show              @relation(fields: [showId], references: [id])
+  status            SessionStatus     @default(STARTING)
+  providerSessionId String?
+  playbackUrl       String?
+  pinnedItemId      String?
+  pinnedItem        ShowInventoryItem? @relation("PinnedSession", fields: [pinnedItemId], references: [id])
+  startedAt         DateTime?
+  endedAt           DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("show_sessions")
 }
 
 // ─── Audit ────────────────────────────────────────────────────────────────────

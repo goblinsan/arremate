@@ -226,6 +226,8 @@ export default function SellerShowFormPage() {
 
   const isReadOnly = show !== null && (show.status === 'CANCELLED' || show.status === 'ENDED');
   const canSchedule = show !== null && show.status === 'DRAFT' && !!show.scheduledAt;
+  const canGoLive = show !== null && show.status === 'SCHEDULED';
+  const isLive = show !== null && show.status === 'LIVE';
 
   // Items not yet in queue
   const queuedItemIds = new Set(queue.map((q) => q.inventoryItemId));
@@ -309,6 +311,32 @@ export default function SellerShowFormPage() {
                 Agendar show
               </button>
             )}
+            {canGoLive && (
+              <Link
+                to={`/seller/shows/${show!.id}/live`}
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+              >
+                🔴 Ir ao vivo
+              </Link>
+            )}
+          </div>
+        )}
+        {isLive && (
+          <div className="mt-6 flex items-center gap-3">
+            <Link
+              to={`/seller/shows/${show!.id}/live`}
+              className="bg-red-500 hover:bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+            >
+              🔴 Painel ao vivo
+            </Link>
+            <Link
+              to={`/shows/${show!.id}/live`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-sm text-brand-500 hover:underline"
+            >
+              Ver sala do comprador ↗
+            </Link>
           </div>
         )}
       </form>

@@ -16,6 +16,7 @@
     "@arremate/database": "workspace:*",
     "@arremate/observability": "workspace:*",
     "@arremate/types": "workspace:*",
+    "@arremate/video": "workspace:*",
     "@aws-sdk/client-s3": "^3.1032.0",
     "@aws-sdk/s3-request-presigner": "^3.1032.0",
     "@fastify/cors": "^10.0.2",
