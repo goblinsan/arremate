@@ -9,6 +9,8 @@ import { sellerInventoryRoutes } from './routes/seller-inventory.js';
 import { showQueueRoutes } from './routes/show-queue.js';
 import { publicShowRoutes } from './routes/public-shows.js';
 import { liveSessionRoutes } from './routes/live-session.js';
+import { chatRoutes } from './routes/chat.js';
+import { claimRoutes } from './routes/claims.js';
 
 const server = Fastify({ logger: true });
 
@@ -38,6 +40,12 @@ server.register(publicShowRoutes);
 
 // Live session routes
 server.register(liveSessionRoutes);
+
+// Chat routes
+server.register(chatRoutes);
+
+// Claim routes
+server.register(claimRoutes);
 
 const start = async () => {
   try {
