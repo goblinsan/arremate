@@ -312,6 +312,48 @@ export interface Order {
   supportTickets?: SupportTicket[];
 }
 
+// ─── Disputes ─────────────────────────────────────────────────────────────────
+
+export type DisputeStatus = 'OPEN' | 'UNDER_REVIEW' | 'RESOLVED' | 'CLOSED';
+
+export type DisputeReason =
+  | 'ITEM_NOT_RECEIVED'
+  | 'ITEM_NOT_AS_DESCRIBED'
+  | 'PAYMENT_ISSUE'
+  | 'OTHER';
+
+export interface Dispute {
+  id: string;
+  orderId: string;
+  order?: Pick<Order, 'id' | 'totalCents' | 'status'>;
+  raisedById: string;
+  raisedBy?: Pick<User, 'id' | 'name' | 'email'>;
+  reason: DisputeReason;
+  description: string | null;
+  status: DisputeStatus;
+  resolvedById: string | null;
+  resolvedBy?: Pick<User, 'id' | 'name' | 'email'> | null;
+  resolution: string | null;
+  resolvedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── Moderation Cases ─────────────────────────────────────────────────────────
+
+export type ModerationActionType = 'SELLER_STRIKE' | 'USER_SUSPENSION' | 'USER_UNSUSPENSION';
+
+export interface ModerationCase {
+  id: string;
+  userId: string;
+  user?: Pick<User, 'id' | 'name' | 'email'>;
+  actionType: ModerationActionType;
+  reason: string | null;
+  actorId: string;
+  actor?: Pick<User, 'id' | 'name' | 'email'>;
+  createdAt: Date;
+}
+
 // ─── API helpers ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {

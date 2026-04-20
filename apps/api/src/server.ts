@@ -14,6 +14,10 @@ import { claimRoutes } from './routes/claims.js';
 import { orderRoutes } from './routes/orders.js';
 import { fulfillmentRoutes } from './routes/fulfillment.js';
 import { webhookRoutes } from './routes/webhooks.js';
+import { adminDisputeRoutes } from './routes/admin-disputes.js';
+import { adminModerationRoutes } from './routes/admin-moderation.js';
+import { adminRefundRoutes } from './routes/admin-refunds.js';
+import { adminAuditRoutes } from './routes/admin-audit.js';
 
 const server = Fastify({ logger: true });
 
@@ -58,6 +62,12 @@ server.register(fulfillmentRoutes);
 
 // Webhooks
 server.register(webhookRoutes);
+
+// Disputes & moderation
+server.register(adminDisputeRoutes);
+server.register(adminModerationRoutes);
+server.register(adminRefundRoutes);
+server.register(adminAuditRoutes);
 
 const start = async () => {
   try {

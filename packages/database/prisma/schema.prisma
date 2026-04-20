@@ -11,26 +11,32 @@ datasource db {
 // Core domain models
 
 model User {
-  id         String   @id @default(cuid())
-  cognitoSub String?  @unique
-  email      String   @unique
-  name       String?
-  role       Role     @default(BUYER)
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id          String    @id @default(cuid())
+  cognitoSub  String?   @unique
+  email       String    @unique
+  name        String?
+  role        Role      @default(BUYER)
+  isSuspended Boolean   @default(false)
+  suspendedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
 
-  auctions          Auction[]          @relation("SellerAuctions")
-  bids              Bid[]
-  sellerApplication SellerApplication?
-  sellerAccount     SellerAccount?
-  auditEvents       AuditEvent[]
-  shows             Show[]             @relation("SellerShows")
-  inventoryItems    InventoryItem[]    @relation("SellerInventory")
-  chatMessages      ChatMessage[]      @relation("UserChatMessages")
-  claims            Claim[]            @relation("BuyerClaims")
-  buyerOrders       Order[]            @relation("BuyerOrders")
-  sellerOrders      Order[]            @relation("SellerOrders")
-  supportTickets    SupportTicket[]    @relation("UserSupportTickets")
+  auctions              Auction[]          @relation("SellerAuctions")
+  bids                  Bid[]
+  sellerApplication     SellerApplication?
+  sellerAccount         SellerAccount?
+  auditEvents           AuditEvent[]
+  shows                 Show[]             @relation("SellerShows")
+  inventoryItems        InventoryItem[]    @relation("SellerInventory")
+  chatMessages          ChatMessage[]      @relation("UserChatMessages")
+  claims                Claim[]            @relation("BuyerClaims")
+  buyerOrders           Order[]            @relation("BuyerOrders")
+  sellerOrders          Order[]            @relation("SellerOrders")
+  supportTickets        SupportTicket[]    @relation("UserSupportTickets")
+  raisedDisputes        Dispute[]          @relation("DisputeRaisedBy")
+  resolvedDisputes      Dispute[]          @relation("DisputeResolvedBy")
+  moderationCasesAbout  ModerationCase[]   @relation("ModerationCaseUser")
+  moderationCasesActed  ModerationCase[]   @relation("ModerationCaseActor")
 
   @@map("users")
 }
@@ -306,6 +312,7 @@ model Order {
   payments       Payment[]
   shipment       Shipment?
   supportTickets SupportTicket[]
+  disputes       Dispute[]
 
   @@map("orders")
 }
@@ -447,4 +454,60 @@ model ChatMessage {
   createdAt        DateTime         @default(now())
 
   @@map("chat_messages")
+}
+
+// ─── Disputes ─────────────────────────────────────────────────────────────────
+
+enum DisputeStatus {
+  OPEN
+  UNDER_REVIEW
+  RESOLVED
+  CLOSED
+}
+
+enum DisputeReason {
+  ITEM_NOT_RECEIVED
+  ITEM_NOT_AS_DESCRIBED
+  PAYMENT_ISSUE
+  OTHER
+}
+
+model Dispute {
+  id           String        @id @default(cuid())
+  orderId      String
+  order        Order         @relation(fields: [orderId], references: [id])
+  raisedById   String
+  raisedBy     User          @relation("DisputeRaisedBy", fields: [raisedById], references: [id])
+  reason       DisputeReason
+  description  String?
+  status       DisputeStatus @default(OPEN)
+  resolvedById String?
+  resolvedBy   User?         @relation("DisputeResolvedBy", fields: [resolvedById], references: [id])
+  resolution   String?
+  resolvedAt   DateTime?
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  @@map("disputes")
+}
+
+// ─── Moderation Cases ─────────────────────────────────────────────────────────
+
+enum ModerationActionType {
+  SELLER_STRIKE
+  USER_SUSPENSION
+  USER_UNSUSPENSION
+}
+
+model ModerationCase {
+  id         String               @id @default(cuid())
+  userId     String
+  user       User                 @relation("ModerationCaseUser", fields: [userId], references: [id])
+  actionType ModerationActionType
+  reason     String?
+  actorId    String
+  actor      User                 @relation("ModerationCaseActor", fields: [actorId], references: [id])
+  createdAt  DateTime             @default(now())
+
+  @@map("moderation_cases")
 }

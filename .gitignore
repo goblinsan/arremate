@@ -47,3 +47,6 @@ pnpm-debug.log*
 
 # Misc
 *.local
+
+# npm lock files (project uses pnpm)
+package-lock.json
