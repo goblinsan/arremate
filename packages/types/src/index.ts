@@ -203,6 +203,69 @@ export interface AuditEvent {
   createdAt: Date;
 }
 
+// ─── Claims ───────────────────────────────────────────────────────────────────
+
+export type ClaimStatus = 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'CANCELLED';
+
+export interface Claim {
+  id: string;
+  sessionId: string;
+  buyerId: string;
+  queueItemId: string;
+  queueItem?: ShowInventoryItem & { inventoryItem: InventoryItem };
+  priceAtClaim: number;
+  status: ClaimStatus;
+  expiresAt: Date;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── Orders & Payments ────────────────────────────────────────────────────────
+
+export type OrderStatus = 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED' | 'REFUNDED';
+
+export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
+
+export interface OrderLine {
+  id: string;
+  orderId: string;
+  inventoryItemId: string;
+  inventoryItem?: InventoryItem;
+  title: string;
+  priceCents: number;
+  quantity: number;
+  createdAt: Date;
+}
+
+export interface Payment {
+  id: string;
+  orderId: string;
+  status: PaymentStatus;
+  provider: string;
+  amountCents: number;
+  providerId: string | null;
+  pixCode: string | null;
+  pixQrCodeBase64: string | null;
+  pixExpiresAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface Order {
+  id: string;
+  claimId: string;
+  buyerId: string;
+  buyer?: Pick<User, 'id' | 'name' | 'email'>;
+  sellerId: string;
+  seller?: Pick<User, 'id' | 'name' | 'email'>;
+  status: OrderStatus;
+  totalCents: number;
+  createdAt: Date;
+  updatedAt: Date;
+  lines?: OrderLine[];
+  payments?: Payment[];
+}
+
 // ─── API helpers ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {

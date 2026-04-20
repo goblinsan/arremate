@@ -7,6 +7,7 @@ import SellerShowFormPage from './pages/SellerShowFormPage';
 import SellerLiveControlPage from './pages/SellerLiveControlPage';
 import SellerInventoryPage from './pages/SellerInventoryPage';
 import SellerInventoryFormPage from './pages/SellerInventoryFormPage';
+import SellerOrdersPage from './pages/SellerOrdersPage';
 import UpcomingShowsPage from './pages/UpcomingShowsPage';
 import ShowDetailPage from './pages/ShowDetailPage';
 import LiveRoomPage from './pages/LiveRoomPage';
@@ -78,6 +79,16 @@ function AppShell() {
                   >
                     Inventário
                   </NavLink>
+                  <NavLink
+                    to="/seller/orders"
+                    className={({ isActive }) =>
+                      `text-sm font-medium transition-colors ${
+                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                      }`
+                    }
+                  >
+                    Pedidos
+                  </NavLink>
                 </>
               )}
             </nav>
@@ -131,6 +142,7 @@ function AppShell() {
           <Route path="/seller/shows/:id/live" element={<SellerLiveControlPage />} />
           <Route path="/seller/inventory" element={<SellerInventoryPage />} />
           <Route path="/seller/inventory/:id" element={<SellerInventoryFormPage />} />
+          <Route path="/seller/orders" element={<SellerOrdersPage />} />
           <Route path="/shows/:id/live" element={<LiveRoomPage />} />
         </Routes>
       </main>
