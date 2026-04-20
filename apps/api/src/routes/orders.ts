@@ -181,6 +181,7 @@ export async function orderRoutes(fastify: FastifyInstance): Promise<void> {
         include: {
           lines: { include: { inventoryItem: true } },
           payments: true,
+          shipment: true,
         },
       });
 
@@ -211,6 +212,7 @@ export async function orderRoutes(fastify: FastifyInstance): Promise<void> {
           buyer: { select: { id: true, name: true, email: true } },
           lines: { include: { inventoryItem: true } },
           payments: true,
+          shipment: true,
         },
       });
 

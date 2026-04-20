@@ -240,6 +240,10 @@ export type OrderStatus = 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED' | 'REFUNDED';
 
 export type PaymentStatus = 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
 
+export type FulfillmentStatus = 'PENDING' | 'PROCESSING' | 'SHIPPED' | 'DELIVERED' | 'RETURNED';
+
+export type TicketStatus = 'OPEN' | 'IN_PROGRESS' | 'RESOLVED' | 'CLOSED';
+
 export interface OrderLine {
   id: string;
   orderId: string;
@@ -265,6 +269,32 @@ export interface Payment {
   updatedAt: Date;
 }
 
+export interface Shipment {
+  id: string;
+  orderId: string;
+  status: FulfillmentStatus;
+  carrier: string | null;
+  trackingNumber: string | null;
+  trackingUrl: string | null;
+  estimatedDelivery: Date | null;
+  shippedAt: Date | null;
+  deliveredAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface SupportTicket {
+  id: string;
+  orderId: string;
+  userId: string;
+  user?: Pick<User, 'id' | 'name' | 'email'>;
+  subject: string;
+  message: string;
+  status: TicketStatus;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Order {
   id: string;
   claimId: string;
@@ -278,6 +308,8 @@ export interface Order {
   updatedAt: Date;
   lines?: OrderLine[];
   payments?: Payment[];
+  shipment?: Shipment | null;
+  supportTickets?: SupportTicket[];
 }
 
 // ─── API helpers ─────────────────────────────────────────────────────────────
