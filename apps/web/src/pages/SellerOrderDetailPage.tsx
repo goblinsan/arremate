@@ -21,7 +21,7 @@ const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
 
 const FULFILLMENT_STATUS_LABELS: Record<FulfillmentStatus, string> = {
   PENDING: 'Pendente',
-  PROCESSING: 'Processando',
+  PROCESSING: 'Em processamento',
   SHIPPED: 'Enviado',
   DELIVERED: 'Entregue',
   RETURNED: 'Devolvido',

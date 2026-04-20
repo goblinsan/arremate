@@ -134,8 +134,12 @@ export async function fulfillmentRoutes(fastify: FastifyInstance): Promise<void>
 
       const order = await prisma.order.findUnique({ where: { id: orderId } });
 
-      if (!order || order.buyerId !== user.id) {
+      if (!order) {
         return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Order not found' });
+      }
+
+      if (order.buyerId !== user.id) {
+        return reply.status(403).send({ statusCode: 403, error: 'Forbidden', message: 'Access denied' });
       }
 
       const { subject, message } = request.body as { subject?: string; message?: string };
