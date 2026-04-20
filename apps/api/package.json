@@ -15,6 +15,7 @@
     "@arremate/config": "workspace:*",
     "@arremate/database": "workspace:*",
     "@arremate/observability": "workspace:*",
+    "@arremate/payments": "workspace:*",
     "@arremate/types": "workspace:*",
     "@arremate/video": "workspace:*",
     "@aws-sdk/client-s3": "^3.1032.0",

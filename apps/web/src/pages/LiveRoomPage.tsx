@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import type { Show, ShowSession, ItemCondition, ChatMessage, Claim } from '@arremate/types';
+import type { Show, ShowSession, ItemCondition, ChatMessage, Claim, Order, Payment } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 const POLL_INTERVAL_MS = 5000;
@@ -16,6 +16,12 @@ const CONDITION_LABELS: Record<ItemCondition, string> = {
 
 interface PublicShow extends Omit<Show, 'seller'> {
   seller: { id: string; name: string | null };
+}
+
+function formatExpiresAt(date: Date | string): string {
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '—';
+  return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
 export default function LiveRoomPage() {
@@ -39,6 +45,13 @@ export default function LiveRoomPage() {
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
 
+  // Order / payment state
+  const [order, setOrder] = useState<Order | null>(null);
+  const [payment, setPayment] = useState<Payment | null>(null);
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [isCreatingPayment, setIsCreatingPayment] = useState(false);
+  const [orderError, setOrderError] = useState<string | null>(null);
+
   const fetchSession = useCallback(async () => {
     if (!showId) return;
     try {
@@ -61,7 +74,6 @@ export default function LiveRoomPage() {
   useEffect(() => {
     if (!showId) return;
 
-    // Load show metadata
     setIsLoadingShow(true);
     fetch(`${API_URL}/v1/shows/${showId}`)
       .then((res) => {
@@ -190,6 +202,10 @@ export default function LiveRoomPage() {
 
   // ─── Claim ────────────────────────────────────────────────────────────────────
 
+  function isClaimExpired(c: Claim): boolean {
+    return c.status === 'EXPIRED' || (c.status === 'PENDING' && new Date(c.expiresAt) <= new Date());
+  }
+
   async function handleClaim() {
     if (!session) return;
 
@@ -222,16 +238,60 @@ export default function LiveRoomPage() {
     }
   }
 
-  // ─── Render helpers ───────────────────────────────────────────────────────────
+  async function handleCreateOrder() {
+    if (!claim) return;
+    const token = getAccessToken();
+    if (!token) return;
 
-  function formatExpiresAt(expiresAt: Date | string): string {
-    const date = new Date(expiresAt);
-    if (isNaN(date.getTime())) return '—';
-    return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+    setOrderError(null);
+    setIsCreatingOrder(true);
+    try {
+      const res = await fetch(`${API_URL}/v1/claims/${claim.id}/order`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setOrderError((body as { message?: string }).message ?? 'Erro ao criar pedido.');
+        return;
+      }
+
+      const newOrder: Order = await res.json();
+      setOrder(newOrder);
+    } catch {
+      setOrderError('Erro ao criar pedido.');
+    } finally {
+      setIsCreatingOrder(false);
+    }
   }
 
-  function isClaimExpired(c: Claim): boolean {
-    return c.status === 'EXPIRED' || (c.status === 'PENDING' && new Date(c.expiresAt) <= new Date());
+  async function handleCreatePixPayment() {
+    if (!order) return;
+    const token = getAccessToken();
+    if (!token) return;
+
+    setOrderError(null);
+    setIsCreatingPayment(true);
+    try {
+      const res = await fetch(`${API_URL}/v1/orders/${order.id}/pix-payment`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setOrderError((body as { message?: string }).message ?? 'Erro ao gerar Pix.');
+        return;
+      }
+
+      const newPayment: Payment = await res.json();
+      setPayment(newPayment);
+    } catch {
+      setOrderError('Erro ao gerar Pix.');
+    } finally {
+      setIsCreatingPayment(false);
+    }
   }
 
   if (isLoadingShow) {
@@ -249,7 +309,6 @@ export default function LiveRoomPage() {
 
   const isLive = show.status === 'LIVE';
   const isEnded = show.status === 'ENDED';
-
   const pinnedItem = session?.pinnedItem;
 
   return (
@@ -346,60 +405,82 @@ export default function LiveRoomPage() {
                     R$ {Number(pinnedItem.inventoryItem.startingPrice).toFixed(2)}
                   </p>
                   <p className="text-xs text-gray-400 mb-4">preço fixo</p>
-
-                  {/* Claim section */}
-                  {pinnedItem.soldOut ? (
-                    <div className="inline-flex items-center gap-2 text-sm text-gray-500 bg-gray-100 px-4 py-2 rounded-lg">
-                      <span>🏷️</span> Esgotado
-                    </div>
-                  ) : claim && (claim.queueItemId === pinnedItem.id) ? (
-                    <div>
-                      {isClaimExpired(claim) ? (
-                        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                          <p className="font-semibold">⏰ Sua reserva expirou.</p>
-                          <p className="text-xs mt-1">O prazo de pagamento não foi cumprido.</p>
-                        </div>
-                      ) : claim.status === 'PAID' ? (
-                        <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
-                          <p className="font-semibold">✅ Compra confirmada!</p>
-                          <p className="text-xs mt-1">Seu pedido foi registrado com sucesso.</p>
-                        </div>
-                      ) : (
-                        <div className="bg-orange-50 border border-orange-200 text-orange-700 text-sm rounded-lg px-4 py-3">
-                          <p className="font-semibold">🛒 Item reservado!</p>
-                          <p className="text-xs mt-1">
-                            Finalize o pagamento até {formatExpiresAt(claim.expiresAt)} para garantir sua compra.
-                          </p>
-                          <p className="text-xs mt-1 text-orange-500">
-                            ID da reserva: <span className="font-mono">{claim.id.slice(0, 8)}</span>
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div>
-                      {claimError && (
-                        <p className="text-sm text-red-600 mb-2">{claimError}</p>
-                      )}
-                      {isAuthenticated ? (
-                        <button
-                          onClick={handleClaim}
-                          disabled={isClaiming}
-                          className="bg-brand-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors"
-                        >
-                          {isClaiming ? 'Reservando…' : '🛒 Comprar agora'}
-                        </button>
-                      ) : (
-                        <div className="text-sm text-gray-500">
-                          <Link to="/login" className="text-brand-500 hover:underline font-medium">
-                            Faça login
-                          </Link>{' '}
-                          para comprar este item.
-                        </div>
-                      )}
-                    </div>
-                  )}
                 </div>
+              </div>
+
+              {/* Claim / payment CTA */}
+              <div className="mt-5 border-t border-gray-100 pt-4">
+                {!isAuthenticated ? (
+                  <p className="text-sm text-gray-500">
+                    <Link to="/login" className="text-brand-500 font-medium hover:underline">Faça login</Link>{' '}
+                    para comprar este item.
+                  </p>
+                ) : claim === null ? (
+                  <>
+                    {claimError && (
+                      <p className="text-sm text-red-600 mb-2">{claimError}</p>
+                    )}
+                    <button
+                      onClick={handleClaim}
+                      disabled={isClaiming || pinnedItem.soldOut}
+                      className="w-full bg-brand-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl text-base transition-colors"
+                    >
+                      {pinnedItem.soldOut
+                        ? 'Esgotado'
+                        : isClaiming
+                        ? 'Reservando…'
+                        : '🛒 Quero este item!'}
+                    </button>
+                  </>
+                ) : isClaimExpired(claim) ? (
+                  <div className="bg-gray-50 border border-gray-200 text-gray-600 text-sm rounded-lg px-4 py-3">
+                    <p className="font-semibold">⏰ Sua reserva expirou.</p>
+                    <p className="text-xs mt-1">O prazo de pagamento não foi cumprido.</p>
+                  </div>
+                ) : claim.status === 'CONFIRMED' && order?.status === 'PAID' ? (
+                  <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
+                    <p className="font-semibold">✅ Compra confirmada!</p>
+                    <p className="text-xs mt-1">Seu pedido foi registrado com sucesso.</p>
+                  </div>
+                ) : (
+                  <div className="bg-orange-50 border border-orange-200 text-orange-700 text-sm rounded-lg px-4 py-3">
+                    <p className="font-semibold">🛒 Item reservado!</p>
+                    <p className="text-xs mt-1">
+                      Finalize o pagamento até {formatExpiresAt(claim.expiresAt)} para garantir sua compra.
+                    </p>
+
+                    {orderError && (
+                      <p className="text-sm text-red-600 mt-2">{orderError}</p>
+                    )}
+
+                    {/* Step 1: create the order */}
+                    {!order && (
+                      <button
+                        onClick={handleCreateOrder}
+                        disabled={isCreatingOrder}
+                        className="mt-3 w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg text-sm transition-colors"
+                      >
+                        {isCreatingOrder ? 'Criando pedido…' : 'Confirmar pedido'}
+                      </button>
+                    )}
+
+                    {/* Step 2: generate Pix */}
+                    {order && !payment && (
+                      <button
+                        onClick={handleCreatePixPayment}
+                        disabled={isCreatingPayment}
+                        className="mt-3 w-full bg-green-500 hover:bg-green-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg text-sm transition-colors"
+                      >
+                        {isCreatingPayment ? 'Gerando Pix…' : '💚 Gerar cobrança Pix'}
+                      </button>
+                    )}
+
+                    {/* Step 3: show Pix details */}
+                    {payment && payment.pixCode && (
+                      <PixPaymentPanel payment={payment} />
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ) : (
@@ -493,3 +574,59 @@ export default function LiveRoomPage() {
   );
 }
 
+// ─── Pix payment display component ───────────────────────────────────────────
+
+function PixPaymentPanel({ payment }: { payment: Payment }) {
+  const [copied, setCopied] = useState(false);
+
+  function handleCopy() {
+    if (!payment.pixCode) return;
+    navigator.clipboard.writeText(payment.pixCode).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
+
+  const isExpired = payment.pixExpiresAt && new Date(payment.pixExpiresAt) < new Date();
+
+  return (
+    <div className="mt-4 bg-white rounded-xl p-4 border border-green-200 text-gray-800">
+      <p className="text-sm font-semibold text-green-700 mb-3">💚 Pague via Pix</p>
+
+      {payment.pixQrCodeBase64 && (
+        <div className="flex justify-center mb-3">
+          <img
+            src={`data:image/png;base64,${payment.pixQrCodeBase64}`}
+            alt="QR Code Pix"
+            className="w-40 h-40 rounded-lg border border-gray-200"
+          />
+        </div>
+      )}
+
+      <p className="text-xs text-gray-500 mb-1 font-medium">Pix Copia e Cola:</p>
+      <div className="flex gap-2 items-start">
+        <code className="flex-1 bg-gray-50 border border-gray-200 rounded-lg p-2 text-xs break-all text-gray-700 select-all">
+          {payment.pixCode}
+        </code>
+        <button
+          onClick={handleCopy}
+          className="shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
+        >
+          {copied ? '✓' : 'Copiar'}
+        </button>
+      </div>
+
+      {payment.pixExpiresAt && (
+        <p className={`text-xs mt-2 ${isExpired ? 'text-red-500' : 'text-gray-400'}`}>
+          {isExpired
+            ? '⚠️ Esta cobrança expirou.'
+            : `Expira às ${formatExpiresAt(payment.pixExpiresAt)}`}
+        </p>
+      )}
+
+      <p className="text-xs text-gray-400 mt-2">
+        Após o pagamento, seu pedido será confirmado automaticamente.
+      </p>
+    </div>
+  );
+}

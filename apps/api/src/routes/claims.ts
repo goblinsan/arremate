@@ -13,17 +13,16 @@ const CLAIM_EXPIRY_MINUTES = 15;
 
 /**
  * Lazily expire a PENDING claim if its expiresAt has passed.
- * Returns the updated claim status.
+ * Returns the effective claim status.
  */
-async function expireIfOverdue(claimId: string, expiresAt: Date, currentStatus: string) {
+async function expireIfOverdue(claimId: string, expiresAt: Date, currentStatus: 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'CANCELLED') {
   if (currentStatus !== 'PENDING') return currentStatus;
-  if (new Date() <= expiresAt) return currentStatus;
+  if (expiresAt > new Date()) return currentStatus;
 
   await prisma.claim.update({
     where: { id: claimId },
     data: { status: 'EXPIRED' },
   });
-
   return 'EXPIRED';
 }
 
@@ -82,7 +81,7 @@ export async function claimRoutes(fastify: FastifyInstance): Promise<void> {
           sessionId,
           buyerId: user.id,
           queueItemId: session.pinnedItemId,
-          status: { in: ['PENDING', 'PAID'] },
+          status: { in: ['PENDING', 'CONFIRMED'] },
         },
       });
 

@@ -28,6 +28,8 @@ model User {
   inventoryItems    InventoryItem[]    @relation("SellerInventory")
   chatMessages      ChatMessage[]      @relation("UserChatMessages")
   claims            Claim[]            @relation("BuyerClaims")
+  buyerOrders       Order[]            @relation("BuyerOrders")
+  sellerOrders      Order[]            @relation("SellerOrders")
 
   @@map("users")
 }
@@ -199,6 +201,7 @@ model InventoryItem {
 
   images       InventoryImage[]
   showItems    ShowInventoryItem[]
+  orderLines   OrderLine[]
 
   @@map("inventory_items")
 }
@@ -231,6 +234,101 @@ model ShowInventoryItem {
 
   @@unique([showId, inventoryItemId])
   @@map("show_inventory_items")
+}
+
+// ─── Claims ───────────────────────────────────────────────────────────────────
+
+enum ClaimStatus {
+  PENDING
+  CONFIRMED
+  EXPIRED
+  CANCELLED
+}
+
+model Claim {
+  id           String      @id @default(cuid())
+  sessionId    String
+  session      ShowSession @relation(fields: [sessionId], references: [id])
+  buyerId      String
+  buyer        User        @relation("BuyerClaims", fields: [buyerId], references: [id])
+  queueItemId  String
+  queueItem    ShowInventoryItem @relation(fields: [queueItemId], references: [id])
+  priceAtClaim Decimal     @db.Decimal(12, 2)
+  status       ClaimStatus @default(PENDING)
+  expiresAt    DateTime
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  order        Order?
+
+  @@map("claims")
+}
+
+// ─── Orders & Payments ────────────────────────────────────────────────────────
+
+enum OrderStatus {
+  PENDING_PAYMENT
+  PAID
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentStatus {
+  PENDING
+  PAID
+  FAILED
+  REFUNDED
+}
+
+model Order {
+  id          String      @id @default(cuid())
+  claimId     String      @unique
+  claim       Claim       @relation(fields: [claimId], references: [id])
+  buyerId     String
+  buyer       User        @relation("BuyerOrders", fields: [buyerId], references: [id])
+  sellerId    String
+  seller      User        @relation("SellerOrders", fields: [sellerId], references: [id])
+  status      OrderStatus @default(PENDING_PAYMENT)
+  totalCents  Int
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  lines       OrderLine[]
+  payments    Payment[]
+
+  @@map("orders")
+}
+
+model OrderLine {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  inventoryItemId String
+  inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
+  title           String
+  priceCents      Int
+  quantity        Int           @default(1)
+  createdAt       DateTime      @default(now())
+
+  @@map("order_lines")
+}
+
+model Payment {
+  id              String        @id @default(cuid())
+  orderId         String
+  order           Order         @relation(fields: [orderId], references: [id])
+  status          PaymentStatus @default(PENDING)
+  provider        String        @default("pix")
+  amountCents     Int
+  providerId      String?
+  pixCode         String?
+  pixQrCodeBase64 String?
+  pixExpiresAt    DateTime?
+  webhookPayload  Json?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@map("payments")
 }
 
 // ─── Live Sessions ────────────────────────────────────────────────────────────
@@ -295,30 +393,4 @@ model ChatMessage {
   createdAt        DateTime         @default(now())
 
   @@map("chat_messages")
-}
-
-// ─── Claims ───────────────────────────────────────────────────────────────────
-
-enum ClaimStatus {
-  PENDING
-  PAID
-  EXPIRED
-  CANCELLED
-}
-
-model Claim {
-  id           String            @id @default(cuid())
-  sessionId    String
-  session      ShowSession       @relation(fields: [sessionId], references: [id])
-  buyerId      String
-  buyer        User              @relation("BuyerClaims", fields: [buyerId], references: [id])
-  queueItemId  String
-  queueItem    ShowInventoryItem @relation(fields: [queueItemId], references: [id])
-  priceAtClaim Decimal           @db.Decimal(12, 2)
-  status       ClaimStatus       @default(PENDING)
-  expiresAt    DateTime
-  createdAt    DateTime          @default(now())
-  updatedAt    DateTime          @updatedAt
-
-  @@map("claims")
 }
