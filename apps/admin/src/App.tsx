@@ -6,6 +6,7 @@ import SellerApplicationDetailPage from './pages/SellerApplicationDetailPage';
 import DisputesPage from './pages/DisputesPage';
 import DisputeDetailPage from './pages/DisputeDetailPage';
 import AuditEventsPage from './pages/AuditEventsPage';
+import SystemHealthPage from './pages/SystemHealthPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 
@@ -17,6 +18,7 @@ const navItems = [
   { to: '/users', label: 'Usuários', emoji: '👥' },
   { to: '/payments', label: 'Pagamentos', emoji: '💳' },
   { to: '/audit', label: 'Auditoria', emoji: '🔍' },
+  { to: '/health', label: 'Saúde', emoji: '🩺' },
   { to: '/settings', label: 'Configurações', emoji: '⚙️' },
 ];
 
@@ -95,6 +97,7 @@ function AdminShell() {
               element={<PlaceholderPage title="Pagamentos" />}
             />
             <Route path="/audit" element={<AuditEventsPage />} />
+            <Route path="/health" element={<SystemHealthPage />} />
             <Route
               path="/settings"
               element={<PlaceholderPage title="Configurações" />}

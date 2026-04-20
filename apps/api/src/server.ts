@@ -1,6 +1,8 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
 import helmet from '@fastify/helmet';
+import { randomUUID } from 'crypto';
+import { captureException } from '@arremate/observability';
 import { meRoutes } from './routes/me.js';
 import { sellerApplicationRoutes } from './routes/seller-applications.js';
 import { adminSellerApplicationRoutes } from './routes/admin-seller-applications.js';
@@ -18,12 +20,46 @@ import { adminDisputeRoutes } from './routes/admin-disputes.js';
 import { adminModerationRoutes } from './routes/admin-moderation.js';
 import { adminRefundRoutes } from './routes/admin-refunds.js';
 import { adminAuditRoutes } from './routes/admin-audit.js';
+import { healthRoutes } from './routes/health.js';
 
-const server = Fastify({ logger: true });
+// ─── Sentry initialisation (optional – only active when SENTRY_DSN is set) ──
+// To enable: install @sentry/node, set SENTRY_DSN, and uncomment the block.
+//
+// import * as Sentry from '@sentry/node';
+// import { setErrorReporter } from '@arremate/observability';
+// if (process.env.SENTRY_DSN) {
+//   Sentry.init({ dsn: process.env.SENTRY_DSN, environment: process.env.NODE_ENV });
+//   setErrorReporter((err, ctx) => Sentry.captureException(err, { extra: ctx }));
+// }
+
+const server = Fastify({
+  // Fastify uses Pino which emits structured JSON by default – ideal for
+  // production log aggregation.  The request ID is automatically included in
+  // every log line, providing correlation across log entries for a single
+  // request.
+  logger: true,
+  // Expose the request ID in the response header for client-side correlation.
+  requestIdHeader: 'x-request-id',
+  genReqId: (req) => req.headers['x-request-id']?.toString() ?? randomUUID(),
+});
+
+// ─── Global unhandled-error capture ─────────────────────────────────────────
+server.setErrorHandler((error, request, reply) => {
+  captureException(error, { requestId: request.id, url: request.url, method: request.method });
+  request.log.error({ err: error, requestId: request.id }, 'Unhandled request error');
+  const err = error as Error & { statusCode?: number };
+  const statusCode = err.statusCode ?? 500;
+  reply.status(statusCode).send({
+    statusCode,
+    error: err.name ?? 'Internal Server Error',
+    message: statusCode < 500 ? err.message : 'An unexpected error occurred',
+  });
+});
 
 server.register(cors, { origin: process.env.CORS_ORIGIN ?? '*' });
 server.register(helmet);
 
+// ─── Public health check (liveness probe) ───────────────────────────────────
 server.get('/health', async () => {
   return { status: 'ok', service: 'arremate-api', timestamp: new Date().toISOString() };
 });
@@ -68,6 +104,9 @@ server.register(adminDisputeRoutes);
 server.register(adminModerationRoutes);
 server.register(adminRefundRoutes);
 server.register(adminAuditRoutes);
+
+// Health & observability
+server.register(healthRoutes);
 
 const start = async () => {
   try {
