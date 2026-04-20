@@ -12,6 +12,7 @@ import { liveSessionRoutes } from './routes/live-session.js';
 import { chatRoutes } from './routes/chat.js';
 import { claimRoutes } from './routes/claims.js';
 import { orderRoutes } from './routes/orders.js';
+import { fulfillmentRoutes } from './routes/fulfillment.js';
 import { webhookRoutes } from './routes/webhooks.js';
 
 const server = Fastify({ logger: true });
@@ -51,6 +52,9 @@ server.register(claimRoutes);
 
 // Orders & payments
 server.register(orderRoutes);
+
+// Fulfillment & support
+server.register(fulfillmentRoutes);
 
 // Webhooks
 server.register(webhookRoutes);

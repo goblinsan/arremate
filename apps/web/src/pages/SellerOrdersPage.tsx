@@ -156,7 +156,10 @@ function OrderCard({ order }: { order: Order }) {
   });
 
   return (
-    <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+    <Link
+      to={`/seller/orders/${order.id}`}
+      className="block bg-white rounded-xl p-4 border border-gray-100 shadow-sm hover:border-brand-200 transition-colors"
+    >
       <div className="flex items-start justify-between gap-4">
         <div className="flex-1 min-w-0">
           <p className="text-xs text-gray-400 mb-0.5 font-mono">
@@ -185,6 +188,6 @@ function OrderCard({ order }: { order: Order }) {
       <p className="text-xs text-gray-400 mt-2">
         {new Date(order.createdAt).toLocaleString('pt-BR')}
       </p>
-    </div>
+    </Link>
   );
 }

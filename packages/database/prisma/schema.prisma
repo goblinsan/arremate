@@ -30,6 +30,7 @@ model User {
   claims            Claim[]            @relation("BuyerClaims")
   buyerOrders       Order[]            @relation("BuyerOrders")
   sellerOrders      Order[]            @relation("SellerOrders")
+  supportTickets    SupportTicket[]    @relation("UserSupportTickets")
 
   @@map("users")
 }
@@ -280,6 +281,14 @@ enum PaymentStatus {
   REFUNDED
 }
 
+enum FulfillmentStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  RETURNED
+}
+
 model Order {
   id          String      @id @default(cuid())
   claimId     String      @unique
@@ -293,8 +302,10 @@ model Order {
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
-  lines       OrderLine[]
-  payments    Payment[]
+  lines          OrderLine[]
+  payments       Payment[]
+  shipment       Shipment?
+  supportTickets SupportTicket[]
 
   @@map("orders")
 }
@@ -372,6 +383,49 @@ model AuditEvent {
   createdAt     DateTime           @default(now())
 
   @@map("audit_events")
+}
+
+// ─── Shipment ─────────────────────────────────────────────────────────────────
+
+model Shipment {
+  id                String            @id @default(cuid())
+  orderId           String            @unique
+  order             Order             @relation(fields: [orderId], references: [id])
+  status            FulfillmentStatus @default(PENDING)
+  carrier           String?
+  trackingNumber    String?
+  trackingUrl       String?
+  estimatedDelivery DateTime?
+  shippedAt         DateTime?
+  deliveredAt       DateTime?
+  createdAt         DateTime          @default(now())
+  updatedAt         DateTime          @updatedAt
+
+  @@map("shipments")
+}
+
+// ─── Support Tickets ──────────────────────────────────────────────────────────
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model SupportTicket {
+  id        String       @id @default(cuid())
+  orderId   String
+  order     Order        @relation(fields: [orderId], references: [id])
+  userId    String
+  user      User         @relation("UserSupportTickets", fields: [userId], references: [id])
+  subject   String
+  message   String
+  status    TicketStatus @default(OPEN)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  @@map("support_tickets")
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
