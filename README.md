@@ -148,6 +148,18 @@ See [`docs/plans/arremate-mvp-build-plan.md`](docs/plans/arremate-mvp-build-plan
 
 ---
 
+## Runbooks & Operations
+
+| Document | Description |
+|----------|-------------|
+| [Environment Setup](docs/runbooks/environment-setup.md) | First-time deployment, env vars, DB migration, seed data |
+| [Incident Response](docs/runbooks/incident-response.md) | Severity levels, triage checklist, common incidents |
+| [Seller Onboarding](docs/runbooks/seller-onboarding.md) | Application review and approval procedures |
+| [Dispute Handling](docs/runbooks/dispute-handling.md) | Buyer–seller dispute resolution procedures |
+| [Launch Checklist](docs/launch-checklist.md) | Go / No-Go criteria for external pilot launch |
+
+---
+
 ## License
 
 Private — all rights reserved © Arremate Tecnologia Ltda.
