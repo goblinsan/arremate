@@ -17,7 +17,9 @@ const CHAT_PAGE_SIZE = 50;
 // Simple in-memory rate limiter: key = `${userId}:${sessionId}` → last message timestamp
 const lastMessageAt = new Map<string, number>();
 
-// Basic moderation: list of flagged patterns
+// Basic moderation: list of flagged patterns.
+// This is intentionally minimal; extend or replace with a proper moderation
+// service (e.g. perspective API) as the platform grows.
 const FLAGGED_PATTERNS = [/\b(spam)\b/i];
 
 function getModerationStatus(content: string): 'APPROVED' | 'FLAGGED' {

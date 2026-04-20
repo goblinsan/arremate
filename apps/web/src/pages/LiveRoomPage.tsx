@@ -226,6 +226,7 @@ export default function LiveRoomPage() {
 
   function formatExpiresAt(expiresAt: Date | string): string {
     const date = new Date(expiresAt);
+    if (isNaN(date.getTime())) return '—';
     return date.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   }
 
