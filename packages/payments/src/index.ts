@@ -68,6 +68,11 @@ export interface PaymentProviderAdapter {
    * Query the provider for the current status of a charge.
    */
   getChargeStatus(providerId: string): Promise<'PENDING' | 'PAID' | 'EXPIRED' | 'REFUNDED'>;
+
+  /**
+   * Trigger a refund for a previously paid charge.
+   */
+  refundCharge(providerId: string): Promise<void>;
 }
 
 // ─── Stub Pix Adapter ─────────────────────────────────────────────────────────
@@ -130,6 +135,10 @@ export class StubPixAdapter implements PaymentProviderAdapter {
     _providerId: string,
   ): Promise<'PENDING' | 'PAID' | 'EXPIRED' | 'REFUNDED'> {
     return 'PENDING';
+  }
+
+  async refundCharge(_providerId: string): Promise<void> {
+    // Stub: no-op in development/test
   }
 }
 
