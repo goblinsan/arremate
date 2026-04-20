@@ -9,6 +9,7 @@ import { sellerInventoryRoutes } from './routes/seller-inventory.js';
 import { showQueueRoutes } from './routes/show-queue.js';
 import { publicShowRoutes } from './routes/public-shows.js';
 import { liveSessionRoutes } from './routes/live-session.js';
+import { chatRoutes } from './routes/chat.js';
 import { claimRoutes } from './routes/claims.js';
 import { orderRoutes } from './routes/orders.js';
 import { webhookRoutes } from './routes/webhooks.js';
@@ -41,6 +42,9 @@ server.register(publicShowRoutes);
 
 // Live session routes
 server.register(liveSessionRoutes);
+
+// Chat routes
+server.register(chatRoutes);
 
 // Claims
 server.register(claimRoutes);

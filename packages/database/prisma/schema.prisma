@@ -26,6 +26,7 @@ model User {
   auditEvents       AuditEvent[]
   shows             Show[]             @relation("SellerShows")
   inventoryItems    InventoryItem[]    @relation("SellerInventory")
+  chatMessages      ChatMessage[]      @relation("UserChatMessages")
   claims            Claim[]            @relation("BuyerClaims")
   buyerOrders       Order[]            @relation("BuyerOrders")
   sellerOrders      Order[]            @relation("SellerOrders")
@@ -352,6 +353,7 @@ model ShowSession {
   createdAt         DateTime          @default(now())
   updatedAt         DateTime          @updatedAt
 
+  chatMessages      ChatMessage[]
   claims            Claim[]
 
   @@map("show_sessions")
@@ -370,4 +372,25 @@ model AuditEvent {
   createdAt     DateTime           @default(now())
 
   @@map("audit_events")
+}
+
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+enum ModerationStatus {
+  APPROVED
+  FLAGGED
+  REMOVED
+}
+
+model ChatMessage {
+  id               String           @id @default(cuid())
+  sessionId        String
+  session          ShowSession      @relation(fields: [sessionId], references: [id])
+  userId           String
+  user             User             @relation("UserChatMessages", fields: [userId], references: [id])
+  content          String
+  moderationStatus ModerationStatus @default(APPROVED)
+  createdAt        DateTime         @default(now())
+
+  @@map("chat_messages")
 }

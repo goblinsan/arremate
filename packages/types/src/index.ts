@@ -203,6 +203,20 @@ export interface AuditEvent {
   createdAt: Date;
 }
 
+// ─── Chat ─────────────────────────────────────────────────────────────────────
+
+export type ModerationStatus = 'APPROVED' | 'FLAGGED' | 'REMOVED';
+
+export interface ChatMessage {
+  id: string;
+  sessionId: string;
+  userId: string;
+  user?: Pick<User, 'id' | 'name'>;
+  content: string;
+  moderationStatus: ModerationStatus;
+  createdAt: Date;
+}
+
 // ─── Claims ───────────────────────────────────────────────────────────────────
 
 export type ClaimStatus = 'PENDING' | 'CONFIRMED' | 'EXPIRED' | 'CANCELLED';
