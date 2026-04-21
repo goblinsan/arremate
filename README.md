@@ -135,6 +135,30 @@ JWT_SECRET=change-me-in-production
 
 ---
 
+## CI/CD (GitHub Actions + Cloudflare)
+
+Workflow: [ .github/workflows/ci.yml ](.github/workflows/ci.yml)
+
+- Pull requests to `main`/`develop`:
+	- run validate (lint/typecheck/test/build)
+	- deploy API to Cloudflare Workers `staging`
+	- deploy web/admin preview builds to Cloudflare Pages using branch `pr-<number>`
+- Push/merge to `main`:
+	- run validate
+	- deploy API to Cloudflare Workers `production`
+	- deploy web/admin to Cloudflare Pages production (`main` branch)
+
+Required repository secrets:
+
+- `CLOUDFLARE_API_TOKEN`
+- `CLOUDFLARE_ACCOUNT_ID`
+- `DATABASE_URL_STAGING`
+- `DATABASE_URL_PRODUCTION`
+
+API Worker environments are configured in [apps/api/wrangler.toml](apps/api/wrangler.toml).
+
+---
+
 ## Roadmap
 
 See [`docs/plans/arremate-mvp-build-plan.md`](docs/plans/arremate-mvp-build-plan.md) for the full phased build plan:
