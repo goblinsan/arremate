@@ -72,12 +72,25 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm --filter @arremate/database db:generate
 
+      - name: Validate staging secrets
+        env:
+          DATABASE_URL_STAGING: ${{ secrets.DATABASE_URL_STAGING }}
+        run: |
+          if [ -z "$DATABASE_URL_STAGING" ]; then
+            echo "DATABASE_URL_STAGING is not set"
+            exit 1
+          fi
+
       - name: Set staging API secret
+        env:
+          DATABASE_URL_STAGING: ${{ secrets.DATABASE_URL_STAGING }}
         run: |
           cd apps/api
-          printf '%s' "${{ secrets.DATABASE_URL_STAGING }}" | pnpm dlx wrangler secret put DATABASE_URL --env staging
+          printf '%s' "$DATABASE_URL_STAGING" | pnpm dlx wrangler secret put DATABASE_URL --env staging
 
       - name: Deploy staging API worker
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
         run: pnpm --filter @arremate/api run deploy:staging
 
       - name: Build web and admin
@@ -127,12 +140,25 @@ jobs:
       - name: Generate Prisma Client
         run: pnpm --filter @arremate/database db:generate
 
+      - name: Validate production secrets
+        env:
+          DATABASE_URL_PRODUCTION: ${{ secrets.DATABASE_URL_PRODUCTION }}
+        run: |
+          if [ -z "$DATABASE_URL_PRODUCTION" ]; then
+            echo "DATABASE_URL_PRODUCTION is not set"
+            exit 1
+          fi
+
       - name: Set production API secret
+        env:
+          DATABASE_URL_PRODUCTION: ${{ secrets.DATABASE_URL_PRODUCTION }}
         run: |
           cd apps/api
-          printf '%s' "${{ secrets.DATABASE_URL_PRODUCTION }}" | pnpm dlx wrangler secret put DATABASE_URL --env production
+          printf '%s' "$DATABASE_URL_PRODUCTION" | pnpm dlx wrangler secret put DATABASE_URL --env production
 
       - name: Deploy production API worker
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
         run: pnpm --filter @arremate/api run deploy
 
       - name: Build web and admin
