@@ -1,210 +1,86 @@
-import type { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { prisma } from '@arremate/database';
 import { authenticate } from '../plugins/authenticate.js';
 import { requireRole } from '../plugins/authorize.js';
+import type { AppEnv } from '../types.js';
 
-const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')];
+const app = new Hono<AppEnv>();
+const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')] as const;
 
-/**
- * Seller-facing show management routes.
- *
- * GET    /v1/seller/shows            – list the seller's shows
- * POST   /v1/seller/shows            – create a show
- * GET    /v1/seller/shows/:id        – get a single show with queue
- * PATCH  /v1/seller/shows/:id        – edit title/description/scheduledAt
- * POST   /v1/seller/shows/:id/schedule – move to SCHEDULED status
- * POST   /v1/seller/shows/:id/cancel   – cancel the show
- */
-export async function sellerShowRoutes(fastify: FastifyInstance): Promise<void> {
-  // ─── List shows ─────────────────────────────────────────────────────────────
-  fastify.get(
-    '/v1/seller/shows',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { page = '1', perPage = '20' } = request.query as Record<string, string>;
-      const pageNum = Math.max(1, Number(page));
-      const take = Math.min(100, Math.max(1, Number(perPage)));
-      const skip = (pageNum - 1) * take;
+app.get('/v1/seller/shows', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const pageNum = Math.max(1, Number(c.req.query('page') ?? '1'));
+  const take = Math.min(100, Math.max(1, Number(c.req.query('perPage') ?? '20')));
+  const skip = (pageNum - 1) * take;
+  const [items, total] = await Promise.all([
+    prisma.show.findMany({ where: { sellerId: user.id }, orderBy: { createdAt: 'desc' }, skip, take }),
+    prisma.show.count({ where: { sellerId: user.id } }),
+  ]);
+  return c.json({ data: items, meta: { total, page: pageNum, perPage: take } });
+});
 
-      const [items, total] = await Promise.all([
-        prisma.show.findMany({
-          where: { sellerId: user.id },
-          orderBy: { createdAt: 'desc' },
-          skip,
-          take,
-        }),
-        prisma.show.count({ where: { sellerId: user.id } }),
-      ]);
+app.post('/v1/seller/shows', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const { title, description, scheduledAt } = await c.req.json<{ title: string; description?: string; scheduledAt?: string }>();
+  if (!title || title.trim() === '') return c.json({ statusCode: 400, error: 'Bad Request', message: 'title is required' }, 400);
+  const show = await prisma.show.create({
+    data: { sellerId: user.id, title: title.trim(), description: description?.trim() ?? null, scheduledAt: scheduledAt ? new Date(scheduledAt) : null },
+  });
+  return c.json(show, 201);
+});
 
-      return reply.send({ data: items, meta: { total, page: pageNum, perPage: take } });
+app.get('/v1/seller/shows/:id', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const id = c.req.param('id');
+  const show = await prisma.show.findUnique({
+    where: { id },
+    include: { queueItems: { orderBy: { position: 'asc' }, include: { inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } } } } },
+  });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  return c.json(show);
+});
+
+app.patch('/v1/seller/shows/:id', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const id = c.req.param('id');
+  const { title, description, scheduledAt } = await c.req.json<{ title?: string; description?: string; scheduledAt?: string | null }>();
+  const show = await prisma.show.findUnique({ where: { id } });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  if (show.status === 'CANCELLED' || show.status === 'ENDED') {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'Cannot edit a cancelled or ended show' }, 409);
+  }
+  const updated = await prisma.show.update({
+    where: { id },
+    data: {
+      ...(title !== undefined && { title: title.trim() }),
+      ...(description !== undefined && { description: description?.trim() ?? null }),
+      ...(scheduledAt !== undefined && { scheduledAt: scheduledAt ? new Date(scheduledAt) : null }),
     },
-  );
+  });
+  return c.json(updated);
+});
 
-  // ─── Create show ────────────────────────────────────────────────────────────
-  fastify.post(
-    '/v1/seller/shows',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { title, description, scheduledAt } = request.body as {
-        title: string;
-        description?: string;
-        scheduledAt?: string;
-      };
+app.post('/v1/seller/shows/:id/schedule', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const id = c.req.param('id');
+  const show = await prisma.show.findUnique({ where: { id } });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  if (show.status !== 'DRAFT') return c.json({ statusCode: 409, error: 'Conflict', message: 'Only DRAFT shows can be scheduled' }, 409);
+  if (!show.scheduledAt) return c.json({ statusCode: 400, error: 'Bad Request', message: 'scheduledAt must be set before scheduling' }, 400);
+  const updated = await prisma.show.update({ where: { id }, data: { status: 'SCHEDULED' } });
+  return c.json(updated);
+});
 
-      if (!title || title.trim() === '') {
-        return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'title is required' });
-      }
+app.post('/v1/seller/shows/:id/cancel', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const id = c.req.param('id');
+  const show = await prisma.show.findUnique({ where: { id } });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  if (show.status === 'ENDED' || show.status === 'CANCELLED') {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'Show is already ended or cancelled' }, 409);
+  }
+  const updated = await prisma.show.update({ where: { id }, data: { status: 'CANCELLED' } });
+  return c.json(updated);
+});
 
-      const show = await prisma.show.create({
-        data: {
-          sellerId: user.id,
-          title: title.trim(),
-          description: description?.trim() ?? null,
-          scheduledAt: scheduledAt ? new Date(scheduledAt) : null,
-        },
-      });
-
-      return reply.status(201).send(show);
-    },
-  );
-
-  // ─── Get single show ────────────────────────────────────────────────────────
-  fastify.get(
-    '/v1/seller/shows/:id',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { id } = request.params as { id: string };
-
-      const show = await prisma.show.findUnique({
-        where: { id },
-        include: {
-          queueItems: {
-            orderBy: { position: 'asc' },
-            include: {
-              inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } },
-            },
-          },
-        },
-      });
-
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
-
-      return reply.send(show);
-    },
-  );
-
-  // ─── Update show ────────────────────────────────────────────────────────────
-  fastify.patch(
-    '/v1/seller/shows/:id',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { id } = request.params as { id: string };
-      const { title, description, scheduledAt } = request.body as {
-        title?: string;
-        description?: string;
-        scheduledAt?: string | null;
-      };
-
-      const show = await prisma.show.findUnique({ where: { id } });
-
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
-
-      if (show.status === 'CANCELLED' || show.status === 'ENDED') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'Cannot edit a cancelled or ended show',
-        });
-      }
-
-      const updated = await prisma.show.update({
-        where: { id },
-        data: {
-          ...(title !== undefined && { title: title.trim() }),
-          ...(description !== undefined && { description: description?.trim() ?? null }),
-          ...(scheduledAt !== undefined && { scheduledAt: scheduledAt ? new Date(scheduledAt) : null }),
-        },
-      });
-
-      return reply.send(updated);
-    },
-  );
-
-  // ─── Schedule show ──────────────────────────────────────────────────────────
-  fastify.post(
-    '/v1/seller/shows/:id/schedule',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { id } = request.params as { id: string };
-
-      const show = await prisma.show.findUnique({ where: { id } });
-
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
-
-      if (show.status !== 'DRAFT') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'Only DRAFT shows can be scheduled',
-        });
-      }
-
-      if (!show.scheduledAt) {
-        return reply.status(400).send({
-          statusCode: 400,
-          error: 'Bad Request',
-          message: 'scheduledAt must be set before scheduling',
-        });
-      }
-
-      const updated = await prisma.show.update({
-        where: { id },
-        data: { status: 'SCHEDULED' },
-      });
-
-      return reply.send(updated);
-    },
-  );
-
-  // ─── Cancel show ─────────────────────────────────────────────────────────────
-  fastify.post(
-    '/v1/seller/shows/:id/cancel',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { id } = request.params as { id: string };
-
-      const show = await prisma.show.findUnique({ where: { id } });
-
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
-
-      if (show.status === 'ENDED' || show.status === 'CANCELLED') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'Show is already ended or cancelled',
-        });
-      }
-
-      const updated = await prisma.show.update({
-        where: { id },
-        data: { status: 'CANCELLED' },
-      });
-
-      return reply.send(updated);
-    },
-  );
-}
+export { app as sellerShowRoutes };

@@ -1,51 +1,32 @@
-import type { FastifyRequest, FastifyReply } from 'fastify';
+import { createMiddleware } from 'hono/factory';
 import { extractBearerToken, verifyCognitoToken } from '@arremate/auth';
 import type { CognitoJwtPayload } from '@arremate/auth';
 import { bootstrapUser } from '../services/user-bootstrap.js';
-import type { User } from '@arremate/database';
+import type { AppEnv } from '../types.js';
 
-declare module 'fastify' {
-  interface FastifyRequest {
-    /** Verified Cognito token claims. Populated by authenticate hook. */
-    cognitoClaims?: CognitoJwtPayload;
-    /** Local User record. Populated by authenticate hook after user bootstrap. */
-    currentUser?: User;
-  }
-}
-
-/**
- * Resolves Cognito environment settings from process.env.
- * Throws if required variables are missing.
- */
 function getCognitoConfig() {
   const region = process.env.COGNITO_REGION;
   const userPoolId = process.env.COGNITO_USER_POOL_ID;
   const clientId = process.env.COGNITO_WEB_CLIENT_ID;
 
   if (!region || !userPoolId) {
-    throw new Error(
-      'Missing COGNITO_REGION or COGNITO_USER_POOL_ID environment variables',
-    );
+    throw new Error('Missing COGNITO_REGION or COGNITO_USER_POOL_ID environment variables');
   }
 
   return { region, userPoolId, clientId };
 }
 
 /**
- * Fastify preHandler hook that validates the Cognito JWT from the
- * Authorization header and populates request.cognitoClaims and
- * request.currentUser.
+ * Hono middleware that validates the Cognito JWT from the Authorization header
+ * and populates c.get('cognitoClaims') and c.get('currentUser').
  *
  * Returns 401 for missing or invalid tokens.
  */
-export async function authenticate(
-  request: FastifyRequest,
-  reply: FastifyReply,
-): Promise<void> {
-  const token = extractBearerToken(request.headers.authorization);
+export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
+  const token = extractBearerToken(c.req.header('authorization'));
 
   if (!token) {
-    return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Missing Authorization header' });
+    return c.json({ statusCode: 401, error: 'Unauthorized', message: 'Missing Authorization header' }, 401);
   }
 
   let claims: CognitoJwtPayload;
@@ -57,13 +38,11 @@ export async function authenticate(
       clientId: config.clientId,
       tokenUse: 'access',
     });
-  } catch (err) {
-    request.log.warn({ err }, 'JWT verification failed');
-    return reply.status(401).send({ statusCode: 401, error: 'Unauthorized', message: 'Invalid or expired token' });
+  } catch {
+    return c.json({ statusCode: 401, error: 'Unauthorized', message: 'Invalid or expired token' }, 401);
   }
 
-  request.cognitoClaims = claims;
-
-  // Bootstrap / refresh the local user record for this identity.
-  request.currentUser = await bootstrapUser(claims);
-}
+  c.set('cognitoClaims', claims);
+  c.set('currentUser', await bootstrapUser(claims));
+  await next();
+});

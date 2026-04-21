@@ -1,222 +1,86 @@
-import type { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { prisma } from '@arremate/database';
 import { createPixAdapter } from '@arremate/payments';
 import { authenticate } from '../plugins/authenticate.js';
 import { requireRole } from '../plugins/authorize.js';
+import type { AppEnv } from '../types.js';
 
-const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')];
+const app = new Hono<AppEnv>();
+const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')] as const;
 
-/**
- * Order and payment routes.
- *
- * POST /v1/claims/:claimId/order              – create order from a valid claim (buyer)
- * POST /v1/orders/:orderId/pix-payment        – create a Pix charge for the order (buyer)
- * GET  /v1/buyer/orders                       – list buyer's orders
- * GET  /v1/seller/orders                      – list seller's paid orders
- */
-export async function orderRoutes(fastify: FastifyInstance): Promise<void> {
-  // ─── Create order from claim (buyer) ─────────────────────────────────────────
-  fastify.post(
-    '/v1/claims/:claimId/order',
-    { preHandler: [authenticate] },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { claimId } = request.params as { claimId: string };
+app.post('/v1/claims/:claimId/order', authenticate, async (c) => {
+  const user = c.get('currentUser');
+  const claimId = c.req.param('claimId');
+  const claim = await prisma.claim.findUnique({
+    where: { id: claimId },
+    include: { queueItem: { include: { inventoryItem: true, show: true } }, order: true },
+  });
+  if (!claim || claim.buyerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Claim not found' }, 404);
+  if (claim.status === 'PENDING' && claim.expiresAt < new Date()) {
+    await prisma.claim.update({ where: { id: claimId }, data: { status: 'EXPIRED' } });
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'This claim has expired' }, 409);
+  }
+  if (claim.status === 'EXPIRED') return c.json({ statusCode: 409, error: 'Conflict', message: 'This claim has expired' }, 409);
+  if (claim.status === 'CANCELLED') return c.json({ statusCode: 409, error: 'Conflict', message: 'This claim has been cancelled' }, 409);
+  if (claim.order) {
+    const existingOrder = await prisma.order.findUnique({ where: { id: claim.order.id }, include: { lines: { include: { inventoryItem: true } }, payments: true } });
+    return c.json(existingOrder);
+  }
+  const sellerId = claim.queueItem.inventoryItem.sellerId;
+  const priceCents = Math.round(Number(claim.priceAtClaim) * 100);
+  const [order] = await prisma.$transaction([
+    prisma.order.create({
+      data: {
+        claimId: claim.id, buyerId: user.id, sellerId, totalCents: priceCents, status: 'PENDING_PAYMENT',
+        lines: { create: { inventoryItemId: claim.queueItem.inventoryItemId, title: claim.queueItem.inventoryItem.title, priceCents, quantity: 1 } },
+      },
+      include: { lines: { include: { inventoryItem: true } }, payments: true },
+    }),
+    prisma.claim.update({ where: { id: claimId }, data: { status: 'CONFIRMED' } }),
+  ]);
+  return c.json(order, 201);
+});
 
-      const claim = await prisma.claim.findUnique({
-        where: { id: claimId },
-        include: {
-          queueItem: {
-            include: {
-              inventoryItem: true,
-              show: true,
-            },
-          },
-          order: true,
-        },
-      });
+app.post('/v1/orders/:orderId/pix-payment', authenticate, async (c) => {
+  const user = c.get('currentUser');
+  const orderId = c.req.param('orderId');
+  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { payments: true } });
+  if (!order || order.buyerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Order not found' }, 404);
+  if (order.status !== 'PENDING_PAYMENT') return c.json({ statusCode: 409, error: 'Conflict', message: `Order is already ${order.status}` }, 409);
+  const existingPayment = order.payments.find((p) => p.status === 'PENDING' && p.pixCode);
+  if (existingPayment) return c.json(existingPayment);
+  const pixAdapter = createPixAdapter();
+  const charge = await pixAdapter.createPixCharge({
+    amountCents: order.totalCents, orderId: order.id,
+    description: `Pedido Arremate #${order.id.slice(-8).toUpperCase()}`,
+    expiresInMinutes: 30,
+  });
+  const payment = await prisma.payment.create({
+    data: { orderId: order.id, status: 'PENDING', provider: 'pix', amountCents: order.totalCents, providerId: charge.providerId, pixCode: charge.pixCode, pixQrCodeBase64: charge.pixQrCodeBase64, pixExpiresAt: charge.expiresAt },
+  });
+  return c.json(payment, 201);
+});
 
-      if (!claim || claim.buyerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Claim not found' });
-      }
+app.get('/v1/buyer/orders', authenticate, async (c) => {
+  const user = c.get('currentUser');
+  const orders = await prisma.order.findMany({
+    where: { buyerId: user.id },
+    orderBy: { createdAt: 'desc' },
+    include: { lines: { include: { inventoryItem: true } }, payments: true, shipment: true },
+  });
+  return c.json(orders);
+});
 
-      // Lazily expire if overdue
-      if (claim.status === 'PENDING' && claim.expiresAt < new Date()) {
-        await prisma.claim.update({ where: { id: claimId }, data: { status: 'EXPIRED' } });
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'This claim has expired',
-        });
-      }
+app.get('/v1/seller/orders', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const status = c.req.query('status');
+  const where: { sellerId: string; status?: 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED' | 'REFUNDED' } = { sellerId: user.id };
+  if (status === 'PAID' || status === 'PENDING_PAYMENT' || status === 'CANCELLED' || status === 'REFUNDED') where.status = status;
+  const orders = await prisma.order.findMany({
+    where, orderBy: { createdAt: 'desc' },
+    include: { buyer: { select: { id: true, name: true, email: true } }, lines: { include: { inventoryItem: true } }, payments: true, shipment: true },
+  });
+  return c.json(orders);
+});
 
-      if (claim.status === 'EXPIRED') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'This claim has expired',
-        });
-      }
-
-      if (claim.status === 'CANCELLED') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'This claim has been cancelled',
-        });
-      }
-
-      // Idempotent: return existing order if already created
-      if (claim.order) {
-        const existingOrder = await prisma.order.findUnique({
-          where: { id: claim.order.id },
-          include: { lines: { include: { inventoryItem: true } }, payments: true },
-        });
-        return reply.send(existingOrder);
-      }
-
-      const sellerId = claim.queueItem.inventoryItem.sellerId;
-      const priceCents = Math.round(Number(claim.priceAtClaim) * 100);
-
-      // Create order + line atomically and transition claim to CONFIRMED
-      const [order] = await prisma.$transaction([
-        prisma.order.create({
-          data: {
-            claimId: claim.id,
-            buyerId: user.id,
-            sellerId,
-            totalCents: priceCents,
-            status: 'PENDING_PAYMENT',
-            lines: {
-              create: {
-                inventoryItemId: claim.queueItem.inventoryItemId,
-                title: claim.queueItem.inventoryItem.title,
-                priceCents,
-                quantity: 1,
-              },
-            },
-          },
-          include: {
-            lines: { include: { inventoryItem: true } },
-            payments: true,
-          },
-        }),
-        prisma.claim.update({
-          where: { id: claimId },
-          data: { status: 'CONFIRMED' },
-        }),
-      ]);
-
-      return reply.status(201).send(order);
-    },
-  );
-
-  // ─── Create Pix payment for order (buyer) ────────────────────────────────────
-  fastify.post(
-    '/v1/orders/:orderId/pix-payment',
-    { preHandler: [authenticate] },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { orderId } = request.params as { orderId: string };
-
-      const order = await prisma.order.findUnique({
-        where: { id: orderId },
-        include: { payments: true },
-      });
-
-      if (!order || order.buyerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Order not found' });
-      }
-
-      if (order.status !== 'PENDING_PAYMENT') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: `Order is already ${order.status}`,
-        });
-      }
-
-      // Idempotent: return existing pending payment if one already exists
-      const existingPayment = order.payments.find((p) => p.status === 'PENDING' && p.pixCode);
-      if (existingPayment) {
-        return reply.send(existingPayment);
-      }
-
-      // Generate Pix charge via the configured provider
-      const pixAdapter = createPixAdapter();
-      const charge = await pixAdapter.createPixCharge({
-        amountCents: order.totalCents,
-        orderId: order.id,
-        description: `Pedido Arremate #${order.id.slice(-8).toUpperCase()}`,
-        expiresInMinutes: 30,
-      });
-
-      const payment = await prisma.payment.create({
-        data: {
-          orderId: order.id,
-          status: 'PENDING',
-          provider: 'pix',
-          amountCents: order.totalCents,
-          providerId: charge.providerId,
-          pixCode: charge.pixCode,
-          pixQrCodeBase64: charge.pixQrCodeBase64,
-          pixExpiresAt: charge.expiresAt,
-        },
-      });
-
-      return reply.status(201).send(payment);
-    },
-  );
-
-  // ─── List buyer orders ────────────────────────────────────────────────────────
-  fastify.get(
-    '/v1/buyer/orders',
-    { preHandler: [authenticate] },
-    async (request, reply) => {
-      const user = request.currentUser!;
-
-      const orders = await prisma.order.findMany({
-        where: { buyerId: user.id },
-        orderBy: { createdAt: 'desc' },
-        include: {
-          lines: { include: { inventoryItem: true } },
-          payments: true,
-          shipment: true,
-        },
-      });
-
-      return reply.send(orders);
-    },
-  );
-
-  // ─── List seller orders ───────────────────────────────────────────────────────
-  fastify.get(
-    '/v1/seller/orders',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { status } = request.query as { status?: string };
-
-      const where: { sellerId: string; status?: 'PENDING_PAYMENT' | 'PAID' | 'CANCELLED' | 'REFUNDED' } = {
-        sellerId: user.id,
-      };
-
-      if (status === 'PAID' || status === 'PENDING_PAYMENT' || status === 'CANCELLED' || status === 'REFUNDED') {
-        where.status = status;
-      }
-
-      const orders = await prisma.order.findMany({
-        where,
-        orderBy: { createdAt: 'desc' },
-        include: {
-          buyer: { select: { id: true, name: true, email: true } },
-          lines: { include: { inventoryItem: true } },
-          payments: true,
-          shipment: true,
-        },
-      });
-
-      return reply.send(orders);
-    },
-  );
-}
+export { app as orderRoutes };
