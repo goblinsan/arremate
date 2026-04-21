@@ -1,4 +1,4 @@
-import { Routes, Route, Link, NavLink } from 'react-router-dom';
+import { Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import SellerApplicationPage from './pages/SellerApplicationPage';
@@ -17,7 +17,17 @@ import LiveRoomPage from './pages/LiveRoomPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function AppShell() {
-  const { isAuthenticated, user, signOut } = useAuth();
+  const { isAuthenticated, user, signOut, startSignUp } = useAuth();
+  const navigate = useNavigate();
+
+  async function handleRegisterClick() {
+    try {
+      await startSignUp();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Erro ao iniciar cadastro';
+      navigate(`/login?oauthError=${encodeURIComponent(message)}`);
+    }
+  }
 
   return (
     <div className="min-h-screen bg-white">
@@ -125,7 +135,10 @@ function AppShell() {
                   >
                     Entrar
                   </Link>
-                  <button className="bg-brand-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors">
+                  <button
+                    onClick={handleRegisterClick}
+                    className="bg-brand-500 hover:bg-orange-600 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
+                  >
                     Cadastrar
                   </button>
                 </>
@@ -139,6 +152,10 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route
+            path="/auth/callback"
+            element={<div className="max-w-7xl mx-auto px-4 py-16 text-center text-gray-500">Finalizando login...</div>}
+          />
           <Route path="/shows" element={<UpcomingShowsPage />} />
           <Route path="/shows/:id" element={<ShowDetailPage />} />
           <Route

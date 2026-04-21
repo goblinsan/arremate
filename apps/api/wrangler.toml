@@ -54,6 +54,7 @@ S3_UPLOAD_URL_EXPIRY_SECONDS = "300"
 #   wrangler secret put COGNITO_REGION
 #   wrangler secret put COGNITO_USER_POOL_ID
 #   wrangler secret put COGNITO_WEB_CLIENT_ID
+#   wrangler secret put ADMIN_BOOTSTRAP_EMAILS
 #   wrangler secret put AWS_REGION
 #   wrangler secret put S3_DOCUMENTS_BUCKET
 #   wrangler secret put CORS_ORIGIN
