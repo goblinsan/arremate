@@ -27,6 +27,9 @@ S3_UPLOAD_URL_EXPIRY_SECONDS = "300"
 
 [env.staging]
 name = "arremate-api-staging"
+# No routes bound — staging worker is accessed via its default workers.dev URL,
+# not via api.arrematelive.com (which is reserved for production).
+workers_dev = true
 
 [env.staging.vars]
 NODE_ENV = "staging"
