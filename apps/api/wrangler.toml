@@ -1,0 +1,57 @@
+name = "arremate-api"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+compatibility_flags = ["nodejs_compat", "nodejs_compat_populate_process_env"]
+
+# ── Routes ───────────────────────────────────────────────────────────────────
+routes = [
+	{ pattern = "api.arrematelive.com/*", zone_name = "arrematelive.com" }
+]
+
+# ── Environments ─────────────────────────────────────────────────────────────
+[env.production]
+name = "arremate-api-prod"
+
+[env.production.vars]
+NODE_ENV = "production"
+PORT = "4000"
+LIVE_VIDEO_PROVIDER = "stub"
+PIX_PROVIDER = "stub"
+CORS_ORIGINS = "https://arrematelive.com,https://www.arrematelive.com,https://admin.arrematelive.com"
+COGNITO_REGION = "sa-east-1"
+COGNITO_USER_POOL_ID = "sa-east-1_xnhLw2zr0"
+COGNITO_WEB_CLIENT_ID = "20t0nesdp1safrcr5adf71hrqa"
+AWS_REGION = "us-east-1"
+S3_DOCUMENTS_BUCKET = "arremate-seller-documents"
+S3_UPLOAD_URL_EXPIRY_SECONDS = "300"
+
+[env.staging]
+name = "arremate-api-staging"
+
+[env.staging.vars]
+NODE_ENV = "staging"
+PORT = "4000"
+LIVE_VIDEO_PROVIDER = "stub"
+PIX_PROVIDER = "stub"
+CORS_ORIGIN = "*"
+COGNITO_REGION = "sa-east-1"
+COGNITO_USER_POOL_ID = "sa-east-1_xnhLw2zr0"
+COGNITO_WEB_CLIENT_ID = "20t0nesdp1safrcr5adf71hrqa"
+AWS_REGION = "us-east-1"
+S3_DOCUMENTS_BUCKET = "arremate-seller-documents"
+S3_UPLOAD_URL_EXPIRY_SECONDS = "300"
+
+# ── Secrets (set via `wrangler secret put <KEY>`) ────────────────────────────
+# These are NOT stored in this file — they are set via the CLI or Cloudflare
+# dashboard and injected into the Worker as process.env at runtime.
+#
+#   wrangler secret put DATABASE_URL
+#   wrangler secret put DIRECT_URL
+#   wrangler secret put COGNITO_REGION
+#   wrangler secret put COGNITO_USER_POOL_ID
+#   wrangler secret put COGNITO_WEB_CLIENT_ID
+#   wrangler secret put AWS_REGION
+#   wrangler secret put S3_DOCUMENTS_BUCKET
+#   wrangler secret put CORS_ORIGIN
+
+# ── Non-secret vars (safe to commit) are under [env.production.vars] ───────

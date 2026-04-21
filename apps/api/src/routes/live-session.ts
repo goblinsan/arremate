@@ -1,305 +1,117 @@
-import type { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { prisma } from '@arremate/database';
 import { createLiveVideoProvider } from '@arremate/video';
 import { authenticate } from '../plugins/authenticate.js';
 import { requireRole } from '../plugins/authorize.js';
+import type { AppEnv } from '../types.js';
 
-const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')];
+const app = new Hono<AppEnv>();
+const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')] as const;
 
-/**
- * Seller live-session control routes.
- *
- * POST   /v1/seller/shows/:showId/go-live            – start a live session
- * POST   /v1/seller/sessions/:sessionId/pin          – pin a queue item
- * DELETE /v1/seller/sessions/:sessionId/pin          – unpin the current item
- * PATCH  /v1/seller/shows/:showId/queue/:itemId/sold-out – mark a queue item sold out
- * POST   /v1/seller/sessions/:sessionId/end          – end the live session
- *
- * Public polling route:
- * GET    /v1/shows/:showId/session                   – get current session state
- */
-export async function liveSessionRoutes(fastify: FastifyInstance): Promise<void> {
-  // ─── Go live ─────────────────────────────────────────────────────────────────
-  fastify.post(
-    '/v1/seller/shows/:showId/go-live',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { showId } = request.params as { showId: string };
+app.post('/v1/seller/shows/:showId/go-live', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const showId = c.req.param('showId');
+  const show = await prisma.show.findUnique({ where: { id: showId } });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  if (show.status !== 'SCHEDULED') return c.json({ statusCode: 409, error: 'Conflict', message: 'Only SCHEDULED shows can go live' }, 409);
+  const activeSession = await prisma.showSession.findFirst({ where: { showId, status: { in: ['STARTING', 'LIVE'] } } });
+  if (activeSession) return c.json({ statusCode: 409, error: 'Conflict', message: 'An active session already exists for this show' }, 409);
+  const provider = createLiveVideoProvider(process.env.LIVE_VIDEO_PROVIDER ?? 'stub');
+  const providerResult = await provider.createSession(showId);
+  const [session] = await prisma.$transaction([
+    prisma.showSession.create({
+      data: { showId, status: 'LIVE', providerSessionId: providerResult.providerSessionId, playbackUrl: providerResult.playbackUrl ?? null, startedAt: new Date() },
+      include: { pinnedItem: { include: { inventoryItem: true } } },
+    }),
+    prisma.show.update({ where: { id: showId }, data: { status: 'LIVE' } }),
+  ]);
+  return c.json(session, 201);
+});
 
-      const show = await prisma.show.findUnique({ where: { id: showId } });
-
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
-
-      if (show.status !== 'SCHEDULED') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'Only SCHEDULED shows can go live',
-        });
-      }
-
-      // Check no active session already exists
-      const activeSession = await prisma.showSession.findFirst({
-        where: { showId, status: { in: ['STARTING', 'LIVE'] } },
-      });
-
-      if (activeSession) {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'An active session already exists for this show',
-        });
-      }
-
-      // Create provider session
-      const provider = createLiveVideoProvider(process.env.LIVE_VIDEO_PROVIDER ?? 'stub');
-      const providerResult = await provider.createSession(showId);
-
-      // Persist session and transition show to LIVE atomically
-      const [session] = await prisma.$transaction([
-        prisma.showSession.create({
-          data: {
-            showId,
-            status: 'LIVE',
-            providerSessionId: providerResult.providerSessionId,
-            playbackUrl: providerResult.playbackUrl ?? null,
-            startedAt: new Date(),
-          },
-          include: {
-            pinnedItem: {
-              include: { inventoryItem: true },
-            },
-          },
-        }),
-        prisma.show.update({
-          where: { id: showId },
-          data: { status: 'LIVE' },
-        }),
-      ]);
-
-      return reply.status(201).send(session);
-    },
-  );
-
-  // ─── Pin item ─────────────────────────────────────────────────────────────────
-  fastify.post(
-    '/v1/seller/sessions/:sessionId/pin',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { sessionId } = request.params as { sessionId: string };
-      const { queueItemId } = request.body as { queueItemId: string };
-
-      if (!queueItemId) {
-        return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'queueItemId is required' });
-      }
-
-      const session = await prisma.showSession.findUnique({
-        where: { id: sessionId },
-        include: { show: true },
-      });
-
-      if (!session || session.show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Session not found' });
-      }
-
-      if (session.status !== 'LIVE') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'Can only pin items in a LIVE session',
-        });
-      }
-
-      // Verify the queue item belongs to this show
-      const queueItem = await prisma.showInventoryItem.findUnique({ where: { id: queueItemId } });
-
-      if (!queueItem || queueItem.showId !== session.showId) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Queue item not found' });
-      }
-
-      const updated = await prisma.showSession.update({
-        where: { id: sessionId },
-        data: { pinnedItemId: queueItemId },
-        include: {
-          pinnedItem: {
-            include: { inventoryItem: true },
-          },
-        },
-      });
-
-      return reply.send(updated);
-    },
-  );
-
-  // ─── Unpin item ───────────────────────────────────────────────────────────────
-  fastify.delete(
-    '/v1/seller/sessions/:sessionId/pin',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { sessionId } = request.params as { sessionId: string };
-
-      const session = await prisma.showSession.findUnique({
-        where: { id: sessionId },
-        include: { show: true },
-      });
-
-      if (!session || session.show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Session not found' });
-      }
-
-      if (session.status !== 'LIVE') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'Can only unpin items in a LIVE session',
-        });
-      }
-
-      const updated = await prisma.showSession.update({
-        where: { id: sessionId },
-        data: { pinnedItemId: null },
-        include: {
-          pinnedItem: {
-            include: { inventoryItem: true },
-          },
-        },
-      });
-
-      return reply.send(updated);
-    },
-  );
-
-  // ─── Mark queue item sold out ─────────────────────────────────────────────────
-  fastify.patch(
-    '/v1/seller/shows/:showId/queue/:itemId/sold-out',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { showId, itemId } = request.params as { showId: string; itemId: string };
-      const { soldOut } = request.body as { soldOut?: boolean };
-
-      const show = await prisma.show.findUnique({ where: { id: showId } });
-
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
-
-      if (show.status !== 'LIVE') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'Can only update availability during a LIVE show',
-        });
-      }
-
-      const queueItem = await prisma.showInventoryItem.findUnique({ where: { id: itemId } });
-
-      if (!queueItem || queueItem.showId !== showId) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Queue item not found' });
-      }
-
-      const updated = await prisma.showInventoryItem.update({
-        where: { id: itemId },
-        data: { soldOut: soldOut ?? true },
-        include: { inventoryItem: true },
-      });
-
-      return reply.send(updated);
-    },
-  );
-
-  // ─── End session ──────────────────────────────────────────────────────────────
-  fastify.post(
-    '/v1/seller/sessions/:sessionId/end',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { sessionId } = request.params as { sessionId: string };
-
-      const session = await prisma.showSession.findUnique({
-        where: { id: sessionId },
-        include: { show: true },
-      });
-
-      if (!session || session.show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Session not found' });
-      }
-
-      if (session.status !== 'LIVE') {
-        return reply.status(409).send({
-          statusCode: 409,
-          error: 'Conflict',
-          message: 'Only LIVE sessions can be ended',
-        });
-      }
-
-      // Notify provider
-      if (session.providerSessionId) {
-        try {
-          const provider = createLiveVideoProvider(process.env.LIVE_VIDEO_PROVIDER ?? 'stub');
-          await provider.endSession(session.providerSessionId);
-        } catch (err) {
-          request.log.warn({ err }, 'Provider endSession failed; continuing with local state update');
-        }
-      }
-
-      const [updatedSession] = await prisma.$transaction([
-        prisma.showSession.update({
-          where: { id: sessionId },
-          data: { status: 'ENDED', endedAt: new Date(), pinnedItemId: null },
-          include: {
-            pinnedItem: {
-              include: { inventoryItem: true },
-            },
-          },
-        }),
-        prisma.show.update({
-          where: { id: session.showId },
-          data: { status: 'ENDED' },
-        }),
-      ]);
-
-      return reply.send(updatedSession);
-    },
-  );
-
-  // ─── Public: get current session state (polling endpoint) ────────────────────
-  fastify.get('/v1/shows/:showId/session', async (request, reply) => {
-    const { showId } = request.params as { showId: string };
-
-    // Only expose sessions for publicly visible shows
-    const show = await prisma.show.findUnique({
-      where: { id: showId },
-      select: { id: true, status: true },
-    });
-
-    if (!show || (show.status !== 'SCHEDULED' && show.status !== 'LIVE' && show.status !== 'ENDED')) {
-      return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-    }
-
-    const session = await prisma.showSession.findFirst({
-      where: { showId, status: { in: ['LIVE', 'STARTING'] } },
-      orderBy: { createdAt: 'desc' },
-      include: {
-        pinnedItem: {
-          include: {
-            inventoryItem: {
-              include: { images: { orderBy: { position: 'asc' } } },
-            },
-          },
-        },
-      },
-    });
-
-    if (!session) {
-      return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'No active session' });
-    }
-
-    return reply.send(session);
+app.post('/v1/seller/sessions/:sessionId/pin', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const sessionId = c.req.param('sessionId');
+  const { queueItemId } = await c.req.json<{ queueItemId: string }>();
+  if (!queueItemId) return c.json({ statusCode: 400, error: 'Bad Request', message: 'queueItemId is required' }, 400);
+  const session = await prisma.showSession.findUnique({ where: { id: sessionId }, include: { show: true } });
+  if (!session || session.show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  if (session.status !== 'LIVE') return c.json({ statusCode: 409, error: 'Conflict', message: 'Can only pin items in a LIVE session' }, 409);
+  const queueItem = await prisma.showInventoryItem.findUnique({ where: { id: queueItemId } });
+  if (!queueItem || queueItem.showId !== session.showId) return c.json({ statusCode: 404, error: 'Not Found', message: 'Queue item not found' }, 404);
+  const updated = await prisma.showSession.update({
+    where: { id: sessionId },
+    data: { pinnedItemId: queueItemId },
+    include: { pinnedItem: { include: { inventoryItem: true } } },
   });
-}
+  return c.json(updated);
+});
+
+app.delete('/v1/seller/sessions/:sessionId/pin', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const sessionId = c.req.param('sessionId');
+  const session = await prisma.showSession.findUnique({ where: { id: sessionId }, include: { show: true } });
+  if (!session || session.show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  if (session.status !== 'LIVE') return c.json({ statusCode: 409, error: 'Conflict', message: 'Can only unpin items in a LIVE session' }, 409);
+  const updated = await prisma.showSession.update({
+    where: { id: sessionId },
+    data: { pinnedItemId: null },
+    include: { pinnedItem: { include: { inventoryItem: true } } },
+  });
+  return c.json(updated);
+});
+
+app.patch('/v1/seller/shows/:showId/queue/:itemId/sold-out', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const showId = c.req.param('showId');
+  const itemId = c.req.param('itemId');
+  const body = await c.req.json<{ soldOut?: boolean }>().catch(() => ({} as { soldOut?: boolean }));
+  const show = await prisma.show.findUnique({ where: { id: showId } });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  if (show.status !== 'LIVE') return c.json({ statusCode: 409, error: 'Conflict', message: 'Can only update availability during a LIVE show' }, 409);
+  const queueItem = await prisma.showInventoryItem.findUnique({ where: { id: itemId } });
+  if (!queueItem || queueItem.showId !== showId) return c.json({ statusCode: 404, error: 'Not Found', message: 'Queue item not found' }, 404);
+  const updated = await prisma.showInventoryItem.update({ where: { id: itemId }, data: { soldOut: body.soldOut ?? true }, include: { inventoryItem: true } });
+  return c.json(updated);
+});
+
+app.post('/v1/seller/sessions/:sessionId/end', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const sessionId = c.req.param('sessionId');
+  const session = await prisma.showSession.findUnique({ where: { id: sessionId }, include: { show: true } });
+  if (!session || session.show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  if (session.status !== 'LIVE') return c.json({ statusCode: 409, error: 'Conflict', message: 'Only LIVE sessions can be ended' }, 409);
+  if (session.providerSessionId) {
+    try {
+      const provider = createLiveVideoProvider(process.env.LIVE_VIDEO_PROVIDER ?? 'stub');
+      await provider.endSession(session.providerSessionId);
+    } catch {
+      // continue with local state update even if provider call fails
+    }
+  }
+  const [updatedSession] = await prisma.$transaction([
+    prisma.showSession.update({
+      where: { id: sessionId },
+      data: { status: 'ENDED', endedAt: new Date(), pinnedItemId: null },
+      include: { pinnedItem: { include: { inventoryItem: true } } },
+    }),
+    prisma.show.update({ where: { id: session.showId }, data: { status: 'ENDED' } }),
+  ]);
+  return c.json(updatedSession);
+});
+
+app.get('/v1/shows/:showId/session', async (c) => {
+  const showId = c.req.param('showId');
+  const show = await prisma.show.findUnique({ where: { id: showId }, select: { id: true, status: true } });
+  if (!show || !['SCHEDULED', 'LIVE', 'ENDED'].includes(show.status)) {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  }
+  const session = await prisma.showSession.findFirst({
+    where: { showId, status: { in: ['LIVE', 'STARTING'] } },
+    orderBy: { createdAt: 'desc' },
+    include: { pinnedItem: { include: { inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } } } } },
+  });
+  if (!session) return c.json({ statusCode: 404, error: 'Not Found', message: 'No active session' }, 404);
+  return c.json(session);
+});
+
+export { app as liveSessionRoutes };

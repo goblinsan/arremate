@@ -1,173 +1,80 @@
-import type { FastifyInstance } from 'fastify';
+import { Hono } from 'hono';
 import { prisma } from '@arremate/database';
 import { authenticate } from '../plugins/authenticate.js';
 import { requireRole } from '../plugins/authorize.js';
+import type { AppEnv } from '../types.js';
 
-const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')];
+const app = new Hono<AppEnv>();
+const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')] as const;
 
-/**
- * Show queue routes – attaching and ordering inventory items within a show.
- *
- * GET    /v1/seller/shows/:showId/queue              – get the queue
- * POST   /v1/seller/shows/:showId/queue              – add an item to the queue
- * DELETE /v1/seller/shows/:showId/queue/:itemId      – remove an item from the queue
- * PATCH  /v1/seller/shows/:showId/queue/reorder      – reorder all items
- */
-export async function showQueueRoutes(fastify: FastifyInstance): Promise<void> {
-  // ─── Get queue ──────────────────────────────────────────────────────────────
-  fastify.get(
-    '/v1/seller/shows/:showId/queue',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { showId } = request.params as { showId: string };
+app.get('/v1/seller/shows/:showId/queue', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const showId = c.req.param('showId');
+  const show = await prisma.show.findUnique({ where: { id: showId } });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  const queueItems = await prisma.showInventoryItem.findMany({
+    where: { showId },
+    orderBy: { position: 'asc' },
+    include: { inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } } },
+  });
+  return c.json(queueItems);
+});
 
-      const show = await prisma.show.findUnique({ where: { id: showId } });
+app.post('/v1/seller/shows/:showId/queue', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const showId = c.req.param('showId');
+  const { inventoryItemId, position } = await c.req.json<{ inventoryItemId: string; position?: number }>();
+  if (!inventoryItemId) return c.json({ statusCode: 400, error: 'Bad Request', message: 'inventoryItemId is required' }, 400);
+  const [show, inventoryItem] = await Promise.all([
+    prisma.show.findUnique({ where: { id: showId } }),
+    prisma.inventoryItem.findUnique({ where: { id: inventoryItemId } }),
+  ]);
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  if (!inventoryItem || inventoryItem.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Inventory item not found' }, 404);
+  let queuePosition = position ?? 0;
+  if (position === undefined) {
+    const lastItem = await prisma.showInventoryItem.findFirst({ where: { showId }, orderBy: { position: 'desc' } });
+    queuePosition = lastItem ? lastItem.position + 1 : 0;
+  }
+  try {
+    const entry = await prisma.showInventoryItem.create({
+      data: { showId, inventoryItemId, position: queuePosition },
+      include: { inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } } },
+    });
+    return c.json(entry, 201);
+  } catch (err) {
+    const error = err as { code?: string };
+    if (error?.code === 'P2002') return c.json({ statusCode: 409, error: 'Conflict', message: 'This item is already in the queue' }, 409);
+    throw err;
+  }
+});
 
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
+app.delete('/v1/seller/shows/:showId/queue/:itemId', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const showId = c.req.param('showId');
+  const itemId = c.req.param('itemId');
+  const show = await prisma.show.findUnique({ where: { id: showId } });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  const entry = await prisma.showInventoryItem.findUnique({ where: { id: itemId } });
+  if (!entry || entry.showId !== showId) return c.json({ statusCode: 404, error: 'Not Found', message: 'Queue entry not found' }, 404);
+  await prisma.showInventoryItem.delete({ where: { id: itemId } });
+  return c.body(null, 204);
+});
 
-      const queueItems = await prisma.showInventoryItem.findMany({
-        where: { showId },
-        orderBy: { position: 'asc' },
-        include: {
-          inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } },
-        },
-      });
+app.patch('/v1/seller/shows/:showId/queue/reorder', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const showId = c.req.param('showId');
+  const { order } = await c.req.json<{ order: string[] }>();
+  if (!Array.isArray(order)) return c.json({ statusCode: 400, error: 'Bad Request', message: 'order must be an array of queue entry IDs' }, 400);
+  const show = await prisma.show.findUnique({ where: { id: showId } });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  await prisma.$transaction(order.map((entryId, index) => prisma.showInventoryItem.updateMany({ where: { id: entryId, showId }, data: { position: index } })));
+  const updated = await prisma.showInventoryItem.findMany({
+    where: { showId },
+    orderBy: { position: 'asc' },
+    include: { inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } } },
+  });
+  return c.json(updated);
+});
 
-      return reply.send(queueItems);
-    },
-  );
-
-  // ─── Add item to queue ──────────────────────────────────────────────────────
-  fastify.post(
-    '/v1/seller/shows/:showId/queue',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { showId } = request.params as { showId: string };
-      const { inventoryItemId, position } = request.body as {
-        inventoryItemId: string;
-        position?: number;
-      };
-
-      if (!inventoryItemId) {
-        return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'inventoryItemId is required' });
-      }
-
-      const [show, inventoryItem] = await Promise.all([
-        prisma.show.findUnique({ where: { id: showId } }),
-        prisma.inventoryItem.findUnique({ where: { id: inventoryItemId } }),
-      ]);
-
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
-
-      if (!inventoryItem || inventoryItem.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Inventory item not found' });
-      }
-      let queuePosition = position ?? 0;
-      if (position === undefined) {
-        const lastItem = await prisma.showInventoryItem.findFirst({
-          where: { showId },
-          orderBy: { position: 'desc' },
-        });
-        queuePosition = lastItem ? lastItem.position + 1 : 0;
-      }
-
-      try {
-        const entry = await prisma.showInventoryItem.create({
-          data: {
-            showId,
-            inventoryItemId,
-            position: queuePosition,
-          },
-          include: {
-            inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } },
-          },
-        });
-        return reply.status(201).send(entry);
-      } catch (err: unknown) {
-        // Unique constraint violation – item already in queue
-        const error = err as { code?: string };
-        if (error?.code === 'P2002') {
-          return reply.status(409).send({
-            statusCode: 409,
-            error: 'Conflict',
-            message: 'This item is already in the queue',
-          });
-        }
-        throw err;
-      }
-    },
-  );
-
-  // ─── Remove item from queue ─────────────────────────────────────────────────
-  fastify.delete(
-    '/v1/seller/shows/:showId/queue/:itemId',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { showId, itemId } = request.params as { showId: string; itemId: string };
-
-      const show = await prisma.show.findUnique({ where: { id: showId } });
-
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
-
-      const entry = await prisma.showInventoryItem.findUnique({ where: { id: itemId } });
-
-      if (!entry || entry.showId !== showId) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Queue entry not found' });
-      }
-
-      await prisma.showInventoryItem.delete({ where: { id: itemId } });
-
-      return reply.status(204).send();
-    },
-  );
-
-  // ─── Reorder queue ──────────────────────────────────────────────────────────
-  fastify.patch(
-    '/v1/seller/shows/:showId/queue/reorder',
-    { preHandler: sellerGuard },
-    async (request, reply) => {
-      const user = request.currentUser!;
-      const { showId } = request.params as { showId: string };
-      const { order } = request.body as { order: string[] };
-
-      if (!Array.isArray(order)) {
-        return reply.status(400).send({ statusCode: 400, error: 'Bad Request', message: 'order must be an array of queue entry IDs' });
-      }
-
-      const show = await prisma.show.findUnique({ where: { id: showId } });
-
-      if (!show || show.sellerId !== user.id) {
-        return reply.status(404).send({ statusCode: 404, error: 'Not Found', message: 'Show not found' });
-      }
-
-      // Update positions in a transaction
-      await prisma.$transaction(
-        order.map((entryId, index) =>
-          prisma.showInventoryItem.updateMany({
-            where: { id: entryId, showId },
-            data: { position: index },
-          }),
-        ),
-      );
-
-      const updated = await prisma.showInventoryItem.findMany({
-        where: { showId },
-        orderBy: { position: 'asc' },
-        include: {
-          inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } },
-        },
-      });
-
-      return reply.send(updated);
-    },
-  );
-}
+export { app as showQueueRoutes };
