@@ -30,6 +30,7 @@ name = "arremate-api-staging"
 # No routes bound — staging worker is accessed via its default workers.dev URL,
 # not via api.arrematelive.com (which is reserved for production).
 workers_dev = true
+routes = []
 
 [env.staging.vars]
 NODE_ENV = "staging"
