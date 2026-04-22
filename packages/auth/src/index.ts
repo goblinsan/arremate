@@ -14,6 +14,8 @@ export interface CognitoJwtPayload {
   sub: string;
   /** Present on ID tokens */
   email?: string;
+  /** Present on access tokens */
+  username?: string;
   /** Present on ID tokens */
   'cognito:username'?: string;
   /** Group membership (e.g. ["ADMIN", "SELLER"]) */

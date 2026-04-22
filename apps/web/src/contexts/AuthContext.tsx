@@ -5,6 +5,8 @@ import { decodeJwtPayload, isTokenExpired, type AuthTokens } from '@arremate/aut
 const ACCESS_TOKEN_KEY = 'arremate.accessToken';
 const ID_TOKEN_KEY = 'arremate.idToken';
 const REFRESH_TOKEN_KEY = 'arremate.refreshToken';
+const OAUTH_STATE_KEY = 'arremate.oauth.state';
+const OAUTH_PKCE_VERIFIER_KEY = 'arremate.oauth.pkceVerifier';
 
 // ─── Auth state ───────────────────────────────────────────────────────────────
 
@@ -23,6 +25,9 @@ export interface AuthState {
 
 export interface AuthContextValue extends AuthState {
   signIn(email: string, password: string): Promise<void>;
+  startSignUp(): Promise<void>;
+  startSocialSignIn(provider: string): Promise<void>;
+  socialProviders: Array<{ id: string; label: string }>;
   signOut(): void;
   /** Returns the current access token, refreshing if necessary. */
   getAccessToken(): string | null;
@@ -35,9 +40,129 @@ const AuthContext = createContext<AuthContextValue | null>(null);
 interface CognitoAuthResult {
   AccessToken: string;
   IdToken: string;
-  RefreshToken: string;
+  RefreshToken?: string;
   ExpiresIn: number;
   TokenType: string;
+}
+
+const PROVIDER_LABELS: Record<string, string> = {
+  Google: 'Google',
+  SignInWithApple: 'Apple',
+  Facebook: 'Facebook',
+  LoginWithAmazon: 'Amazon',
+  Instagram: 'Instagram',
+  GovBr: 'Gov.br',
+};
+
+function getOauthConfig() {
+  const domain = import.meta.env.VITE_COGNITO_DOMAIN as string | undefined;
+  const clientId = import.meta.env.VITE_COGNITO_CLIENT_ID as string | undefined;
+  const redirectUri = (import.meta.env.VITE_COGNITO_REDIRECT_URI as string | undefined)
+    ?? `${window.location.origin}/auth/callback`;
+  const scopes = (import.meta.env.VITE_COGNITO_OAUTH_SCOPES as string | undefined)
+    ?? 'openid email profile';
+
+  if (!domain || !clientId) {
+    throw new Error('Missing VITE_COGNITO_DOMAIN or VITE_COGNITO_CLIENT_ID');
+  }
+
+  return { domain, clientId, redirectUri, scopes };
+}
+
+function getSocialProviders() {
+  const configured = (import.meta.env.VITE_COGNITO_SOCIAL_PROVIDERS as string | undefined)
+    ?.split(',')
+    .map((v) => v.trim())
+    .filter(Boolean);
+
+  const providerIds = configured && configured.length > 0
+    ? configured
+    : ['Google', 'SignInWithApple', 'Facebook', 'Instagram', 'GovBr'];
+
+  return providerIds.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id }));
+}
+
+function base64UrlEncode(bytes: Uint8Array): string {
+  const binary = Array.from(bytes, (b) => String.fromCharCode(b)).join('');
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function createRandomString(byteLength = 32): string {
+  const random = crypto.getRandomValues(new Uint8Array(byteLength));
+  return base64UrlEncode(random);
+}
+
+async function pkceChallengeFromVerifier(verifier: string): Promise<string> {
+  const data = new TextEncoder().encode(verifier);
+  const digest = await crypto.subtle.digest('SHA-256', data);
+  return base64UrlEncode(new Uint8Array(digest));
+}
+
+async function startHostedAuth(mode: 'login' | 'signup', provider?: string): Promise<void> {
+  const { domain, clientId, redirectUri, scopes } = getOauthConfig();
+  const state = createRandomString(24);
+  const codeVerifier = createRandomString(48);
+  const codeChallenge = await pkceChallengeFromVerifier(codeVerifier);
+
+  sessionStorage.setItem(OAUTH_STATE_KEY, state);
+  sessionStorage.setItem(OAUTH_PKCE_VERIFIER_KEY, codeVerifier);
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    response_type: 'code',
+    redirect_uri: redirectUri,
+    scope: scopes,
+    state,
+    code_challenge_method: 'S256',
+    code_challenge: codeChallenge,
+  });
+
+  if (provider) {
+    params.set('identity_provider', provider);
+  }
+
+  const path = mode === 'signup' ? '/signup' : '/oauth2/authorize';
+  window.location.assign(`https://${domain}${path}?${params.toString()}`);
+}
+
+async function exchangeCodeForTokens(code: string, codeVerifier: string): Promise<CognitoAuthResult> {
+  const { domain, clientId, redirectUri } = getOauthConfig();
+  const tokenEndpoint = `https://${domain}/oauth2/token`;
+
+  const form = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: clientId,
+    code,
+    redirect_uri: redirectUri,
+    code_verifier: codeVerifier,
+  });
+
+  const response = await fetch(tokenEndpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: form,
+  });
+
+  if (!response.ok) {
+    const bodyText = await response.text();
+    throw new Error(`OAuth token exchange failed: ${bodyText || response.status}`);
+  }
+
+  const data = await response.json() as {
+    access_token: string;
+    id_token: string;
+    refresh_token?: string;
+    expires_in: number;
+    token_type: string;
+  };
+
+  return {
+    AccessToken: data.access_token,
+    IdToken: data.id_token,
+    RefreshToken: data.refresh_token,
+    ExpiresIn: data.expires_in,
+    TokenType: data.token_type,
+  };
 }
 
 async function cognitoInitiateAuth(
@@ -84,13 +209,14 @@ function loadStoredTokens(): AuthTokens | null {
   const accessToken = localStorage.getItem(ACCESS_TOKEN_KEY);
   const refreshToken = localStorage.getItem(REFRESH_TOKEN_KEY);
   const idToken = localStorage.getItem(ID_TOKEN_KEY);
-  if (!accessToken || !refreshToken) return null;
-  return { accessToken, refreshToken, idToken: idToken ?? undefined };
+  if (!accessToken) return null;
+  return { accessToken, refreshToken: refreshToken ?? '', idToken: idToken ?? undefined };
 }
 
 function storeTokens(tokens: AuthTokens): void {
   localStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
-  localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  if (tokens.refreshToken) localStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+  else localStorage.removeItem(REFRESH_TOKEN_KEY);
   if (tokens.idToken) localStorage.setItem(ID_TOKEN_KEY, tokens.idToken);
 }
 
@@ -101,9 +227,14 @@ function clearTokens(): void {
 }
 
 function userFromTokens(tokens: AuthTokens): AuthUser | null {
-  const payload = decodeJwtPayload(tokens.accessToken);
+  const payload = decodeJwtPayload(tokens.idToken ?? tokens.accessToken);
   if (!payload) return null;
-  const email = payload.email ?? '';
+  const claims = payload as unknown as {
+    email?: string;
+    'cognito:username'?: string;
+    username?: string;
+  };
+  const email = claims.email ?? claims['cognito:username'] ?? claims.username ?? '';
   return {
     sub: payload.sub,
     email,
@@ -118,29 +249,80 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Restore session from localStorage on mount.
   useEffect(() => {
-    const stored = loadStoredTokens();
-    if (stored) {
-      const payload = decodeJwtPayload(stored.accessToken);
-      if (payload && !isTokenExpired(payload)) {
-        setTokens(stored);
-        setUser(userFromTokens(stored));
-      } else {
-        clearTokens();
+    async function restoreOrHandleOAuthCallback() {
+      try {
+        const search = new URLSearchParams(window.location.search);
+        const code = search.get('code');
+        const state = search.get('state');
+        const isOAuthCallback = window.location.pathname === '/auth/callback' && !!code;
+
+        if (isOAuthCallback) {
+          const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
+          const codeVerifier = sessionStorage.getItem(OAUTH_PKCE_VERIFIER_KEY);
+
+          sessionStorage.removeItem(OAUTH_STATE_KEY);
+          sessionStorage.removeItem(OAUTH_PKCE_VERIFIER_KEY);
+
+          if (!state || !expectedState || state !== expectedState || !codeVerifier) {
+            throw new Error('OAuth callback state validation failed');
+          }
+
+          const result = await exchangeCodeForTokens(code, codeVerifier);
+          const newTokens: AuthTokens = {
+            accessToken: result.AccessToken,
+            refreshToken: result.RefreshToken ?? '',
+            idToken: result.IdToken,
+          };
+          storeTokens(newTokens);
+          setTokens(newTokens);
+          setUser(userFromTokens(newTokens));
+          window.history.replaceState({}, '', '/');
+          return;
+        }
+
+        const stored = loadStoredTokens();
+        if (stored) {
+          const payload = decodeJwtPayload(stored.accessToken);
+          if (payload && !isTokenExpired(payload)) {
+            setTokens(stored);
+            setUser(userFromTokens(stored));
+          } else {
+            clearTokens();
+          }
+        }
+      } finally {
+        setIsLoading(false);
       }
     }
-    setIsLoading(false);
+
+    restoreOrHandleOAuthCallback().catch((err) => {
+      clearTokens();
+      setTokens(null);
+      setUser(null);
+      setIsLoading(false);
+      const message = err instanceof Error ? err.message : 'OAuth callback failed';
+      window.history.replaceState({}, '', `/login?oauthError=${encodeURIComponent(message)}`);
+    });
   }, []);
 
   async function signIn(email: string, password: string): Promise<void> {
     const result = await cognitoInitiateAuth(email, password);
     const newTokens: AuthTokens = {
       accessToken: result.AccessToken,
-      refreshToken: result.RefreshToken,
+      refreshToken: result.RefreshToken ?? '',
       idToken: result.IdToken,
     };
     storeTokens(newTokens);
     setTokens(newTokens);
     setUser(userFromTokens(newTokens));
+  }
+
+  async function startSignUp(): Promise<void> {
+    await startHostedAuth('signup');
+  }
+
+  async function startSocialSignIn(provider: string): Promise<void> {
+    await startHostedAuth('login', provider);
   }
 
   function signOut(): void {
@@ -167,6 +349,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         isLoading,
         isAuthenticated: !!user,
         signIn,
+        startSignUp,
+        startSocialSignIn,
+        socialProviders: getSocialProviders(),
         signOut,
         getAccessToken,
       }}
