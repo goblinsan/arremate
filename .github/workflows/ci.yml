@@ -93,10 +93,29 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
         run: pnpm --filter @arremate/api run deploy:staging
 
-      - name: Build web and admin
+      - name: Validate web OAuth build vars
+        env:
+          VITE_COGNITO_DOMAIN: ${{ vars.VITE_COGNITO_DOMAIN }}
         run: |
-          pnpm --filter @arremate/web build
-          pnpm --filter @arremate/admin build
+          if [ -z "$VITE_COGNITO_DOMAIN" ]; then
+            echo "VITE_COGNITO_DOMAIN repository variable is not set"
+            echo "Set it in GitHub: Settings -> Secrets and variables -> Actions -> Variables"
+            exit 1
+          fi
+
+      - name: Build web and admin
+        env:
+          VITE_COGNITO_DOMAIN: ${{ vars.VITE_COGNITO_DOMAIN }}
+        run: |
+          export VITE_API_URL=https://api.arrematelive.com
+          export VITE_COGNITO_REGION=sa-east-1
+          export VITE_COGNITO_USER_POOL_ID=sa-east-1_xnhLw2zr0
+          export VITE_COGNITO_REDIRECT_URI=https://arrematelive.com/auth/callback
+          export VITE_COGNITO_OAUTH_SCOPES="openid email profile"
+          export VITE_COGNITO_SOCIAL_PROVIDERS="Google,SignInWithApple,Facebook,Instagram,GovBr"
+
+          VITE_COGNITO_CLIENT_ID=20t0nesdp1safrcr5adf71hrqa pnpm --filter @arremate/web build
+          VITE_COGNITO_CLIENT_ID=61cga7njav2qa97gcbirts1cgl pnpm --filter @arremate/admin build
 
       - name: Deploy web preview (PR)
         run: |
@@ -161,10 +180,29 @@ jobs:
           DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
         run: pnpm --filter @arremate/api run deploy
 
-      - name: Build web and admin
+      - name: Validate web OAuth build vars
+        env:
+          VITE_COGNITO_DOMAIN: ${{ vars.VITE_COGNITO_DOMAIN }}
         run: |
-          pnpm --filter @arremate/web build
-          pnpm --filter @arremate/admin build
+          if [ -z "$VITE_COGNITO_DOMAIN" ]; then
+            echo "VITE_COGNITO_DOMAIN repository variable is not set"
+            echo "Set it in GitHub: Settings -> Secrets and variables -> Actions -> Variables"
+            exit 1
+          fi
+
+      - name: Build web and admin
+        env:
+          VITE_COGNITO_DOMAIN: ${{ vars.VITE_COGNITO_DOMAIN }}
+        run: |
+          export VITE_API_URL=https://api.arrematelive.com
+          export VITE_COGNITO_REGION=sa-east-1
+          export VITE_COGNITO_USER_POOL_ID=sa-east-1_xnhLw2zr0
+          export VITE_COGNITO_REDIRECT_URI=https://arrematelive.com/auth/callback
+          export VITE_COGNITO_OAUTH_SCOPES="openid email profile"
+          export VITE_COGNITO_SOCIAL_PROVIDERS="Google,SignInWithApple,Facebook,Instagram,GovBr"
+
+          VITE_COGNITO_CLIENT_ID=20t0nesdp1safrcr5adf71hrqa pnpm --filter @arremate/web build
+          VITE_COGNITO_CLIENT_ID=61cga7njav2qa97gcbirts1cgl pnpm --filter @arremate/admin build
 
       - name: Deploy web production
         run: |
