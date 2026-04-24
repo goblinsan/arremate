@@ -37,12 +37,10 @@ function AppShell() {
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
               <img
-                src="/assets/arremate-live-favicon.png"
+                src="/assets/logo.svg"
                 alt="Arremate"
-                className="h-9 w-auto object-contain"
+                className="h-20 w-auto object-contain"
               />
-              <span className="text-xl font-extrabold text-brand-500">Arremate</span>
-              <span className="text-xs font-medium text-gray-400 hidden sm:block">Live Shopping</span>
             </Link>
 
             <nav className="hidden md:flex items-center gap-8">
