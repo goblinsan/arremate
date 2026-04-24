@@ -38,7 +38,7 @@ const corsOrigin = configuredOrigins.length > 0
   : (process.env.CORS_ORIGIN ?? '*');
 
 // ─── Middleware ──────────────────────────────────────────────────────────────
-app.use('*', cors({ origin: corsOrigin }));
+app.use('*', cors({ origin: corsOrigin, allowHeaders: ['Authorization', 'Content-Type'] }));
 app.use('*', secureHeaders());
 
 // ─── Request-ID propagation ──────────────────────────────────────────────────
