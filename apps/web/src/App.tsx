@@ -12,6 +12,7 @@ import SellerInventoryPage from './pages/SellerInventoryPage';
 import SellerInventoryFormPage from './pages/SellerInventoryFormPage';
 import SellerOrdersPage from './pages/SellerOrdersPage';
 import SellerOrderDetailPage from './pages/SellerOrderDetailPage';
+import SellerPayoutLedgerPage from './pages/SellerPayoutLedgerPage';
 import BuyerOrdersPage from './pages/BuyerOrdersPage';
 import BuyerOrderDetailPage from './pages/BuyerOrderDetailPage';
 import UpcomingShowsPage from './pages/UpcomingShowsPage';
@@ -221,6 +222,16 @@ function AppShell() {
                   >
                     Pedidos
                   </NavLink>
+                  <NavLink
+                    to="/seller/payouts"
+                    className={({ isActive }) =>
+                      `text-sm font-medium transition-colors ${
+                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                      }`
+                    }
+                  >
+                    Repasses
+                  </NavLink>
                 </>
               )}
               {isAuthenticated && !isSellerMode && (
@@ -288,6 +299,7 @@ function AppShell() {
           <Route path="/seller/inventory/:id" element={<SellerInventoryFormPage />} />
           <Route path="/seller/orders" element={<SellerOrdersPage />} />
           <Route path="/seller/orders/:orderId" element={<SellerOrderDetailPage />} />
+          <Route path="/seller/payouts" element={<SellerPayoutLedgerPage />} />
           <Route path="/orders" element={<BuyerOrdersPage />} />
           <Route path="/orders/:orderId" element={<BuyerOrderDetailPage />} />
           <Route path="/shows/:id/live" element={<LiveRoomPage />} />

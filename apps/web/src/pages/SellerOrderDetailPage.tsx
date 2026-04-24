@@ -162,6 +162,16 @@ export default function SellerOrderDetailPage() {
 
   const totalBRL = (order.totalCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const hasFeeSnapshot = order.subtotalCents != null && order.sellerPayoutCents != null;
+
+  function brl(cents: number) {
+    return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
+  function bps(value: number) {
+    return `${(value / 100).toFixed(2)}%`;
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-6">
@@ -214,6 +224,67 @@ export default function SellerOrderDetailPage() {
           <p className="text-sm text-gray-400">Sem itens.</p>
         )}
       </div>
+
+      {/* Fee breakdown & payout */}
+      {hasFeeSnapshot ? (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Repasse e taxas</h2>
+          <ul className="divide-y divide-gray-50 text-sm">
+            <li className="py-2 flex justify-between">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-medium text-gray-900">{brl(order.subtotalCents!)}</span>
+            </li>
+            {(order.shippingCents ?? 0) > 0 && (
+              <li className="py-2 flex justify-between">
+                <span className="text-gray-600">Frete</span>
+                <span className="font-medium text-gray-900">{brl(order.shippingCents!)}</span>
+              </li>
+            )}
+            {order.promotionCode && (
+              <li className="py-2 flex justify-between">
+                <span className="text-gray-600">
+                  Desconto promocional
+                  <span className="ml-1 text-xs text-brand-500 font-mono">({order.promotionCode})</span>
+                  {order.promotionDiscountBps != null && (
+                    <span className="ml-1 text-xs text-gray-400">-{bps(order.promotionDiscountBps)}</span>
+                  )}
+                </span>
+                <span className="font-medium text-green-600">
+                  -{brl(Math.round((order.subtotalCents! * (order.promotionDiscountBps ?? 0)) / 10000))}
+                </span>
+              </li>
+            )}
+            <li className="py-2 flex justify-between">
+              <span className="text-gray-600">
+                Comissão da plataforma
+                {order.commissionBps != null && (
+                  <span className="ml-1 text-xs text-gray-400">({bps(order.commissionBps)})</span>
+                )}
+                {order.sellerOverrideApplied && (
+                  <span className="ml-1 text-xs text-brand-500">taxa personalizada</span>
+                )}
+              </span>
+              <span className="font-medium text-red-600">-{brl(order.commissionCents!)}</span>
+            </li>
+            <li className="py-2 flex justify-between">
+              <span className="text-gray-600">
+                Taxa processadora
+                {order.processorFeeBps != null && (
+                  <span className="ml-1 text-xs text-gray-400">({bps(order.processorFeeBps)})</span>
+                )}
+              </span>
+              <span className="font-medium text-red-600">-{brl(order.processorFeeCents!)}</span>
+            </li>
+            <li className="py-2.5 flex justify-between border-t border-gray-200 mt-1">
+              <span className="font-semibold text-gray-800">Seu repasse estimado</span>
+              <span className="font-bold text-green-700">{brl(order.sellerPayoutCents!)}</span>
+            </li>
+          </ul>
+          <p className="text-xs text-gray-400 mt-3">
+            Os valores de repasse são estimativas baseadas na configuração de taxas no momento do pedido e podem estar sujeitos a ajustes.
+          </p>
+        </div>
+      ) : null}
 
       {/* Shipment management */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">

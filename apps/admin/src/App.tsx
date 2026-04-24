@@ -9,6 +9,7 @@ import {
   ClipboardList,
   HeartPulse,
   Settings,
+  BarChart2,
 } from 'lucide-react';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
@@ -18,6 +19,7 @@ import DisputesPage from './pages/DisputesPage';
 import DisputeDetailPage from './pages/DisputeDetailPage';
 import AuditEventsPage from './pages/AuditEventsPage';
 import SystemHealthPage from './pages/SystemHealthPage';
+import FeeReconciliationPage from './pages/FeeReconciliationPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 
@@ -29,6 +31,7 @@ const navItems = [
   { to: '/users', label: 'Usuários', icon: Users },
   { to: '/payments', label: 'Pagamentos', icon: CreditCard },
   { to: '/audit', label: 'Auditoria', icon: ClipboardList },
+  { to: '/reconciliation', label: 'Reconciliação', icon: BarChart2 },
   { to: '/health', label: 'Saúde', icon: HeartPulse },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
@@ -108,6 +111,7 @@ function AdminShell() {
               element={<PlaceholderPage title="Pagamentos" />}
             />
             <Route path="/audit" element={<AuditEventsPage />} />
+            <Route path="/reconciliation" element={<FeeReconciliationPage />} />
             <Route path="/health" element={<SystemHealthPage />} />
             <Route
               path="/settings"
