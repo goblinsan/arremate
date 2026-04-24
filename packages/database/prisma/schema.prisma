@@ -17,6 +17,7 @@ model User {
   email       String    @unique
   name        String?
   role        Role      @default(BUYER)
+  activeRole  Role?
   isSuspended Boolean   @default(false)
   suspendedAt DateTime?
   createdAt   DateTime  @default(now())

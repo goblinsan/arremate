@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
@@ -17,9 +18,121 @@ import ShowDetailPage from './pages/ShowDetailPage';
 import LiveRoomPage from './pages/LiveRoomPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
+function ProfileSwitcher() {
+  const { user, profile, currentRole, isSeller, switchProfile, signOut } = useAuth();
+  const [open, setOpen] = useState(false);
+  const [switching, setSwitching] = useState(false);
+
+  if (!user) return null;
+
+  const initials = (profile?.name ?? user.email)
+    .split(' ')
+    .slice(0, 2)
+    .map((s) => s[0]?.toUpperCase() ?? '')
+    .join('');
+
+  const isSellerMode = currentRole === 'SELLER' || currentRole === 'ADMIN';
+
+  async function handleSwitch(role: 'BUYER' | 'SELLER') {
+    setSwitching(true);
+    try {
+      await switchProfile(role);
+    } finally {
+      setSwitching(false);
+      setOpen(false);
+    }
+  }
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-2 focus:outline-none"
+        aria-label="Abrir menu de perfil"
+        aria-expanded={open}
+      >
+        <div className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold text-white transition-colors ${isSellerMode ? 'bg-brand-500' : 'bg-gray-400'}`}>
+          {initials || '?'}
+        </div>
+        <span className="hidden sm:block text-xs font-medium text-gray-500">
+          {isSellerMode ? 'Vendedor' : 'Comprador'}
+        </span>
+      </button>
+
+      {open && (
+        <div className="absolute right-0 mt-2 w-52 bg-white rounded-xl shadow-lg border border-gray-100 z-50 overflow-hidden">
+          <div className="px-4 py-3 border-b border-gray-100">
+            <p className="text-xs text-gray-400">Conectado como</p>
+            <p className="text-sm font-medium text-gray-800 truncate">{user.email}</p>
+          </div>
+
+          <div className="py-1">
+            <button
+              onClick={() => !switching && handleSwitch('BUYER')}
+              disabled={switching}
+              className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors ${!isSellerMode ? 'bg-brand-50 text-brand-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
+            >
+              <span className="text-lg">🛒</span>
+              <div>
+                <p className="font-medium">Perfil Comprador</p>
+                {!isSellerMode && <p className="text-xs text-brand-500">Ativo</p>}
+              </div>
+            </button>
+
+            {isSeller && (
+              <button
+                onClick={() => !switching && handleSwitch('SELLER')}
+                disabled={switching}
+                className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors ${isSellerMode ? 'bg-brand-50 text-brand-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
+              >
+                <span className="text-lg">🏪</span>
+                <div>
+                  <p className="font-medium">Perfil Vendedor</p>
+                  {isSellerMode && <p className="text-xs text-brand-500">Ativo</p>}
+                </div>
+              </button>
+            )}
+
+            {!isSeller && (
+              <Link
+                to="/seller-application"
+                onClick={() => setOpen(false)}
+                className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 text-gray-500 hover:bg-gray-50 transition-colors"
+              >
+                <span className="text-lg">➕</span>
+                <p className="font-medium">Tornar-se Vendedor</p>
+              </Link>
+            )}
+          </div>
+
+          <div className="border-t border-gray-100 py-1">
+            <Link
+              to="/profile"
+              onClick={() => setOpen(false)}
+              className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"
+            >
+              <span className="text-lg">👤</span>
+              <p>Meu Perfil</p>
+            </Link>
+            <button
+              onClick={() => { setOpen(false); signOut(); }}
+              className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center gap-3"
+            >
+              <span className="text-lg">🚪</span>
+              <p>Sair</p>
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 function AppShell() {
-  const { isAuthenticated, user, signOut, startSignUp } = useAuth();
+  const { isAuthenticated, currentRole, startSignUp } = useAuth();
   const navigate = useNavigate();
+
+  const isSellerMode = currentRole === 'SELLER' || currentRole === 'ADMIN';
 
   async function handleRegisterClick() {
     try {
@@ -74,7 +187,7 @@ function AppShell() {
               >
                 Leilões
               </NavLink>
-              {isAuthenticated && (
+              {isAuthenticated && isSellerMode && (
                 <>
                   <NavLink
                     to="/seller/shows"
@@ -106,41 +219,25 @@ function AppShell() {
                   >
                     Pedidos
                   </NavLink>
-                  <NavLink
-                    to="/orders"
-                    className={({ isActive }) =>
-                      `text-sm font-medium transition-colors ${
-                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                      }`
-                    }
-                  >
-                    Minhas Compras
-                  </NavLink>
-                  <NavLink
-                    to="/profile"
-                    className={({ isActive }) =>
-                      `text-sm font-medium transition-colors ${
-                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                      }`
-                    }
-                  >
-                    Perfil
-                  </NavLink>
                 </>
+              )}
+              {isAuthenticated && !isSellerMode && (
+                <NavLink
+                  to="/orders"
+                  className={({ isActive }) =>
+                    `text-sm font-medium transition-colors ${
+                      isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                    }`
+                  }
+                >
+                  Minhas Compras
+                </NavLink>
               )}
             </nav>
 
             <div className="flex items-center gap-3">
               {isAuthenticated ? (
-                <>
-                  <span className="text-sm text-gray-600">{user?.email}</span>
-                  <button
-                    onClick={signOut}
-                    className="text-sm font-medium text-gray-600 hover:text-brand-500 transition-colors"
-                  >
-                    Sair
-                  </button>
-                </>
+                <ProfileSwitcher />
               ) : (
                 <>
                   <Link
