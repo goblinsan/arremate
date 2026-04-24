@@ -7,6 +7,7 @@ const ID_TOKEN_KEY = 'arremate.idToken';
 const REFRESH_TOKEN_KEY = 'arremate.refreshToken';
 const OAUTH_STATE_KEY = 'arremate.oauth.state';
 const OAUTH_PKCE_VERIFIER_KEY = 'arremate.oauth.pkceVerifier';
+const OAUTH_MODE_KEY = 'arremate.oauth.mode';
 
 // ─── Auth state ───────────────────────────────────────────────────────────────
 
@@ -51,7 +52,6 @@ const PROVIDER_LABELS: Record<string, string> = {
   Facebook: 'Facebook',
   LoginWithAmazon: 'Amazon',
   Instagram: 'Instagram',
-  GovBr: 'Gov.br',
 };
 
 function getOauthConfig() {
@@ -77,9 +77,11 @@ function getSocialProviders() {
 
   const providerIds = configured && configured.length > 0
     ? configured
-    : ['Google', 'SignInWithApple', 'Facebook', 'Instagram', 'GovBr'];
+    : ['Google', 'SignInWithApple', 'Facebook', 'Instagram'];
 
-  return providerIds.map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id }));
+  return providerIds
+    .filter((id) => id !== 'GovBr')
+    .map((id) => ({ id, label: PROVIDER_LABELS[id] ?? id }));
 }
 
 function base64UrlEncode(bytes: Uint8Array): string {
@@ -106,6 +108,7 @@ async function startHostedAuth(mode: 'login' | 'signup', provider?: string): Pro
 
   sessionStorage.setItem(OAUTH_STATE_KEY, state);
   sessionStorage.setItem(OAUTH_PKCE_VERIFIER_KEY, codeVerifier);
+  sessionStorage.setItem(OAUTH_MODE_KEY, mode);
 
   const params = new URLSearchParams({
     client_id: clientId,
@@ -259,9 +262,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isOAuthCallback) {
           const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
           const codeVerifier = sessionStorage.getItem(OAUTH_PKCE_VERIFIER_KEY);
+          const oauthMode = sessionStorage.getItem(OAUTH_MODE_KEY);
 
           sessionStorage.removeItem(OAUTH_STATE_KEY);
           sessionStorage.removeItem(OAUTH_PKCE_VERIFIER_KEY);
+          sessionStorage.removeItem(OAUTH_MODE_KEY);
 
           if (!state || !expectedState || state !== expectedState || !codeVerifier) {
             throw new Error('OAuth callback state validation failed');
@@ -276,7 +281,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           storeTokens(newTokens);
           setTokens(newTokens);
           setUser(userFromTokens(newTokens));
-          window.history.replaceState({}, '', '/');
+          window.history.replaceState({}, '', oauthMode === 'signup' ? '/profile' : '/');
           return;
         }
 
