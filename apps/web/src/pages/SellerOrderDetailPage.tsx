@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { ArrowLeft } from 'lucide-react';
 import type { Order, OrderStatus, FulfillmentStatus, Shipment } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -164,7 +165,7 @@ export default function SellerOrderDetailPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-6">
-        <Link to="/seller/orders" className="text-sm text-brand-500 hover:underline">← Voltar para pedidos</Link>
+        <Link to="/seller/orders" className="text-sm text-brand-500 hover:underline inline-flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" /> Voltar para pedidos</Link>
       </div>
 
       {/* Order header */}

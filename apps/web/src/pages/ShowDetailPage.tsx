@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import { Radio, Package, ArrowLeft } from 'lucide-react';
 import type { Show, ShowInventoryItem, InventoryItem, ItemCondition } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -53,15 +54,15 @@ export default function ShowDetailPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <p className="text-gray-600 mb-4">{error ?? 'Show não encontrado.'}</p>
-        <Link to="/shows" className="text-brand-500 hover:underline text-sm">← Ver todos os shows</Link>
+        <Link to="/shows" className="text-brand-500 hover:underline text-sm inline-flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" /> Ver todos os shows</Link>
       </div>
     );
   }
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
-      <Link to="/shows" className="text-gray-400 hover:text-gray-600 text-sm mb-6 inline-block">
-        ← Todos os shows
+      <Link to="/shows" className="text-gray-400 hover:text-gray-600 text-sm mb-6 inline-flex items-center gap-1">
+        <ArrowLeft className="w-3.5 h-3.5" /> Todos os shows
       </Link>
 
       {/* Show header */}
@@ -76,7 +77,7 @@ export default function ShowDetailPage() {
                     : 'bg-blue-100 text-blue-700'
                 }`}
               >
-                {show.status === 'LIVE' ? '🔴 Ao vivo agora' : '📅 Agendado'}
+                {show.status === 'LIVE' ? <><Radio className="w-3 h-3" /> Ao vivo agora</> : 'Agendado'}
               </span>
             </div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">{show.title}</h1>
@@ -108,9 +109,9 @@ export default function ShowDetailPage() {
           {show.status === 'LIVE' && (
             <Link
               to={`/shows/${show.id}/live`}
-              className="shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors"
+              className="shrink-0 bg-red-500 hover:bg-red-600 text-white font-bold px-5 py-2.5 rounded-xl text-sm transition-colors inline-flex items-center gap-2"
             >
-              🔴 Entrar na sala
+              <Radio className="w-4 h-4" /> Entrar na sala
             </Link>
           )}
         </div>
@@ -139,8 +140,8 @@ export default function ShowDetailPage() {
                   <span className="text-sm font-bold text-gray-300 w-6 text-center shrink-0">
                     {index + 1}
                   </span>
-                  <div className="h-14 w-14 bg-gray-100 rounded-xl flex items-center justify-center text-xl shrink-0">
-                    📦
+                  <div className="h-14 w-14 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
+                    <Package className="w-6 h-6 text-gray-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-semibold text-gray-900 truncate">{item.title}</h3>

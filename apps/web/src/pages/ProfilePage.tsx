@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Store, ShoppingCart, ArrowLeft } from 'lucide-react';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 
@@ -135,7 +136,7 @@ export default function ProfilePage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-8">
-        <Link to="/" className="text-sm text-brand-500 hover:underline">← Voltar para a home</Link>
+        <Link to="/" className="text-sm text-brand-500 hover:underline inline-flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" /> Voltar para a home</Link>
         <h1 className="mt-3 text-3xl font-bold text-gray-900">Seu perfil</h1>
         <p className="mt-2 text-gray-500">
           Complete seus dados para personalizar sua conta no Arremate.
@@ -156,7 +157,7 @@ export default function ProfilePage() {
                   : 'border-gray-200 text-gray-500 hover:border-brand-300 hover:bg-gray-50'
               }`}
             >
-              <span className="text-2xl">🏪</span>
+              <Store className="w-6 h-6" />
               <span className="text-sm font-semibold">Vendedor</span>
               {isSellerMode && <span className="text-xs font-medium text-brand-500">Ativo</span>}
             </button>
@@ -170,7 +171,7 @@ export default function ProfilePage() {
                   : 'border-gray-200 text-gray-500 hover:border-brand-300 hover:bg-gray-50'
               }`}
             >
-              <span className="text-2xl">🛒</span>
+              <ShoppingCart className="w-6 h-6" />
               <span className="text-sm font-semibold">Comprador</span>
               {!isSellerMode && <span className="text-xs font-medium text-brand-500">Ativo</span>}
             </button>

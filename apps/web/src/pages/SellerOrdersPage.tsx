@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { CheckCircle, Clock } from 'lucide-react';
 import type { Order, OrderStatus } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -109,8 +110,8 @@ export default function SellerOrdersPage() {
           {/* Paid orders highlighted */}
           {filter === 'ALL' && paidOrders.length > 0 && (
             <section className="mb-8">
-              <h2 className="text-sm font-semibold text-green-700 uppercase tracking-wide mb-3">
-                ✅ Pedidos confirmados
+              <h2 className="text-sm font-semibold text-green-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4" /> Pedidos confirmados
               </h2>
               <div className="space-y-3">
                 {paidOrders.map((order) => (
@@ -123,8 +124,8 @@ export default function SellerOrdersPage() {
           {/* Pending payment orders */}
           {filter === 'ALL' && pendingOrders.length > 0 && (
             <section className="mb-8">
-              <h2 className="text-sm font-semibold text-yellow-700 uppercase tracking-wide mb-3">
-                ⏳ Aguardando pagamento
+              <h2 className="text-sm font-semibold text-yellow-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                <Clock className="w-4 h-4" /> Aguardando pagamento
               </h2>
               <div className="space-y-3">
                 {pendingOrders.map((order) => (

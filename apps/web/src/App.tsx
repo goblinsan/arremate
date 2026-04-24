@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom';
+import { ShoppingCart, Store, UserRound, LogOut, Plus } from 'lucide-react';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
@@ -72,7 +73,7 @@ function ProfileSwitcher() {
               disabled={switching}
               className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors ${!isSellerMode ? 'bg-brand-50 text-brand-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
             >
-              <span className="text-lg">🛒</span>
+              <ShoppingCart className="w-5 h-5 shrink-0" />
               <div>
                 <p className="font-medium">Perfil Comprador</p>
                 {!isSellerMode && <p className="text-xs text-brand-500">Ativo</p>}
@@ -85,7 +86,7 @@ function ProfileSwitcher() {
                 disabled={switching}
                 className={`w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 transition-colors ${isSellerMode ? 'bg-brand-50 text-brand-600 font-semibold' : 'text-gray-700 hover:bg-gray-50'}`}
               >
-                <span className="text-lg">🏪</span>
+                <Store className="w-5 h-5 shrink-0" />
                 <div>
                   <p className="font-medium">Perfil Vendedor</p>
                   {isSellerMode && <p className="text-xs text-brand-500">Ativo</p>}
@@ -99,7 +100,7 @@ function ProfileSwitcher() {
                 onClick={() => setOpen(false)}
                 className="w-full text-left px-4 py-2.5 text-sm flex items-center gap-3 text-gray-500 hover:bg-gray-50 transition-colors"
               >
-                <span className="text-lg">➕</span>
+                <Plus className="w-5 h-5 shrink-0" />
                 <p className="font-medium">Tornar-se Vendedor</p>
               </Link>
             )}
@@ -111,14 +112,14 @@ function ProfileSwitcher() {
               onClick={() => setOpen(false)}
               className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors flex items-center gap-3"
             >
-              <span className="text-lg">👤</span>
+              <UserRound className="w-5 h-5 shrink-0" />
               <p>Meu Perfil</p>
             </Link>
             <button
               onClick={() => { setOpen(false); signOut(); }}
               className="w-full text-left px-4 py-2.5 text-sm text-red-500 hover:bg-red-50 transition-colors flex items-center gap-3"
             >
-              <span className="text-lg">🚪</span>
+              <LogOut className="w-5 h-5 shrink-0" />
               <p>Sair</p>
             </button>
           </div>

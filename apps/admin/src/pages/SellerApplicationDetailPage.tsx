@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Check, X, ArrowLeft } from 'lucide-react';
 import type { ApplicationStatus, DocumentType } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -170,9 +171,9 @@ export default function SellerApplicationDetailPage() {
         <p className="text-red-500 text-sm mb-4">{error ?? 'Solicitação não encontrada.'}</p>
         <button
           onClick={() => navigate('/seller-applications')}
-          className="text-brand-500 font-medium text-sm hover:underline"
+          className="text-brand-500 font-medium text-sm hover:underline inline-flex items-center gap-1"
         >
-          ← Voltar para a lista
+          <ArrowLeft className="w-4 h-4" /> Voltar para a lista
         </button>
       </div>
     );
@@ -187,9 +188,9 @@ export default function SellerApplicationDetailPage() {
         <div>
           <Link
             to="/seller-applications"
-            className="text-xs text-gray-400 hover:text-gray-600 mb-2 inline-block"
+            className="text-xs text-gray-400 hover:text-gray-600 mb-2 inline-flex items-center gap-1"
           >
-            ← Voltar para a lista
+            <ArrowLeft className="w-3.5 h-3.5" /> Voltar para a lista
           </Link>
           <h2 className="text-2xl font-bold text-gray-900">
             {application.businessName ?? 'Solicitação sem nome'}
@@ -211,14 +212,16 @@ export default function SellerApplicationDetailPage() {
 
       {/* Review result banner */}
       {application.status === 'APPROVED' && (
-        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 text-green-800 text-sm font-medium">
-          ✓ Aprovada em {application.reviewedAt ? new Date(application.reviewedAt).toLocaleDateString('pt-BR') : '—'}
+        <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 text-green-800 text-sm font-medium flex items-center gap-1.5">
+          <Check className="w-4 h-4 shrink-0" />
+          Aprovada em {application.reviewedAt ? new Date(application.reviewedAt).toLocaleDateString('pt-BR') : '—'}
         </div>
       )}
       {application.status === 'REJECTED' && (
         <div className="bg-red-50 border border-red-200 rounded-2xl p-4 mb-6">
-          <p className="text-red-800 text-sm font-medium">
-            ✗ Reprovada em {application.reviewedAt ? new Date(application.reviewedAt).toLocaleDateString('pt-BR') : '—'}
+          <p className="text-red-800 text-sm font-medium flex items-center gap-1.5">
+            <X className="w-4 h-4 shrink-0" />
+            Reprovada em {application.reviewedAt ? new Date(application.reviewedAt).toLocaleDateString('pt-BR') : '—'}
           </p>
           {application.reviewNotes && (
             <p className="text-red-700 text-sm mt-1">
@@ -331,16 +334,16 @@ export default function SellerApplicationDetailPage() {
                 <button
                   onClick={handleApprove}
                   disabled={isActing}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2 rounded-lg text-sm transition-colors"
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                 >
-                  {isActing ? 'Processando…' : '✓ Aprovar'}
+                  {isActing ? 'Processando…' : <><Check className="w-4 h-4" /> Aprovar</>}
                 </button>
                 <button
                   onClick={() => setShowRejectModal(true)}
                   disabled={isActing}
-                  className="w-full bg-red-50 hover:bg-red-100 disabled:opacity-60 text-red-700 font-semibold py-2 rounded-lg text-sm transition-colors"
+                  className="w-full bg-red-50 hover:bg-red-100 disabled:opacity-60 text-red-700 font-semibold py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                 >
-                  ✗ Reprovar
+                  <X className="w-4 h-4" /> Reprovar
                 </button>
               </div>
             </section>

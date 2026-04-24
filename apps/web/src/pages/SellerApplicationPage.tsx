@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { CheckCircle, Check } from 'lucide-react';
 import type { SellerApplication, ApplicationStatus, DocumentType } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -276,7 +277,7 @@ export default function SellerApplicationPage() {
 
       {application?.status === 'APPROVED' && (
         <div className="bg-green-50 border border-green-200 rounded-2xl p-6 mb-6">
-          <p className="text-green-800 font-semibold text-lg">🎉 Solicitação aprovada!</p>
+          <p className="text-green-800 font-semibold text-lg flex items-center gap-2"><CheckCircle className="w-5 h-5" /> Solicitação aprovada!</p>
           <p className="text-green-700 text-sm mt-1">
             Sua conta de vendedor foi criada. Você já pode criar leilões.
           </p>
@@ -440,8 +441,8 @@ export default function SellerApplicationPage() {
                       <p className="text-xs text-red-600 mt-0.5">Erro no upload</p>
                     )}
                     {latestFile && pendingStatus !== 'uploading' && (
-                      <p className="text-xs text-green-600 mt-0.5">
-                        ✓ {latestFile.fileName}
+                      <p className="text-xs text-green-600 mt-0.5 flex items-center gap-0.5">
+                        <Check className="w-3 h-3" /> {latestFile.fileName}
                       </p>
                     )}
                   </div>

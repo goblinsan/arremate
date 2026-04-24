@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Package } from 'lucide-react';
 import type { InventoryItem, ItemCondition } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -113,7 +114,9 @@ export default function SellerInventoryPage() {
                     <span>Imagem: {firstImage.fileName}</span>
                   </div>
                 ) : (
-                  <div className="h-40 bg-gray-50 flex items-center justify-center text-4xl">📦</div>
+                  <div className="h-40 bg-gray-50 flex items-center justify-center">
+                    <Package className="w-12 h-12 text-gray-300" />
+                  </div>
                 )}
                 <div className="p-4">
                   <h2 className="font-semibold text-gray-900 truncate mb-1">{item.title}</h2>

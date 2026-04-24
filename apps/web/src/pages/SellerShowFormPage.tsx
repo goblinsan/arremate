@@ -1,6 +1,7 @@
 import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Radio, ArrowLeft } from 'lucide-react';
 import type { Show, ShowInventoryItem, InventoryItem } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -236,7 +237,7 @@ export default function SellerShowFormPage() {
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-8 flex items-center gap-4">
-        <Link to="/seller/shows" className="text-gray-400 hover:text-gray-600 text-sm">← Voltar</Link>
+        <Link to="/seller/shows" className="text-gray-400 hover:text-gray-600 text-sm inline-flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" /> Voltar</Link>
         <h1 className="text-2xl font-bold text-gray-900">{isNew ? 'Novo Show' : 'Editar Show'}</h1>
         {show && (
           <span className="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-600">
@@ -314,9 +315,9 @@ export default function SellerShowFormPage() {
             {canGoLive && (
               <Link
                 to={`/seller/shows/${show!.id}/live`}
-                className="bg-red-500 hover:bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+                className="bg-red-500 hover:bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors inline-flex items-center gap-2"
               >
-                🔴 Ir ao vivo
+                <Radio className="w-4 h-4" /> Ir ao vivo
               </Link>
             )}
           </div>
@@ -325,9 +326,9 @@ export default function SellerShowFormPage() {
           <div className="mt-6 flex items-center gap-3">
             <Link
               to={`/seller/shows/${show!.id}/live`}
-              className="bg-red-500 hover:bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+              className="bg-red-500 hover:bg-red-600 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors inline-flex items-center gap-2"
             >
-              🔴 Painel ao vivo
+              <Radio className="w-4 h-4" /> Painel ao vivo
             </Link>
             <Link
               to={`/shows/${show!.id}/live`}

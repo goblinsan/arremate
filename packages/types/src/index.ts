@@ -188,6 +188,7 @@ export interface ShowSession {
   playbackUrl: string | null;
   pinnedItemId: string | null;
   pinnedItem?: ShowInventoryItem & { inventoryItem: InventoryItem };
+  raidedToShowId: string | null;
   startedAt: Date | null;
   endedAt: Date | null;
   createdAt: Date;

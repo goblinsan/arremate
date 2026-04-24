@@ -1,12 +1,14 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Radio, Mic, Pin, Package, ShoppingCart, Check, MessageCircle, TriangleAlert, ArrowLeft, ArrowRight, QrCode } from 'lucide-react';
 import type { Show, ShowSession, ItemCondition, ChatMessage, Claim, Order, Payment } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 const POLL_INTERVAL_MS = 5000;
 const CHAT_POLL_INTERVAL_MS = 3000;
 const CLAIM_EXPIRY_POLL_MS = 10000;
+const BASTAO_REDIRECT_COUNTDOWN_SECONDS = 5;
 
 const CONDITION_LABELS: Record<ItemCondition, string> = {
   NEW: 'Novo',
@@ -27,11 +29,16 @@ function formatExpiresAt(date: Date | string): string {
 export default function LiveRoomPage() {
   const { id: showId } = useParams<{ id: string }>();
   const { isAuthenticated, getAccessToken, user } = useAuth();
+  const navigate = useNavigate();
 
   const [show, setShow] = useState<PublicShow | null>(null);
   const [session, setSession] = useState<ShowSession | null>(null);
   const [isLoadingShow, setIsLoadingShow] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
+
+  // Bastão (raid) redirect state
+  const [bastaoTargetShowId, setBastaoTargetShowId] = useState<string | null>(null);
+  const [bastaoCountdown, setBastaoCountdown] = useState<number | null>(null);
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -60,6 +67,12 @@ export default function LiveRoomPage() {
         const data: ShowSession = await res.json();
         setSession(data);
         setSessionError(null);
+        // Detect bastão pass: ended session with raidedToShowId
+        if (data.status === 'ENDED' && data.raidedToShowId) {
+          setShow((prev) => prev ? { ...prev, status: 'ENDED' } : prev);
+          setBastaoTargetShowId(data.raidedToShowId);
+          setBastaoCountdown(BASTAO_REDIRECT_COUNTDOWN_SECONDS);
+        }
       } else if (res.status === 404) {
         setSession(null);
         setSessionError(null);
@@ -99,6 +112,18 @@ export default function LiveRoomPage() {
     const interval = setInterval(fetchSession, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [showStatus, fetchSession]);
+
+  // ─── Bastão (raid) countdown & auto-redirect ─────────────────────────────────
+
+  useEffect(() => {
+    if (bastaoCountdown === null || !bastaoTargetShowId) return;
+    if (bastaoCountdown <= 0) {
+      navigate(`/shows/${bastaoTargetShowId}/live`);
+      return;
+    }
+    const timer = setTimeout(() => setBastaoCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+    return () => clearTimeout(timer);
+  }, [bastaoCountdown, bastaoTargetShowId, navigate]);
 
   // ─── Chat polling ─────────────────────────────────────────────────────────────
 
@@ -302,7 +327,7 @@ export default function LiveRoomPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <p className="text-gray-600 mb-4">Show não encontrado.</p>
-        <Link to="/shows" className="text-brand-500 hover:underline text-sm">← Ver todos os shows</Link>
+        <Link to="/shows" className="text-brand-500 hover:underline text-sm inline-flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" /> Ver todos os shows</Link>
       </div>
     );
   }
@@ -313,8 +338,8 @@ export default function LiveRoomPage() {
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
-      <Link to={`/shows/${show.id}`} className="text-gray-400 hover:text-gray-600 text-sm mb-6 inline-block">
-        ← Detalhes do show
+      <Link to={`/shows/${show.id}`} className="text-gray-400 hover:text-gray-600 text-sm mb-6 inline-flex items-center gap-1">
+        <ArrowLeft className="w-3.5 h-3.5" /> Detalhes do show
       </Link>
 
       {/* Show header */}
@@ -322,7 +347,7 @@ export default function LiveRoomPage() {
         <div className="flex items-center gap-3 mb-2">
           {isLive && (
             <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 animate-pulse">
-              🔴 Ao vivo agora
+              <Radio className="w-3 h-3" /> Ao vivo agora
             </span>
           )}
           {isEnded && (
@@ -352,7 +377,25 @@ export default function LiveRoomPage() {
       {/* Ended */}
       {isEnded && (
         <div className="bg-gray-50 rounded-2xl p-8 text-center text-gray-500 mb-6">
-          A transmissão foi encerrada.
+          {bastaoTargetShowId ? (
+            <div className="space-y-3">
+              <Mic className="w-8 h-8 text-purple-600 mx-auto" />
+              <p className="font-semibold text-gray-700 text-lg">O bastão foi passado!</p>
+              <p className="text-sm text-gray-600">
+                Você será redirecionado para outro show ao vivo em{' '}
+                <span className="font-bold text-purple-600">{bastaoCountdown ?? 0}</span>{' '}
+                segundo{(bastaoCountdown ?? 0) !== 1 ? 's' : ''}…
+              </p>
+              <Link
+                to={`/shows/${bastaoTargetShowId}/live`}
+                className="inline-flex items-center gap-1 mt-2 text-purple-600 font-semibold hover:underline text-sm"
+              >
+                Ir agora <ArrowRight className="w-3.5 h-3.5" />
+              </Link>
+            </div>
+          ) : (
+            'A transmissão foi encerrada.'
+          )}
         </div>
       )}
 
@@ -384,12 +427,12 @@ export default function LiveRoomPage() {
           {/* Pinned item */}
           {pinnedItem ? (
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-red-100 mb-6">
-              <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-3">
-                📌 Item em destaque
+              <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                <Pin className="w-3.5 h-3.5" /> Item em destaque
               </p>
               <div className="flex items-start gap-4">
-                <div className="h-20 w-20 bg-gray-100 rounded-xl flex items-center justify-center text-3xl shrink-0">
-                  📦
+                <div className="h-20 w-20 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
+                  <Package className="w-8 h-8 text-gray-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <h2 className="text-xl font-bold text-gray-900 mb-1">
@@ -429,22 +472,22 @@ export default function LiveRoomPage() {
                         ? 'Esgotado'
                         : isClaiming
                         ? 'Reservando…'
-                        : '🛒 Quero este item!'}
+                        : <><ShoppingCart className="w-4 h-4 mr-1.5 inline" />Quero este item!</>}
                     </button>
                   </>
                 ) : isClaimExpired(claim) ? (
                   <div className="bg-gray-50 border border-gray-200 text-gray-600 text-sm rounded-lg px-4 py-3">
-                    <p className="font-semibold">⏰ Sua reserva expirou.</p>
+                    <p className="font-semibold">Sua reserva expirou.</p>
                     <p className="text-xs mt-1">O prazo de pagamento não foi cumprido.</p>
                   </div>
                 ) : claim.status === 'CONFIRMED' && order?.status === 'PAID' ? (
                   <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
-                    <p className="font-semibold">✅ Compra confirmada!</p>
+                    <p className="font-semibold flex items-center gap-1.5"><Check className="w-4 h-4" /> Compra confirmada!</p>
                     <p className="text-xs mt-1">Seu pedido foi registrado com sucesso.</p>
                   </div>
                 ) : (
                   <div className="bg-orange-50 border border-orange-200 text-orange-700 text-sm rounded-lg px-4 py-3">
-                    <p className="font-semibold">🛒 Item reservado!</p>
+                    <p className="font-semibold flex items-center gap-1.5"><ShoppingCart className="w-4 h-4" /> Item reservado!</p>
                     <p className="text-xs mt-1">
                       Finalize o pagamento até {formatExpiresAt(claim.expiresAt)} para garantir sua compra.
                     </p>
@@ -471,7 +514,7 @@ export default function LiveRoomPage() {
                         disabled={isCreatingPayment}
                         className="mt-3 w-full bg-green-500 hover:bg-green-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg text-sm transition-colors"
                       >
-                        {isCreatingPayment ? 'Gerando Pix…' : '💚 Gerar cobrança Pix'}
+                        {isCreatingPayment ? 'Gerando Pix…' : 'Gerar cobrança Pix'}
                       </button>
                     )}
 
@@ -493,7 +536,7 @@ export default function LiveRoomPage() {
           {session && (
             <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col">
               <div className="px-6 py-4 border-b border-gray-100">
-                <h3 className="text-base font-semibold text-gray-800">💬 Chat ao vivo</h3>
+                <h3 className="text-base font-semibold text-gray-800 flex items-center gap-1.5"><MessageCircle className="w-4 h-4" /> Chat ao vivo</h3>
               </div>
 
               {/* Message list */}
@@ -591,7 +634,7 @@ function PixPaymentPanel({ payment }: { payment: Payment }) {
 
   return (
     <div className="mt-4 bg-white rounded-xl p-4 border border-green-200 text-gray-800">
-      <p className="text-sm font-semibold text-green-700 mb-3">💚 Pague via Pix</p>
+      <p className="text-sm font-semibold text-green-700 mb-3 flex items-center gap-1.5"><QrCode className="w-4 h-4" /> Pague via Pix</p>
 
       {payment.pixQrCodeBase64 && (
         <div className="flex justify-center mb-3">
@@ -612,14 +655,14 @@ function PixPaymentPanel({ payment }: { payment: Payment }) {
           onClick={handleCopy}
           className="shrink-0 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-medium px-3 py-2 rounded-lg transition-colors"
         >
-          {copied ? '✓' : 'Copiar'}
+          {copied ? <Check className="w-3.5 h-3.5" /> : 'Copiar'}
         </button>
       </div>
 
       {payment.pixExpiresAt && (
         <p className={`text-xs mt-2 ${isExpired ? 'text-red-500' : 'text-gray-400'}`}>
           {isExpired
-            ? '⚠️ Esta cobrança expirou.'
+            ? <span className="inline-flex items-center gap-1"><TriangleAlert className="w-3.5 h-3.5" /> Esta cobrança expirou.</span>
             : `Expira às ${formatExpiresAt(payment.pixExpiresAt)}`}
         </p>
       )}

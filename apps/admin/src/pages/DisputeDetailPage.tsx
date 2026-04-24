@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Check, Banknote, ArrowLeft } from 'lucide-react';
 import type { DisputeStatus, DisputeReason, OrderStatus } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -168,9 +169,9 @@ export default function DisputeDetailPage() {
         <p className="text-red-500 text-sm mb-4">{error ?? 'Disputa não encontrada.'}</p>
         <button
           onClick={() => navigate('/disputes')}
-          className="text-brand-500 font-medium text-sm hover:underline"
+          className="text-brand-500 font-medium text-sm hover:underline inline-flex items-center gap-1"
         >
-          ← Voltar para a lista
+          <ArrowLeft className="w-4 h-4" /> Voltar para a lista
         </button>
       </div>
     );
@@ -186,9 +187,9 @@ export default function DisputeDetailPage() {
         <div>
           <Link
             to="/disputes"
-            className="text-xs text-gray-400 hover:text-gray-600 mb-2 inline-block"
+            className="text-xs text-gray-400 hover:text-gray-600 mb-2 inline-flex items-center gap-1"
           >
-            ← Voltar para a lista
+            <ArrowLeft className="w-3.5 h-3.5" /> Voltar para a lista
           </Link>
           <h2 className="text-2xl font-bold text-gray-900">
             Disputa · {REASON_LABELS[dispute.reason]}
@@ -213,8 +214,9 @@ export default function DisputeDetailPage() {
       {/* Resolution banner */}
       {dispute.status === 'RESOLVED' && (
         <div className="bg-green-50 border border-green-200 rounded-2xl p-4 mb-6">
-          <p className="text-green-800 text-sm font-medium">
-            ✓ Resolvida em{' '}
+          <p className="text-green-800 text-sm font-medium flex items-center gap-1.5">
+            <Check className="w-4 h-4 shrink-0" />
+            Resolvida em{' '}
             {dispute.resolvedAt ? new Date(dispute.resolvedAt).toLocaleDateString('pt-BR') : '—'}
             {dispute.resolvedBy && ` por ${dispute.resolvedBy.name ?? dispute.resolvedBy.email}`}
           </p>
@@ -311,17 +313,17 @@ export default function DisputeDetailPage() {
                 <button
                   onClick={() => setShowResolveModal(true)}
                   disabled={isActing}
-                  className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2 rounded-lg text-sm transition-colors"
+                  className="w-full bg-green-600 hover:bg-green-700 disabled:opacity-60 text-white font-semibold py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                 >
-                  ✓ Resolver disputa
+                  <Check className="w-4 h-4" /> Resolver disputa
                 </button>
                 {canRefund && (
                   <button
                     onClick={handleRefund}
                     disabled={isActing}
-                    className="w-full bg-orange-50 hover:bg-orange-100 disabled:opacity-60 text-orange-700 font-semibold py-2 rounded-lg text-sm transition-colors"
+                    className="w-full bg-orange-50 hover:bg-orange-100 disabled:opacity-60 text-orange-700 font-semibold py-2 rounded-lg text-sm transition-colors flex items-center justify-center gap-2"
                   >
-                    💸 Emitir reembolso
+                    <Banknote className="w-4 h-4" /> Emitir reembolso
                   </button>
                 )}
               </div>
