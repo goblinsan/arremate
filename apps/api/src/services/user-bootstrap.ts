@@ -57,14 +57,46 @@ export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
 
     return user;
   } catch (err) {
-    // If the email update causes a unique constraint conflict (another user already
-    // has this email address), fall back to the existing record without updating it.
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
-      const existing = await prisma.user.findUnique({ where: { cognitoSub: sub } });
-      if (existing) return existing;
-      // No record found for this cognitoSub despite the constraint error – this is
-      // an unexpected data inconsistency; re-throw so the caller gets a 500.
-      console.warn('[bootstrapUser] P2002 conflict but no user found for cognitoSub:', sub);
+      // First check: is there already a record for this Cognito identity?
+      const bySub = await prisma.user.findUnique({ where: { cognitoSub: sub } });
+      if (bySub) return bySub;
+
+      // Second check: a local account with this email exists but has no cognitoSub
+      // (e.g. the user previously registered via username/password and is now
+      // signing in with a federated provider for the first time). Link the
+      // Cognito identity to that existing account so the user gets seamless access.
+      const byEmail = await prisma.user.findUnique({ where: { email } });
+      if (byEmail) {
+        if (!byEmail.cognitoSub) {
+          try {
+            return await prisma.user.update({
+              where: { id: byEmail.id },
+              data: {
+                cognitoSub: sub,
+                ...(adminPromotion ? { role: 'ADMIN' as const } : {}),
+              },
+            });
+          } catch (linkErr) {
+            // A concurrent request may have already linked this cognitoSub.
+            if (linkErr instanceof Prisma.PrismaClientKnownRequestError && linkErr.code === 'P2002') {
+              const linked = await prisma.user.findUnique({ where: { cognitoSub: sub } });
+              if (linked) return linked;
+            }
+            throw linkErr;
+          }
+        }
+        // The email is claimed by an account that is already linked to a
+        // *different* Cognito identity – this is a genuine collision.
+        console.warn(
+          '[bootstrapUser] P2002: email already linked to a different cognitoSub',
+          { sub, email },
+        );
+      } else {
+        // No record found for either cognitoSub or email despite the constraint
+        // error – unexpected data inconsistency.
+        console.warn('[bootstrapUser] P2002 conflict but no user found for cognitoSub or email:', { sub, email });
+      }
     }
     throw err;
   }
