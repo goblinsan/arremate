@@ -1,6 +1,7 @@
 import { Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
+import ProfilePage from './pages/ProfilePage';
 import SellerApplicationPage from './pages/SellerApplicationPage';
 import SellerShowsPage from './pages/SellerShowsPage';
 import SellerShowFormPage from './pages/SellerShowFormPage';
@@ -35,7 +36,12 @@ function AppShell() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <Link to="/" className="flex items-center gap-2">
-              <span className="text-2xl font-extrabold text-brand-500">Arremate</span>
+              <img
+                src="/assets/arremate-live-favicon.png"
+                alt="Arremate"
+                className="h-9 w-auto object-contain"
+              />
+              <span className="text-xl font-extrabold text-brand-500">Arremate</span>
               <span className="text-xs font-medium text-gray-400 hidden sm:block">Live Shopping</span>
             </Link>
 
@@ -112,6 +118,16 @@ function AppShell() {
                   >
                     Minhas Compras
                   </NavLink>
+                  <NavLink
+                    to="/profile"
+                    className={({ isActive }) =>
+                      `text-sm font-medium transition-colors ${
+                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                      }`
+                    }
+                  >
+                    Perfil
+                  </NavLink>
                 </>
               )}
             </nav>
@@ -152,6 +168,7 @@ function AppShell() {
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/profile" element={<ProfilePage />} />
           <Route
             path="/auth/callback"
             element={<div className="max-w-7xl mx-auto px-4 py-16 text-center text-gray-500">Finalizando login...</div>}

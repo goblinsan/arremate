@@ -1,23 +1,53 @@
 import { Link } from 'react-router-dom';
 
+const features = [
+  {
+    title: 'Live em tempo real',
+    description:
+      'Assista, faça perguntas e dê lances ao vivo. Transparência total no processo.',
+    imageSrc: '/assets/content-creator.png',
+    imageAlt: 'Criadora de conteúdo fazendo live',
+  },
+  {
+    title: 'Compra protegida',
+    description:
+      'Pagamento retido até confirmação da entrega. Seu dinheiro seguro do início ao fim.',
+    imageSrc: '/assets/Compra-protegida.png',
+    imageAlt: 'Ilustração de compra protegida',
+  },
+  {
+    title: 'Vendedores verificados',
+    description:
+      'Todos os vendedores passam por verificação de identidade e avaliação da comunidade.',
+    imageSrc: '/assets/vendedores-verificados.png',
+    imageAlt: 'Vendedores verificados',
+  },
+] as const;
+
 export default function HomePage() {
   return (
     <div>
       {/* Hero */}
-      <section className="bg-gradient-to-br from-brand-50 via-orange-50 to-white py-24 px-4">
+      <section className="bg-gradient-to-br from-brand-50 via-orange-50 to-white py-16 sm:py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
-          <span className="inline-block bg-brand-500/10 text-brand-500 text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full mb-6">
-            🇧🇷 O marketplace de live shopping do Brasil
-          </span>
-          <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 leading-tight mb-6">
-            Compre ao vivo,{' '}
+          <div className="mb-4">
+            <span className="inline-block bg-brand-500/10 text-brand-500 text-xs font-semibold uppercase tracking-widest px-3 py-1 rounded-full">
+              O marketplace de live shopping do Brasil
+            </span>
+          </div>
+
+          <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 leading-tight mb-2">
+            Compre ao vivo,
+            <br />
             <span className="text-brand-500">com confiança</span>
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-10">
+
+          <p className="text-xl text-gray-600 max-w-2xl mx-auto">
             Participe de leilões em tempo real, conheça os vendedores antes de comprar e tenha
             toda a segurança que você merece.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+
+          <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
             <button className="bg-brand-500 hover:bg-orange-600 text-white font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg shadow-brand-500/30">
               Ver leilões ao vivo
             </button>
@@ -38,30 +68,17 @@ export default function HomePage() {
             Por que escolher o Arremate?
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                emoji: '🔴',
-                title: 'Live em tempo real',
-                desc: 'Assista, faça perguntas e dê lances ao vivo. Transparência total no processo.',
-              },
-              {
-                emoji: '🛡️',
-                title: 'Compra protegida',
-                desc: 'Pagamento retido até confirmação da entrega. Seu dinheiro seguro do início ao fim.',
-              },
-              {
-                emoji: '⭐',
-                title: 'Vendedores verificados',
-                desc: 'Todos os vendedores passam por verificação de identidade e avaliação da comunidade.',
-              },
-            ].map((f) => (
-              <div
-                key={f.title}
-                className="bg-gray-50 rounded-2xl p-8 hover:shadow-md transition-shadow"
-              >
-                <div className="text-4xl mb-4">{f.emoji}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-2">{f.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{f.desc}</p>
+            {features.map((feature) => (
+              <div key={feature.title} className="bg-gray-50 rounded-2xl p-5 hover:shadow-md transition-shadow">
+                <div className="mb-5 overflow-hidden rounded-2xl bg-white">
+                  <img
+                    src={feature.imageSrc}
+                    alt={feature.imageAlt}
+                    className="h-48 w-full object-cover"
+                  />
+                </div>
+                <h3 className="text-xl font-bold text-gray-900 mb-2">{feature.title}</h3>
+                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
               </div>
             ))}
           </div>
