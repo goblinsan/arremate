@@ -41,6 +41,7 @@ model User {
   moderationCasesActed  ModerationCase[]    @relation("ModerationCaseActor")
   feeOverrides          FeeSellerOverride[] @relation("SellerFeeOverrides")
   feePromotions         FeePromotion[]      @relation("SellerFeePromotions")
+  issuedRefunds         OrderRefund[]       @relation("IssuedRefunds")
 
   @@map("users")
 }
@@ -310,6 +311,22 @@ model Order {
   seller      User        @relation("SellerOrders", fields: [sellerId], references: [id])
   status      OrderStatus @default(PENDING_PAYMENT)
   totalCents  Int
+
+  // Immutable fee snapshot — captured at order creation from live FeeConfig
+  feeConfigVersionId    String?
+  feeConfigVersion      Int?
+  subtotalCents         Int?
+  commissionBps         Int?
+  commissionCents       Int?
+  processorFeeBps       Int?
+  processorFeeCents     Int?
+  shippingCents         Int?
+  buyerTotalCents       Int?
+  sellerPayoutCents     Int?
+  promotionCode         String?
+  promotionDiscountBps  Int?
+  sellerOverrideApplied Boolean?
+
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
 
@@ -318,8 +335,34 @@ model Order {
   shipment       Shipment?
   supportTickets SupportTicket[]
   disputes       Dispute[]
+  refunds        OrderRefund[]
 
   @@map("orders")
+}
+
+// ─── Order Refunds ────────────────────────────────────────────────────────────
+
+enum RefundType {
+  FULL
+  PARTIAL
+}
+
+model OrderRefund {
+  id                        String     @id @default(cuid())
+  orderId                   String
+  order                     Order      @relation(fields: [orderId], references: [id])
+  issuedById                String
+  issuedBy                  User       @relation("IssuedRefunds", fields: [issuedById], references: [id])
+  refundType                RefundType
+  refundAmountCents         Int
+  commissionReversalCents   Int
+  processorFeeReversalCents Int
+  sellerClawbackCents       Int
+  payoutOffsetCents         Int
+  reason                    String?
+  createdAt                 DateTime   @default(now())
+
+  @@map("order_refunds")
 }
 
 model OrderLine {
