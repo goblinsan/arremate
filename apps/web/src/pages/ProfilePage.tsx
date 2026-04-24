@@ -9,12 +9,14 @@ interface MeResponse {
   email: string;
   name: string | null;
   role: 'BUYER' | 'SELLER' | 'ADMIN';
+  activeRole: 'BUYER' | 'SELLER' | null;
+  isSeller: boolean;
   createdAt: string;
   updatedAt: string;
 }
 
 export default function ProfilePage() {
-  const { isAuthenticated, isLoading, getAccessToken } = useAuth();
+  const { isAuthenticated, isLoading, getAccessToken, currentRole, isSeller, switchProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
@@ -24,6 +26,7 @@ export default function ProfilePage() {
   const [success, setSuccess] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSwitching, setIsSwitching] = useState(false);
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
@@ -99,9 +102,35 @@ export default function ProfilePage() {
     }
   }
 
+  async function handleSwitchProfile(role: 'BUYER' | 'SELLER') {
+    setIsSwitching(true);
+    setError(null);
+    try {
+      await switchProfile(role);
+      // Refresh local profile data
+      const token = getAccessToken();
+      if (token) {
+        const res = await fetch(`${API_URL}/v1/me`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json() as MeResponse;
+          setProfile(data);
+        }
+      }
+      setSuccess(`Perfil alterado para ${role === 'SELLER' ? 'Vendedor' : 'Comprador'} com sucesso.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Não foi possível trocar o perfil.');
+    } finally {
+      setIsSwitching(false);
+    }
+  }
+
   if (isLoading || (!isAuthenticated && !error)) {
     return <div className="max-w-4xl mx-auto px-4 py-16 text-center text-gray-400">Carregando…</div>;
   }
+
+  const isSellerMode = currentRole === 'SELLER' || currentRole === 'ADMIN';
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
@@ -112,6 +141,45 @@ export default function ProfilePage() {
           Complete seus dados para personalizar sua conta no Arremate.
         </p>
       </div>
+
+      {/* Profile switcher card */}
+      {isSeller && (
+        <div className="mb-6 bg-white rounded-2xl border border-gray-100 shadow-sm p-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-4">Perfil ativo</h2>
+          <div className="flex gap-3">
+            <button
+              onClick={() => !isSellerMode && !isSwitching && handleSwitchProfile('SELLER')}
+              disabled={isSwitching}
+              className={`flex-1 flex flex-col items-center gap-2 rounded-xl border-2 py-4 px-3 transition-colors ${
+                isSellerMode
+                  ? 'border-brand-500 bg-brand-50 text-brand-700'
+                  : 'border-gray-200 text-gray-500 hover:border-brand-300 hover:bg-gray-50'
+              }`}
+            >
+              <span className="text-2xl">🏪</span>
+              <span className="text-sm font-semibold">Vendedor</span>
+              {isSellerMode && <span className="text-xs font-medium text-brand-500">Ativo</span>}
+            </button>
+
+            <button
+              onClick={() => isSellerMode && !isSwitching && handleSwitchProfile('BUYER')}
+              disabled={isSwitching}
+              className={`flex-1 flex flex-col items-center gap-2 rounded-xl border-2 py-4 px-3 transition-colors ${
+                !isSellerMode
+                  ? 'border-brand-500 bg-brand-50 text-brand-700'
+                  : 'border-gray-200 text-gray-500 hover:border-brand-300 hover:bg-gray-50'
+              }`}
+            >
+              <span className="text-2xl">🛒</span>
+              <span className="text-sm font-semibold">Comprador</span>
+              {!isSellerMode && <span className="text-xs font-medium text-brand-500">Ativo</span>}
+            </button>
+          </div>
+          <p className="mt-3 text-xs text-gray-400 text-center">
+            Clique no perfil desejado para alternar instantaneamente.
+          </p>
+        </div>
+      )}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 shadow-sm p-8 space-y-5">
         {error && (

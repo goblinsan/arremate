@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from 'react';
 import { decodeJwtPayload, isTokenExpired, type AuthTokens } from '@arremate/auth';
 
 // ─── Cognito token storage keys ───────────────────────────────────────────────
@@ -9,6 +9,8 @@ const OAUTH_STATE_KEY = 'arremate.oauth.state';
 const OAUTH_PKCE_VERIFIER_KEY = 'arremate.oauth.pkceVerifier';
 const OAUTH_MODE_KEY = 'arremate.oauth.mode';
 
+const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
+
 // ─── Auth state ───────────────────────────────────────────────────────────────
 
 export interface AuthUser {
@@ -17,11 +19,25 @@ export interface AuthUser {
   username: string;
 }
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  name: string | null;
+  role: 'BUYER' | 'SELLER' | 'ADMIN';
+  activeRole: 'BUYER' | 'SELLER' | null;
+  isSeller: boolean;
+}
+
 export interface AuthState {
   user: AuthUser | null;
   tokens: AuthTokens | null;
   isLoading: boolean;
   isAuthenticated: boolean;
+  /** The currently active role (respects activeRole override). */
+  currentRole: 'BUYER' | 'SELLER' | 'ADMIN' | null;
+  /** Whether the user has an approved seller account and can switch to SELLER profile. */
+  isSeller: boolean;
+  profile: UserProfile | null;
 }
 
 export interface AuthContextValue extends AuthState {
@@ -32,6 +48,10 @@ export interface AuthContextValue extends AuthState {
   signOut(): void;
   /** Returns the current access token, refreshing if necessary. */
   getAccessToken(): string | null;
+  /** Switches the active profile between BUYER and SELLER. */
+  switchProfile(role: 'BUYER' | 'SELLER'): Promise<void>;
+  /** Reloads the user profile from the API. */
+  reloadProfile(): Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -249,6 +269,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [tokens, setTokens] = useState<AuthTokens | null>(null);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [profile, setProfile] = useState<UserProfile | null>(null);
+
+  const fetchProfile = useCallback(async (accessToken: string): Promise<void> => {
+    try {
+      const res = await fetch(`${API_URL}/v1/me`, {
+        headers: { Authorization: `Bearer ${accessToken}` },
+      });
+      if (res.ok) {
+        const data = await res.json() as UserProfile;
+        setProfile(data);
+      }
+    } catch {
+      // Profile fetch is best-effort; auth state is still valid
+    }
+  }, []);
 
   // Restore session from localStorage on mount.
   useEffect(() => {
@@ -281,6 +316,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           storeTokens(newTokens);
           setTokens(newTokens);
           setUser(userFromTokens(newTokens));
+          await fetchProfile(result.AccessToken);
           window.history.replaceState({}, '', oauthMode === 'signup' ? '/profile' : '/');
           return;
         }
@@ -291,6 +327,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (payload && !isTokenExpired(payload)) {
             setTokens(stored);
             setUser(userFromTokens(stored));
+            await fetchProfile(stored.accessToken);
           } else {
             clearTokens();
           }
@@ -304,11 +341,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       clearTokens();
       setTokens(null);
       setUser(null);
+      setProfile(null);
       setIsLoading(false);
       const message = err instanceof Error ? err.message : 'OAuth callback failed';
       window.history.replaceState({}, '', `/login?oauthError=${encodeURIComponent(message)}`);
     });
-  }, []);
+  }, [fetchProfile]);
 
   async function signIn(email: string, password: string): Promise<void> {
     const result = await cognitoInitiateAuth(email, password);
@@ -320,6 +358,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     storeTokens(newTokens);
     setTokens(newTokens);
     setUser(userFromTokens(newTokens));
+    await fetchProfile(result.AccessToken);
   }
 
   async function startSignUp(): Promise<void> {
@@ -334,6 +373,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     clearTokens();
     setTokens(null);
     setUser(null);
+    setProfile(null);
   }
 
   function getAccessToken(): string | null {
@@ -346,6 +386,37 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return tokens.accessToken;
   }
 
+  async function switchProfile(role: 'BUYER' | 'SELLER'): Promise<void> {
+    const token = getAccessToken();
+    if (!token) throw new Error('Sessão expirada. Faça login novamente.');
+
+    const res = await fetch(`${API_URL}/v1/me/switch-profile`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ role }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => null) as { message?: string } | null;
+      throw new Error(body?.message ?? 'Não foi possível trocar o perfil.');
+    }
+
+    const data = await res.json() as UserProfile;
+    setProfile(data);
+  }
+
+  async function reloadProfile(): Promise<void> {
+    const token = getAccessToken();
+    if (token) await fetchProfile(token);
+  }
+
+  const currentRole: 'BUYER' | 'SELLER' | 'ADMIN' | null = profile
+    ? (profile.role === 'ADMIN' ? 'ADMIN' : (profile.activeRole ?? profile.role))
+    : null;
+
   return (
     <AuthContext.Provider
       value={{
@@ -353,12 +424,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         tokens,
         isLoading,
         isAuthenticated: !!user,
+        profile,
+        currentRole,
+        isSeller: profile?.isSeller ?? false,
         signIn,
         startSignUp,
         startSocialSignIn,
         socialProviders: getSocialProviders(),
         signOut,
         getAccessToken,
+        switchProfile,
+        reloadProfile,
       }}
     >
       {children}

@@ -7,6 +7,8 @@ export interface User {
   email: string;
   name: string | null;
   role: UserRole;
+  activeRole: UserRole | null;
+  isSeller: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
