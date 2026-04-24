@@ -29,17 +29,17 @@ import { AuthGuard } from './components/AuthGuard';
 
 const navItems = [
   { to: '/', label: 'Dashboard', icon: LayoutDashboard },
-  { to: '/auctions', label: 'Leiloes', icon: Gavel },
+  { to: '/auctions', label: 'Leilões', icon: Gavel },
   { to: '/seller-applications', label: 'Vendedores', icon: Store },
   { to: '/disputes', label: 'Disputas', icon: ShieldAlert },
-  { to: '/users', label: 'Usuarios', icon: Users },
+  { to: '/users', label: 'Usuários', icon: Users },
   { to: '/payments', label: 'Pagamentos', icon: CreditCard },
   { to: '/audit', label: 'Auditoria', icon: ClipboardList },
-  { to: '/reconciliation', label: 'Reconciliacao', icon: BarChart2 },
-  { to: '/analytics/monetization', label: 'Monetizacao', icon: TrendingUp },
+  { to: '/reconciliation', label: 'Reconciliação', icon: BarChart2 },
+  { to: '/analytics/monetization', label: 'Monetização', icon: TrendingUp },
   { to: '/analytics/incentives', label: 'Incentivos', icon: Tag },
-  { to: '/health', label: 'Saude', icon: HeartPulse },
-  { to: '/settings', label: 'Configuracoes', icon: Settings },
+  { to: '/health', label: 'Saúde', icon: HeartPulse },
+  { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 
 function AdminShell() {

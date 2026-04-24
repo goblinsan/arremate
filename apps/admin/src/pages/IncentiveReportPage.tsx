@@ -46,19 +46,19 @@ function toISODate(d: Date) {
 function exportCsv(report: IncentiveReport) {
   const summaryRows = [
     ['Metrica', 'Valor'],
-    ['Periodo Inicio', report.periodStart],
-    ['Periodo Fim', report.periodEnd],
+    ['Período Inicio', report.periodStart],
+    ['Período Fim', report.periodEnd],
     ['Pedidos com Taxa Personalizada', String(report.overrideOrderCount)],
     ['GMV com Taxa Personalizada (R$)', (report.overrideGmvCents / 100).toFixed(2)],
-    ['Comissao Real Taxa Personalizada (R$)', (report.overrideActualCommissionCents / 100).toFixed(2)],
-    ['Comissao Padrao Equivalente (R$)', (report.overrideStandardCommissionCents / 100).toFixed(2)],
-    ['Comissao Renunciada por Overrides (R$)', (report.commissionWaivedByOverridesCents / 100).toFixed(2)],
-    ['Pedidos com Promocao', String(report.promotionOrderCount)],
-    ['GMV com Promocao (R$)', (report.promotionGmvCents / 100).toFixed(2)],
-    ['Comissao Renunciada por Promocoes (R$)', (report.commissionWaivedByPromotionsCents / 100).toFixed(2)],
+    ['Comissão Real Taxa Personalizada (R$)', (report.overrideActualCommissionCents / 100).toFixed(2)],
+    ['Comissão Padrao Equivalente (R$)', (report.overrideStandardCommissionCents / 100).toFixed(2)],
+    ['Comissão Renunciada por Overrides (R$)', (report.commissionWaivedByOverridesCents / 100).toFixed(2)],
+    ['Pedidos com Promoção', String(report.promotionOrderCount)],
+    ['GMV com Promoção (R$)', (report.promotionGmvCents / 100).toFixed(2)],
+    ['Comissão Renunciada por Promoções (R$)', (report.commissionWaivedByPromotionsCents / 100).toFixed(2)],
     ['Total Incentivos Renunciados (R$)', (report.totalIncentiveWaivedCents / 100).toFixed(2)],
     [],
-    ['Codigo Promocao', 'Usos', 'GMV (R$)', 'Comissao Renunciada (R$)'],
+    ['Código Promoção', 'Usos', 'GMV (R$)', 'Comissão Renunciada (R$)'],
     ...report.topPromotions.map((p) => [
       p.code,
       String(p.usageCount),
@@ -120,7 +120,7 @@ export default function IncentiveReportPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Impacto de Incentivos</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Analise de comissoes renunciadas por taxas personalizadas e promocoes.
+            Análise de comissões renunciadas por taxas personalizadas e promoções.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -164,7 +164,7 @@ export default function IncentiveReportPage() {
         <div className="space-y-6">
           {/* Period label */}
           <p className="text-xs text-gray-400">
-            Periodo:{' '}
+            Período:{' '}
             <span className="font-medium text-gray-600">
               {new Date(report.periodStart).toLocaleDateString('pt-BR')} —{' '}
               {new Date(report.periodEnd).toLocaleDateString('pt-BR')}
@@ -180,14 +180,14 @@ export default function IncentiveReportPage() {
                   {brl(report.totalIncentiveWaivedCents)}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  soma de overrides de vendedor e promocoes no periodo
+                  soma de overrides de vendedor e promoções no período
                 </p>
               </div>
               <div className="flex items-start gap-2 bg-yellow-50 text-yellow-700 text-xs rounded-lg p-3 max-w-xs">
                 <Info className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
-                  Overrides refletem a diferenca entre a taxa padrao da configuracao e a taxa
-                  negociada. Promocoes usam o desconto em bps registrado no pedido.
+                  Overrides refletem a diferença entre a taxa padrão da configuração e a taxa
+                  negociada. Promoções usam o desconto em bps registrado no pedido.
                 </span>
               </div>
             </div>
@@ -200,18 +200,18 @@ export default function IncentiveReportPage() {
               <StatCard label="Pedidos afetados" value={String(report.overrideOrderCount)} />
               <StatCard label="GMV afetado" value={brl(report.overrideGmvCents)} />
               <StatCard
-                label="Comissao real cobrada"
+                label="Comissão real cobrada"
                 value={brl(report.overrideActualCommissionCents)}
               />
               <StatCard
-                label="Comissao padrao equivalente"
+                label="Comissão padrão equivalente"
                 value={brl(report.overrideStandardCommissionCents)}
-                sub="a taxa padrao do config"
+                sub="a taxa padrão do config"
               />
             </div>
             {report.overrideOrderCount > 0 && (
               <div className="mt-3 bg-white rounded-lg border border-gray-100 shadow-sm p-4 flex items-center justify-between">
-                <span className="text-sm text-gray-600">Comissao renunciada por overrides</span>
+                <span className="text-sm text-gray-600">Comissão renunciada por overrides</span>
                 <span className="text-lg font-bold text-red-600">
                   {brl(report.commissionWaivedByOverridesCents)}
                 </span>
@@ -221,12 +221,12 @@ export default function IncentiveReportPage() {
 
           {/* Promotions */}
           <div>
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">Promocoes</h2>
+            <h2 className="text-sm font-semibold text-gray-700 mb-3">Promoções</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 mb-4">
-              <StatCard label="Pedidos com promocao" value={String(report.promotionOrderCount)} />
-              <StatCard label="GMV com promocao" value={brl(report.promotionGmvCents)} />
+              <StatCard label="Pedidos com promoção" value={String(report.promotionOrderCount)} />
+              <StatCard label="GMV com promoção" value={brl(report.promotionGmvCents)} />
               <StatCard
-                label="Comissao renunciada"
+                label="Comissão renunciada"
                 value={brl(report.commissionWaivedByPromotionsCents)}
                 color="text-red-600"
               />
@@ -236,17 +236,17 @@ export default function IncentiveReportPage() {
               <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
                 <div className="px-4 py-3 border-b border-gray-100 bg-gray-50">
                   <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-                    Codigos de promocao utilizados
+                    Códigos de promoção utilizados
                   </p>
                 </div>
                 <div className="overflow-x-auto">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="border-b border-gray-50">
-                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Codigo</th>
+                        <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Código</th>
                         <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Usos</th>
                         <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">GMV</th>
-                        <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Comissao renunciada</th>
+                        <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Comissão renunciada</th>
                         <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">% do total</th>
                       </tr>
                     </thead>
@@ -283,7 +283,7 @@ export default function IncentiveReportPage() {
                 </div>
                 <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 text-xs text-gray-400 flex items-center gap-1.5">
                   <Info className="w-3.5 h-3.5 shrink-0" />
-                  Codigos ordenados por comissao renunciada (maior primeiro).
+                  Códigos ordenados por comissão renunciada (maior primeiro).
                   O desconto e calculado a partir do campo{' '}
                   <span className="font-mono">promotionDiscountBps</span> registrado no pedido.
                 </div>
@@ -292,7 +292,7 @@ export default function IncentiveReportPage() {
 
             {report.promotionOrderCount === 0 && (
               <div className="text-center py-8 text-gray-400 text-sm">
-                Nenhum pedido com codigo de promocao no periodo.
+                Nenhum pedido com código de promoção no período.
               </div>
             )}
           </div>
@@ -302,7 +302,7 @@ export default function IncentiveReportPage() {
             <div className="bg-green-50 border border-green-100 rounded-lg p-4 flex items-center gap-3">
               <Info className="w-4 h-4 text-green-600 shrink-0" />
               <p className="text-sm text-green-700">
-                Nenhum incentivo aplicado no periodo. Todos os pedidos usaram a taxa padrao da configuracao vigente.
+                Nenhum incentivo aplicado no período. Todos os pedidos usaram a taxa padrão da configuração vigente.
               </p>
             </div>
           )}

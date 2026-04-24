@@ -46,19 +46,19 @@ function toISODate(d: Date) {
 function exportCsv(report: MonetizationReport) {
   const rows = [
     ['Metrica', 'Valor'],
-    ['Periodo Inicio', report.periodStart],
-    ['Periodo Fim', report.periodEnd],
+    ['Período Inicio', report.periodStart],
+    ['Período Fim', report.periodEnd],
     ['Total de Pedidos', String(report.orderCount)],
     ['Pedidos com Snapshot de Taxa', String(report.ordersWithSnapshotCount)],
     ['GMV (R$)', (report.gmvCents / 100).toFixed(2)],
     ['Gasto Total Comprador (R$)', (report.totalBuyerSpendCents / 100).toFixed(2)],
-    ['Comissao Bruta (R$)', (report.grossCommissionCents / 100).toFixed(2)],
+    ['Comissão Bruta (R$)', (report.grossCommissionCents / 100).toFixed(2)],
     ['Taxas Processadora (R$)', (report.processorFeeTotalCents / 100).toFixed(2)],
     ['Subsidio de Frete (R$)', (report.shippingSubsidyCents / 100).toFixed(2)],
     ['Receita Liquida (R$)', (report.netRevenueCents / 100).toFixed(2)],
     ['Total Reembolsado (R$)', (report.refundAmountCents / 100).toFixed(2)],
-    ['Comissao Revertida (R$)', (report.commissionReversedCents / 100).toFixed(2)],
-    ['Comissao Ajustada (R$)', (report.adjustedCommissionCents / 100).toFixed(2)],
+    ['Comissão Revertida (R$)', (report.commissionReversedCents / 100).toFixed(2)],
+    ['Comissão Ajustada (R$)', (report.adjustedCommissionCents / 100).toFixed(2)],
     ['Receita Liquida Ajustada (R$)', (report.adjustedNetRevenueCents / 100).toFixed(2)],
     ['Taxa de Captura Efetiva', bps(report.effectiveTakeRateBps)],
   ];
@@ -116,7 +116,7 @@ export default function MonetizationReportPage() {
         <div>
           <h1 className="text-xl font-bold text-gray-900">Relatório de Monetização</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            GMV, comissoes, receita liquida, taxa de captura e impacto de reembolsos.
+            GMV, comissões, receita líquida, taxa de captura e impacto de reembolsos.
           </p>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -160,7 +160,7 @@ export default function MonetizationReportPage() {
         <div className="space-y-6">
           {/* Period label */}
           <p className="text-xs text-gray-400">
-            Periodo:{' '}
+            Período:{' '}
             <span className="font-medium text-gray-600">
               {new Date(report.periodStart).toLocaleDateString('pt-BR')} —{' '}
               {new Date(report.periodEnd).toLocaleDateString('pt-BR')}
@@ -183,7 +183,7 @@ export default function MonetizationReportPage() {
             <h2 className="text-sm font-semibold text-gray-700 mb-3">Receita bruta</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
               <StatCard
-                label="Comissao bruta"
+                label="Comissão bruta"
                 value={brl(report.grossCommissionCents)}
                 color="text-green-700"
               />
@@ -197,10 +197,10 @@ export default function MonetizationReportPage() {
                 value={brl(report.shippingSubsidyCents)}
               />
               <StatCard
-                label="Receita liquida"
+                label="Receita líquida"
                 value={brl(report.netRevenueCents)}
                 color={report.netRevenueCents >= 0 ? 'text-green-700' : 'text-red-600'}
-                sub="comissao - taxa proc."
+                sub="comissão - taxa proc."
               />
             </div>
           </div>
@@ -215,20 +215,20 @@ export default function MonetizationReportPage() {
                 color="text-red-600"
               />
               <StatCard
-                label="Comissao revertida"
+                label="Comissão revertida"
                 value={brl(report.commissionReversedCents)}
                 color="text-red-600"
               />
               <StatCard
-                label="Comissao ajustada"
+                label="Comissão ajustada"
                 value={brl(report.adjustedCommissionCents)}
                 color="text-green-700"
               />
               <StatCard
-                label="Receita liquida ajustada"
+                label="Receita líquida ajustada"
                 value={brl(report.adjustedNetRevenueCents)}
                 color={report.adjustedNetRevenueCents >= 0 ? 'text-green-700' : 'text-red-600'}
-                sub="pos-reembolso"
+                sub="pós-reembolso"
               />
             </div>
           </div>
@@ -242,13 +242,13 @@ export default function MonetizationReportPage() {
                   {bps(report.effectiveTakeRateBps)}
                 </p>
                 <p className="text-xs text-gray-400 mt-1">
-                  comissao ajustada / GMV (pedidos com snapshot de taxa)
+                  comissão ajustada / GMV (pedidos com snapshot de taxa)
                 </p>
               </div>
               <div className="flex items-start gap-2 bg-brand-50 text-brand-700 text-xs rounded-lg p-3 max-w-xs">
                 <Info className="w-4 h-4 shrink-0 mt-0.5" />
                 <span>
-                  Pedidos sem snapshot de taxa (legados) sao excluidos do calculo de GMV e taxas,
+                  Pedidos sem snapshot de taxa (legados) são excluídos do cálculo de GMV e taxas,
                   mas aparecem na contagem total.
                 </span>
               </div>

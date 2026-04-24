@@ -87,7 +87,7 @@ export default function PayoutCalculatorPage() {
     })
       .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data: SellerFeeInfo) => setFeeInfo(data))
-      .catch(() => setFeeError('Nao foi possivel carregar as taxas vigentes.'));
+      .catch(() => setFeeError('Não foi possível carregar as taxas vigentes.'));
   }, [isAuthenticated, getAccessToken]);
 
   function handleCalculate() {
@@ -101,7 +101,7 @@ export default function PayoutCalculatorPage() {
   if (!isAuthenticated) {
     return (
       <div className="max-w-xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-600 mb-4">Voce precisa estar logado para usar a calculadora.</p>
+        <p className="text-gray-600 mb-4">Você precisa estar logado para usar a calculadora.</p>
         <Link to="/login" className="text-brand-500 font-medium hover:underline">
           Fazer login
         </Link>
@@ -114,7 +114,7 @@ export default function PayoutCalculatorPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Calculadora de Repasse</h1>
         <p className="text-sm text-gray-500">
-          Simule o valor que voce recebera para qualquer preco de venda com base nas taxas vigentes.
+          Simule o valor que você receberá para qualquer preço de venda com base nas taxas vigentes.
         </p>
       </div>
 
@@ -131,7 +131,7 @@ export default function PayoutCalculatorPage() {
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div className="text-center">
-              <p className="text-xs text-gray-500 mb-1">Comissao</p>
+              <p className="text-xs text-gray-500 mb-1">Comissão</p>
               <p className="text-xl font-bold text-gray-900">{bps(feeInfo.commissionBps)}</p>
             </div>
             <div className="text-center border-x border-gray-100">
@@ -152,7 +152,7 @@ export default function PayoutCalculatorPage() {
           <p className="text-xs text-gray-400 mt-3 flex items-center gap-1">
             <Info className="w-3.5 h-3.5 shrink-0" />
             Vigente desde {new Date(feeInfo.effectiveFrom).toLocaleDateString('pt-BR')}
-            {feeInfo.effectiveTo && ` ate ${new Date(feeInfo.effectiveTo).toLocaleDateString('pt-BR')}`}.
+            {feeInfo.effectiveTo && ` até ${new Date(feeInfo.effectiveTo).toLocaleDateString('pt-BR')}`}.
             Taxas personalizadas negociadas com a plataforma podem ser diferentes.
           </p>
         </div>
@@ -164,7 +164,7 @@ export default function PayoutCalculatorPage() {
 
       {/* Calculator input */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5 mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">Preco de venda</h2>
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">Preço de venda</h2>
         <div className="flex gap-3 items-start">
           <div className="relative flex-1">
             <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm font-medium">
@@ -202,7 +202,7 @@ export default function PayoutCalculatorPage() {
               value={brl(breakdown.subtotalCents)}
             />
             <BreakdownRow
-              label="Comissao da plataforma"
+              label="Comissão da plataforma"
               sub={`${bps(breakdown.commissionBps)} sobre o valor do produto`}
               value={`- ${brl(breakdown.commissionCents)}`}
               color="text-red-600"
@@ -216,7 +216,7 @@ export default function PayoutCalculatorPage() {
             {breakdown.shippingCents > 0 && (
               <BreakdownRow
                 label="Frete (pago pelo comprador)"
-                sub="nao afeta seu repasse"
+                sub="não afeta seu repasse"
                 value={`+ ${brl(breakdown.shippingCents)}`}
                 color="text-gray-500"
               />
@@ -243,9 +243,9 @@ export default function PayoutCalculatorPage() {
               1
             </div>
             <div>
-              <p className="font-medium text-gray-800 mb-1">Comissao da plataforma</p>
+              <p className="font-medium text-gray-800 mb-1">Comissão da plataforma</p>
               <p>
-                A comissao e aplicada sobre o valor do produto. Ela cobre os custos operacionais,
+                A comissão e aplicada sobre o valor do produto. Ela cobre os custos operacionais,
                 tecnologia e suporte da plataforma Arremate.
               </p>
             </div>
@@ -257,7 +257,7 @@ export default function PayoutCalculatorPage() {
             <div>
               <p className="font-medium text-gray-800 mb-1">Taxa da processadora de pagamento</p>
               <p>
-                Cobrada pelo provedor de pagamento (PIX) para processar cada transacao. Nao e
+                Cobrada pelo provedor de pagamento (PIX) para processar cada transação. Não é
                 retida pela Arremate.
               </p>
             </div>
@@ -269,8 +269,8 @@ export default function PayoutCalculatorPage() {
             <div>
               <p className="font-medium text-gray-800 mb-1">Frete</p>
               <p>
-                O modelo de frete varia conforme a configuracao vigente. No modelo incluso,
-                o frete e absorvido no preco do produto. No modelo fixo, e cobrado separadamente
+                O modelo de frete varia conforme a configuração vigente. No modelo incluso,
+                o frete e absorvido no preço do produto. No modelo fixo, e cobrado separadamente
                 do comprador.
               </p>
             </div>
@@ -294,7 +294,7 @@ export default function PayoutCalculatorPage() {
           <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
           <p>
             Os valores calculados sao estimativas com base nas taxas vigentes no momento da
-            consulta. O repasse real sera calculado com as taxas em vigor no momento da venda e
+            consulta. O repasse real será calculado com as taxas em vigor no momento da venda e
             pode diferir caso uma promocao ou taxa personalizada esteja ativa.
             Consulte seu extrato de repasses para valores definitivos.
           </p>
