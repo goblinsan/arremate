@@ -69,13 +69,22 @@ export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
       const byEmail = await prisma.user.findUnique({ where: { email } });
       if (byEmail) {
         if (!byEmail.cognitoSub) {
-          return prisma.user.update({
-            where: { id: byEmail.id },
-            data: {
-              cognitoSub: sub,
-              ...(adminPromotion ? { role: 'ADMIN' as const } : {}),
-            },
-          });
+          try {
+            return await prisma.user.update({
+              where: { id: byEmail.id },
+              data: {
+                cognitoSub: sub,
+                ...(adminPromotion ? { role: 'ADMIN' as const } : {}),
+              },
+            });
+          } catch (linkErr) {
+            // A concurrent request may have already linked this cognitoSub.
+            if (linkErr instanceof Prisma.PrismaClientKnownRequestError && linkErr.code === 'P2002') {
+              const linked = await prisma.user.findUnique({ where: { cognitoSub: sub } });
+              if (linked) return linked;
+            }
+            throw linkErr;
+          }
         }
         // The email is claimed by an account that is already linked to a
         // *different* Cognito identity – this is a genuine collision.
