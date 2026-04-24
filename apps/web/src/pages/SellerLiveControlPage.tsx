@@ -23,6 +23,8 @@ export default function SellerLiveControlPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isStarting, setIsStarting] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
+  const [isBastao, setIsBastao] = useState(false);
+  const [bastaoTarget, setBastaoTarget] = useState<{ showId: string; showTitle: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const loadShow = useCallback(async () => {
@@ -162,6 +164,32 @@ export default function SellerLiveControlPage() {
     }
   }
 
+  async function handlePassarBastao() {
+    if (!session) return;
+    if (!confirm('Passar o bastão para outro show ao vivo? Seus espectadores serão redirecionados automaticamente.')) return;
+    setError(null);
+    setIsBastao(true);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API_URL}/v1/seller/sessions/${session.id}/passar-bastao`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.message ?? 'Erro ao passar o bastão.');
+      }
+      const data = await res.json() as { session: typeof session; targetShowId: string; targetShowTitle: string };
+      setSession(data.session);
+      setShow((prev) => prev ? { ...prev, status: 'ENDED' } : prev);
+      setBastaoTarget({ showId: data.targetShowId, showTitle: data.targetShowTitle });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao passar o bastão.');
+    } finally {
+      setIsBastao(false);
+    }
+  }
+
   async function handleEndSession() {
     if (!session) return;
     if (!confirm('Encerrar a sessão ao vivo? Isso não pode ser desfeito.')) return;
@@ -259,7 +287,20 @@ export default function SellerLiveControlPage() {
       {/* Ended panel */}
       {isEnded && (
         <div className="bg-gray-50 rounded-2xl p-6 text-center text-gray-500 mb-6">
-          Este show foi encerrado.
+          {bastaoTarget ? (
+            <>
+              <p className="font-semibold text-gray-700 mb-2">🎙️ Bastão passado com sucesso!</p>
+              <p className="text-sm mb-3">Seus espectadores foram redirecionados para:</p>
+              <Link
+                to={`/shows/${bastaoTarget.showId}/live`}
+                className="text-brand-500 font-semibold hover:underline"
+              >
+                {bastaoTarget.showTitle}
+              </Link>
+            </>
+          ) : (
+            'Este show foi encerrado.'
+          )}
         </div>
       )}
 
@@ -368,10 +409,18 @@ export default function SellerLiveControlPage() {
           </div>
 
           {/* End session */}
-          <div className="flex justify-end">
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={handlePassarBastao}
+              disabled={isBastao || isEnding}
+              className="bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors"
+              title="Encerra seu show e redireciona seus espectadores para outro show ao vivo"
+            >
+              {isBastao ? 'Passando…' : '🎙️ Passar o Bastão'}
+            </button>
             <button
               onClick={handleEndSession}
-              disabled={isEnding}
+              disabled={isEnding || isBastao}
               className="bg-gray-800 hover:bg-gray-900 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors"
             >
               {isEnding ? 'Encerrando…' : 'Encerrar sessão'}

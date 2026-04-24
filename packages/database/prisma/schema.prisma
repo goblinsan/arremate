@@ -185,8 +185,9 @@ model Show {
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
 
-  queueItems  ShowInventoryItem[]
-  sessions    ShowSession[]
+  queueItems     ShowInventoryItem[]
+  sessions       ShowSession[]
+  raidedSessions ShowSession[]       @relation("RaidedSessions")
 
   @@map("shows")
 }
@@ -368,6 +369,8 @@ model ShowSession {
   playbackUrl       String?
   pinnedItemId      String?
   pinnedItem        ShowInventoryItem? @relation("PinnedSession", fields: [pinnedItemId], references: [id])
+  raidedToShowId    String?
+  raidedToShow      Show?             @relation("RaidedSessions", fields: [raidedToShowId], references: [id])
   startedAt         DateTime?
   endedAt           DateTime?
   createdAt         DateTime          @default(now())

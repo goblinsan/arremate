@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import type { Show, ShowSession, ItemCondition, ChatMessage, Claim, Order, Payment } from '@arremate/types';
 
@@ -7,6 +7,7 @@ const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://
 const POLL_INTERVAL_MS = 5000;
 const CHAT_POLL_INTERVAL_MS = 3000;
 const CLAIM_EXPIRY_POLL_MS = 10000;
+const BASTAO_REDIRECT_COUNTDOWN_SECONDS = 5;
 
 const CONDITION_LABELS: Record<ItemCondition, string> = {
   NEW: 'Novo',
@@ -27,11 +28,16 @@ function formatExpiresAt(date: Date | string): string {
 export default function LiveRoomPage() {
   const { id: showId } = useParams<{ id: string }>();
   const { isAuthenticated, getAccessToken, user } = useAuth();
+  const navigate = useNavigate();
 
   const [show, setShow] = useState<PublicShow | null>(null);
   const [session, setSession] = useState<ShowSession | null>(null);
   const [isLoadingShow, setIsLoadingShow] = useState(true);
   const [sessionError, setSessionError] = useState<string | null>(null);
+
+  // Bastão (raid) redirect state
+  const [bastaoTargetShowId, setBastaoTargetShowId] = useState<string | null>(null);
+  const [bastaoCountdown, setBastaoCountdown] = useState<number | null>(null);
 
   // Chat state
   const [messages, setMessages] = useState<ChatMessage[]>([]);
@@ -60,6 +66,12 @@ export default function LiveRoomPage() {
         const data: ShowSession = await res.json();
         setSession(data);
         setSessionError(null);
+        // Detect bastão pass: ended session with raidedToShowId
+        if (data.status === 'ENDED' && data.raidedToShowId) {
+          setShow((prev) => prev ? { ...prev, status: 'ENDED' } : prev);
+          setBastaoTargetShowId(data.raidedToShowId);
+          setBastaoCountdown(BASTAO_REDIRECT_COUNTDOWN_SECONDS);
+        }
       } else if (res.status === 404) {
         setSession(null);
         setSessionError(null);
@@ -99,6 +111,18 @@ export default function LiveRoomPage() {
     const interval = setInterval(fetchSession, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [showStatus, fetchSession]);
+
+  // ─── Bastão (raid) countdown & auto-redirect ─────────────────────────────────
+
+  useEffect(() => {
+    if (bastaoCountdown === null || !bastaoTargetShowId) return;
+    if (bastaoCountdown <= 0) {
+      navigate(`/shows/${bastaoTargetShowId}/live`);
+      return;
+    }
+    const timer = setTimeout(() => setBastaoCountdown((c) => (c !== null ? c - 1 : null)), 1000);
+    return () => clearTimeout(timer);
+  }, [bastaoCountdown, bastaoTargetShowId, navigate]);
 
   // ─── Chat polling ─────────────────────────────────────────────────────────────
 
@@ -352,7 +376,25 @@ export default function LiveRoomPage() {
       {/* Ended */}
       {isEnded && (
         <div className="bg-gray-50 rounded-2xl p-8 text-center text-gray-500 mb-6">
-          A transmissão foi encerrada.
+          {bastaoTargetShowId ? (
+            <div className="space-y-3">
+              <p className="text-2xl">🎙️</p>
+              <p className="font-semibold text-gray-700 text-lg">O bastão foi passado!</p>
+              <p className="text-sm text-gray-600">
+                Você será redirecionado para outro show ao vivo em{' '}
+                <span className="font-bold text-purple-600">{bastaoCountdown ?? 0}</span>{' '}
+                segundo{(bastaoCountdown ?? 0) !== 1 ? 's' : ''}…
+              </p>
+              <Link
+                to={`/shows/${bastaoTargetShowId}/live`}
+                className="inline-block mt-2 text-purple-600 font-semibold hover:underline text-sm"
+              >
+                Ir agora →
+              </Link>
+            </div>
+          ) : (
+            'A transmissão foi encerrada.'
+          )}
         </div>
       )}
 
