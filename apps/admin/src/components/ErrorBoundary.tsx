@@ -1,5 +1,6 @@
 import { Component, type ReactNode } from 'react';
 import { captureException } from '@arremate/observability';
+import { TriangleAlert } from 'lucide-react';
 
 interface Props {
   children: ReactNode;
@@ -36,7 +37,7 @@ export class ErrorBoundary extends Component<Props, State> {
       return (
         this.props.fallback ?? (
           <div className="flex flex-col items-center justify-center min-h-screen bg-gray-50 p-8 text-center">
-            <p className="text-4xl mb-4">⚠️</p>
+            <TriangleAlert className="w-10 h-10 text-yellow-500 mb-4" />
             <h1 className="text-xl font-bold text-gray-800 mb-2">Erro no painel</h1>
             <p className="text-gray-500 text-sm mb-6">
               Ocorreu um erro inesperado. Verifique os logs e tente novamente.

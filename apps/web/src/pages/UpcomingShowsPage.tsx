@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
+import { Radio, Inbox } from 'lucide-react';
 import type { Show } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -48,7 +49,7 @@ export default function UpcomingShowsPage() {
         <div className="text-center text-gray-400 py-16">Carregando…</div>
       ) : shows.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 rounded-2xl">
-          <p className="text-2xl mb-3">📭</p>
+          <Inbox className="w-10 h-10 text-gray-300 mx-auto mb-3" />
           <p className="text-gray-500">Nenhum show agendado no momento.</p>
           <p className="text-gray-400 text-sm mt-2">Volte em breve para novidades!</p>
         </div>
@@ -68,7 +69,7 @@ export default function UpcomingShowsPage() {
                       : 'bg-blue-100 text-blue-700'
                   }`}
                 >
-                  {show.status === 'LIVE' ? '🔴 Ao vivo' : '📅 Agendado'}
+                  {show.status === 'LIVE' ? <><Radio className="w-3 h-3" /> Ao vivo</> : 'Agendado'}
                 </span>
                 <span className="text-xs text-gray-400">
                   {show._count.queueItems} {show._count.queueItems === 1 ? 'item' : 'itens'}

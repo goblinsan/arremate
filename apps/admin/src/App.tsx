@@ -1,4 +1,15 @@
 import { NavLink, Routes, Route } from 'react-router-dom';
+import {
+  LayoutDashboard,
+  Gavel,
+  Store,
+  ShieldAlert,
+  Users,
+  CreditCard,
+  ClipboardList,
+  HeartPulse,
+  Settings,
+} from 'lucide-react';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
 import SellerApplicationsPage from './pages/SellerApplicationsPage';
@@ -11,15 +22,15 @@ import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 
 const navItems = [
-  { to: '/', label: 'Dashboard', emoji: '📊' },
-  { to: '/auctions', label: 'Leilões', emoji: '🔨' },
-  { to: '/seller-applications', label: 'Vendedores', emoji: '🏪' },
-  { to: '/disputes', label: 'Disputas', emoji: '⚖️' },
-  { to: '/users', label: 'Usuários', emoji: '👥' },
-  { to: '/payments', label: 'Pagamentos', emoji: '💳' },
-  { to: '/audit', label: 'Auditoria', emoji: '🔍' },
-  { to: '/health', label: 'Saúde', emoji: '🩺' },
-  { to: '/settings', label: 'Configurações', emoji: '⚙️' },
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/auctions', label: 'Leilões', icon: Gavel },
+  { to: '/seller-applications', label: 'Vendedores', icon: Store },
+  { to: '/disputes', label: 'Disputas', icon: ShieldAlert },
+  { to: '/users', label: 'Usuários', icon: Users },
+  { to: '/payments', label: 'Pagamentos', icon: CreditCard },
+  { to: '/audit', label: 'Auditoria', icon: ClipboardList },
+  { to: '/health', label: 'Saúde', icon: HeartPulse },
+  { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 
 function AdminShell() {
@@ -35,7 +46,7 @@ function AdminShell() {
         </div>
 
         <nav className="flex-1 px-4 py-6 space-y-1">
-          {navItems.map(({ to, label, emoji }) => (
+          {navItems.map(({ to, label, icon: Icon }) => (
             <NavLink
               key={to}
               to={to}
@@ -48,7 +59,7 @@ function AdminShell() {
                 }`
               }
             >
-              <span>{emoji}</span>
+              <Icon className="w-4 h-4 shrink-0" />
               {label}
             </NavLink>
           ))}

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import type { DisputeStatus, DisputeReason } from '@arremate/types';
+import { ChevronLeft, ChevronRight, ArrowRight } from 'lucide-react';import type { DisputeStatus, DisputeReason } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 
@@ -182,9 +182,9 @@ export default function DisputesPage() {
                   <td className="px-6 py-4 text-right">
                     <Link
                       to={`/disputes/${dispute.id}`}
-                      className="text-brand-500 font-medium text-xs hover:underline"
+                      className="text-brand-500 font-medium text-xs hover:underline inline-flex items-center gap-1"
                     >
-                      Ver detalhes →
+                      Ver detalhes <ArrowRight className="w-3 h-3" />
                     </Link>
                   </td>
                 </tr>
@@ -203,16 +203,16 @@ export default function DisputesPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-xs font-medium"
+                  className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-xs font-medium inline-flex items-center gap-1"
                 >
-                  ← Anterior
+                  <ChevronLeft className="w-3 h-3" /> Anterior
                 </button>
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page >= Math.ceil(meta.total / meta.perPage)}
-                  className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-xs font-medium"
+                  className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-xs font-medium inline-flex items-center gap-1"
                 >
-                  Próxima →
+                  Próxima <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
             </div>

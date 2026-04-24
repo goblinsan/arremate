@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Calendar } from 'lucide-react';
 import type { Show, ShowStatus } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -127,8 +128,8 @@ export default function SellerShowsPage() {
                   <p className="text-sm text-gray-500 truncate">{show.description}</p>
                 )}
                 {show.scheduledAt && (
-                  <p className="text-xs text-gray-400 mt-1">
-                    📅 {new Date(show.scheduledAt).toLocaleString('pt-BR')}
+                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                    <Calendar className="w-3 h-3 shrink-0" /> {new Date(show.scheduledAt).toLocaleString('pt-BR')}
                   </p>
                 )}
               </div>

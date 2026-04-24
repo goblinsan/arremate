@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 
@@ -172,16 +173,16 @@ export default function AuditEventsPage() {
                 <button
                   onClick={() => setPage((p) => Math.max(1, p - 1))}
                   disabled={page <= 1}
-                  className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-xs font-medium"
+                  className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-xs font-medium inline-flex items-center gap-1"
                 >
-                  ← Anterior
+                  <ChevronLeft className="w-3 h-3" /> Anterior
                 </button>
                 <button
                   onClick={() => setPage((p) => p + 1)}
                   disabled={page >= Math.ceil(meta.total / meta.perPage)}
-                  className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-xs font-medium"
+                  className="px-3 py-1 rounded-lg bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-xs font-medium inline-flex items-center gap-1"
                 >
-                  Próxima →
+                  Próxima <ChevronRight className="w-3 h-3" />
                 </button>
               </div>
             </div>

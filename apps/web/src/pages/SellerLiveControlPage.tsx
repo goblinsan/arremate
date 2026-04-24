@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
+import { Radio, Pin, Mic, ArrowLeft } from 'lucide-react';
 import type { Show, ShowSession, ShowInventoryItem, InventoryItem } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -232,7 +233,7 @@ export default function SellerLiveControlPage() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-16 text-center">
         <p className="text-gray-600 mb-4">Show não encontrado.</p>
-        <Link to="/seller/shows" className="text-brand-500 hover:underline text-sm">← Meus Shows</Link>
+        <Link to="/seller/shows" className="text-brand-500 hover:underline text-sm inline-flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" /> Meus Shows</Link>
       </div>
     );
   }
@@ -245,8 +246,8 @@ export default function SellerLiveControlPage() {
     <div className="max-w-3xl mx-auto px-4 py-12">
       {/* Header */}
       <div className="mb-8 flex items-center gap-4">
-        <Link to={`/seller/shows/${show.id}`} className="text-gray-400 hover:text-gray-600 text-sm">
-          ← Editar Show
+        <Link to={`/seller/shows/${show.id}`} className="text-gray-400 hover:text-gray-600 text-sm inline-flex items-center gap-1">
+          <ArrowLeft className="w-3.5 h-3.5" /> Editar Show
         </Link>
         <h1 className="text-2xl font-bold text-gray-900 truncate">{show.title}</h1>
         <span
@@ -258,7 +259,7 @@ export default function SellerLiveControlPage() {
               : 'bg-blue-100 text-blue-700'
           }`}
         >
-          {isLive ? '🔴 Ao vivo' : show.status}
+          {isLive ? <><Radio className="w-3 h-3" /> Ao vivo</> : show.status}
         </span>
       </div>
 
@@ -279,7 +280,7 @@ export default function SellerLiveControlPage() {
             disabled={isStarting}
             className="bg-red-500 hover:bg-red-600 disabled:opacity-60 text-white font-bold px-8 py-3 rounded-xl text-base transition-colors"
           >
-            {isStarting ? 'Iniciando…' : '🔴 Ir ao vivo'}
+            {isStarting ? 'Iniciando…' : <><Radio className="w-4 h-4 mr-1.5 inline" />Ir ao vivo</>}
           </button>
         </div>
       )}
@@ -289,7 +290,7 @@ export default function SellerLiveControlPage() {
         <div className="bg-gray-50 rounded-2xl p-6 text-center text-gray-500 mb-6">
           {bastaoTarget ? (
             <>
-              <p className="font-semibold text-gray-700 mb-2">🎙️ Bastão passado com sucesso!</p>
+              <p className="font-semibold text-gray-700 mb-2 flex items-center justify-center gap-2"><Mic className="w-4 h-4" /> Bastão passado com sucesso!</p>
               <p className="text-sm mb-3">Seus espectadores foram redirecionados para:</p>
               <Link
                 to={`/shows/${bastaoTarget.showId}/live`}
@@ -322,7 +323,7 @@ export default function SellerLiveControlPage() {
             </div>
             {session.pinnedItem ? (
               <div className="flex items-center gap-3 bg-red-50 rounded-xl px-4 py-3 border border-red-100">
-                <span className="text-2xl">📌</span>
+                <Pin className="w-5 h-5 text-red-500 shrink-0" />
                 <div>
                   <p className="font-semibold text-gray-900">{session.pinnedItem.inventoryItem.title}</p>
                   <p className="text-sm text-brand-500 font-bold">
@@ -374,7 +375,7 @@ export default function SellerLiveControlPage() {
                                 onClick={handleUnpin}
                                 className="text-xs bg-red-100 text-red-600 hover:bg-red-200 px-2 py-1 rounded-lg font-medium transition-colors"
                               >
-                                📌 Fixado
+                              <Pin className="w-3 h-3 mr-0.5 inline" /> Fixado
                               </button>
                             ) : (
                               <button
@@ -416,7 +417,7 @@ export default function SellerLiveControlPage() {
               className="bg-purple-600 hover:bg-purple-700 disabled:opacity-60 text-white font-semibold px-6 py-2.5 rounded-lg text-sm transition-colors"
               title="Encerra seu show e redireciona seus espectadores para outro show ao vivo"
             >
-              {isBastao ? 'Passando…' : '🎙️ Passar o Bastão'}
+              {isBastao ? 'Passando…' : <><Mic className="w-4 h-4 mr-1.5 inline" />Passar o Bastão</>}
             </button>
             <button
               onClick={handleEndSession}
