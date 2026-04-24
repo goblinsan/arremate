@@ -9,10 +9,6 @@ function brl(cents: number) {
   return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-function bps(value: number) {
-  return `${(value / 100).toFixed(2)}%`;
-}
-
 function StatCard({
   label,
   value,
