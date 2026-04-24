@@ -75,15 +75,21 @@ jobs:
       - name: Validate staging secrets
         env:
           DATABASE_URL_STAGING: ${{ secrets.DATABASE_URL_STAGING }}
+          DIRECT_URL_STAGING: ${{ secrets.DIRECT_URL_STAGING }}
         run: |
           if [ -z "$DATABASE_URL_STAGING" ]; then
             echo "DATABASE_URL_STAGING is not set"
             exit 1
           fi
 
+          if [ -z "$DIRECT_URL_STAGING" ]; then
+            echo "DIRECT_URL_STAGING is not set; falling back to DATABASE_URL_STAGING for Prisma schema sync"
+          fi
+
       - name: Apply staging database schema
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL_STAGING != '' && secrets.DIRECT_URL_STAGING || secrets.DATABASE_URL_STAGING }}
         run: pnpm --filter @arremate/database db:push
 
       - name: Set staging API secret
@@ -167,15 +173,21 @@ jobs:
       - name: Validate production secrets
         env:
           DATABASE_URL_PRODUCTION: ${{ secrets.DATABASE_URL_PRODUCTION }}
+          DIRECT_URL_PRODUCTION: ${{ secrets.DIRECT_URL_PRODUCTION }}
         run: |
           if [ -z "$DATABASE_URL_PRODUCTION" ]; then
             echo "DATABASE_URL_PRODUCTION is not set"
             exit 1
           fi
 
+          if [ -z "$DIRECT_URL_PRODUCTION" ]; then
+            echo "DIRECT_URL_PRODUCTION is not set; falling back to DATABASE_URL_PRODUCTION for Prisma schema sync"
+          fi
+
       - name: Apply production database schema
         env:
           DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
+          DIRECT_URL: ${{ secrets.DIRECT_URL_PRODUCTION != '' && secrets.DIRECT_URL_PRODUCTION || secrets.DATABASE_URL_PRODUCTION }}
         run: pnpm --filter @arremate/database db:push
 
       - name: Set production API secret
