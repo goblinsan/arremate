@@ -453,6 +453,73 @@ export interface FeeBreakdown {
   sellerOverrideApplied: boolean;
 }
 
+// ─── Monetization Analytics ──────────────────────────────────────────────────
+
+export interface MonetizationReport {
+  periodStart: string;
+  periodEnd: string;
+  statuses: string[];
+
+  orderCount: number;
+  ordersWithSnapshotCount: number;
+
+  gmvCents: number;
+  totalBuyerSpendCents: number;
+
+  grossCommissionCents: number;
+  processorFeeTotalCents: number;
+  shippingSubsidyCents: number;
+  netRevenueCents: number;
+
+  refundAmountCents: number;
+  commissionReversedCents: number;
+  processorFeeReversedCents: number;
+
+  adjustedCommissionCents: number;
+  adjustedNetRevenueCents: number;
+
+  /** Effective take rate in basis points (adjustedCommission / GMV * 10 000). */
+  effectiveTakeRateBps: number;
+}
+
+export interface PromotionImpact {
+  code: string;
+  usageCount: number;
+  gmvCents: number;
+  commissionWaivedCents: number;
+}
+
+export interface IncentiveReport {
+  periodStart: string;
+  periodEnd: string;
+
+  overrideOrderCount: number;
+  overrideGmvCents: number;
+  overrideActualCommissionCents: number;
+  overrideStandardCommissionCents: number;
+  commissionWaivedByOverridesCents: number;
+
+  promotionOrderCount: number;
+  promotionGmvCents: number;
+  commissionWaivedByPromotionsCents: number;
+  topPromotions: PromotionImpact[];
+
+  totalIncentiveWaivedCents: number;
+}
+
+/** Subset of the active FeeConfig returned to sellers for payout estimation. */
+export interface SellerFeeInfo {
+  id: string;
+  version: number;
+  label: string | null;
+  commissionBps: number;
+  processorFeeBps: number;
+  shippingModel: ShippingModel;
+  shippingFixedCents: number;
+  effectiveFrom: Date;
+  effectiveTo: Date | null;
+}
+
 // ─── API helpers ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {
