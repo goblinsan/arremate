@@ -297,7 +297,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (isOAuthCallback) {
           const expectedState = sessionStorage.getItem(OAUTH_STATE_KEY);
           const codeVerifier = sessionStorage.getItem(OAUTH_PKCE_VERIFIER_KEY);
-          const oauthMode = sessionStorage.getItem(OAUTH_MODE_KEY);
 
           sessionStorage.removeItem(OAUTH_STATE_KEY);
           sessionStorage.removeItem(OAUTH_PKCE_VERIFIER_KEY);
@@ -317,7 +316,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setTokens(newTokens);
           setUser(userFromTokens(newTokens));
           await fetchProfile(result.AccessToken);
-          window.history.replaceState({}, '', oauthMode === 'signup' ? '/profile' : '/');
           return;
         }
 

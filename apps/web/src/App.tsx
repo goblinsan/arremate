@@ -17,6 +17,7 @@ import BuyerOrderDetailPage from './pages/BuyerOrderDetailPage';
 import UpcomingShowsPage from './pages/UpcomingShowsPage';
 import ShowDetailPage from './pages/ShowDetailPage';
 import LiveRoomPage from './pages/LiveRoomPage';
+import AuthCallbackPage from './pages/AuthCallbackPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProfileSwitcher() {
@@ -267,7 +268,7 @@ function AppShell() {
           <Route path="/profile" element={<ProfilePage />} />
           <Route
             path="/auth/callback"
-            element={<div className="max-w-7xl mx-auto px-4 py-16 text-center text-gray-500">Finalizando login...</div>}
+            element={<AuthCallbackPage />}
           />
           <Route path="/shows" element={<UpcomingShowsPage />} />
           <Route path="/shows/:id" element={<ShowDetailPage />} />
