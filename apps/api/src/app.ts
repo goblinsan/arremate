@@ -21,6 +21,7 @@ import { adminModerationRoutes } from './routes/admin-moderation.js';
 import { adminRefundRoutes } from './routes/admin-refunds.js';
 import { adminAuditRoutes } from './routes/admin-audit.js';
 import { adminFeeConfigRoutes } from './routes/admin-fee-configs.js';
+import { adminOrderRoutes } from './routes/admin-orders.js';
 import { healthRoutes } from './routes/health.js';
 import type { AppEnv } from './types.js';
 
@@ -84,4 +85,5 @@ app.route('/', adminModerationRoutes);
 app.route('/', adminRefundRoutes);
 app.route('/', adminAuditRoutes);
 app.route('/', adminFeeConfigRoutes);
+app.route('/', adminOrderRoutes);
 app.route('/', healthRoutes);

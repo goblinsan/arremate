@@ -147,6 +147,12 @@ export default function BuyerOrderDetailPage() {
 
   const totalBRL = (order.totalCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
+  const hasFeeSnapshot = order.subtotalCents != null && order.buyerTotalCents != null;
+
+  function brl(cents: number) {
+    return (cents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-6">
@@ -199,6 +205,40 @@ export default function BuyerOrderDetailPage() {
           <p className="text-sm text-gray-400">Sem itens.</p>
         )}
       </div>
+
+      {/* Fee breakdown */}
+      {hasFeeSnapshot && (
+        <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Detalhamento de valores</h2>
+          <ul className="divide-y divide-gray-50 text-sm">
+            <li className="py-2 flex justify-between">
+              <span className="text-gray-600">Subtotal</span>
+              <span className="font-medium text-gray-900">{brl(order.subtotalCents!)}</span>
+            </li>
+            {(order.shippingCents ?? 0) > 0 && (
+              <li className="py-2 flex justify-between">
+                <span className="text-gray-600">Frete</span>
+                <span className="font-medium text-gray-900">{brl(order.shippingCents!)}</span>
+              </li>
+            )}
+            {order.promotionCode && (
+              <li className="py-2 flex justify-between">
+                <span className="text-gray-600">
+                  Desconto
+                  <span className="ml-1 text-xs text-brand-500 font-mono">({order.promotionCode})</span>
+                </span>
+                <span className="font-medium text-green-600">
+                  -{brl(Math.round((order.subtotalCents! * (order.promotionDiscountBps ?? 0)) / 10000))}
+                </span>
+              </li>
+            )}
+            <li className="py-2.5 flex justify-between border-t border-gray-200 mt-1">
+              <span className="font-semibold text-gray-800">Total cobrado</span>
+              <span className="font-bold text-gray-900">{brl(order.buyerTotalCents!)}</span>
+            </li>
+          </ul>
+        </div>
+      )}
 
       {/* Fulfillment status */}
       <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-6 mb-6">
