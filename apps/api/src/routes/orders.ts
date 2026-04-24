@@ -1,8 +1,10 @@
 import { Hono } from 'hono';
 import { prisma } from '@arremate/database';
 import { createPixAdapter } from '@arremate/payments';
+import { logger } from '@arremate/observability';
 import { authenticate } from '../plugins/authenticate.js';
 import { requireRole } from '../plugins/authorize.js';
+import { evaluateFee } from '../services/fee-evaluator.js';
 import type { AppEnv } from '../types.js';
 
 const app = new Hono<AppEnv>();
@@ -28,10 +30,51 @@ app.post('/v1/claims/:claimId/order', authenticate, async (c) => {
   }
   const sellerId = claim.queueItem.inventoryItem.sellerId;
   const priceCents = Math.round(Number(claim.priceAtClaim) * 100);
+
+  // Evaluate and snapshot fees at the moment of order creation
+  let feeData: {
+    feeConfigVersionId: string;
+    feeConfigVersion: number;
+    subtotalCents: number;
+    commissionBps: number;
+    commissionCents: number;
+    processorFeeBps: number;
+    processorFeeCents: number;
+    shippingCents: number;
+    buyerTotalCents: number;
+    sellerPayoutCents: number;
+    promotionCode: string | null;
+    promotionDiscountBps: number;
+    sellerOverrideApplied: boolean;
+  } | null = null;
+  try {
+    const breakdown = await evaluateFee({ subtotalCents: priceCents, sellerId });
+    feeData = {
+      feeConfigVersionId: breakdown.configVersionId,
+      feeConfigVersion: breakdown.configVersion,
+      subtotalCents: breakdown.subtotalCents,
+      commissionBps: breakdown.commissionBps,
+      commissionCents: breakdown.commissionCents,
+      processorFeeBps: breakdown.processorFeeBps,
+      processorFeeCents: breakdown.processorFeeCents,
+      shippingCents: breakdown.shippingCents,
+      buyerTotalCents: breakdown.totalBuyerCents,
+      sellerPayoutCents: breakdown.sellerPayoutCents,
+      promotionCode: breakdown.promotionCode,
+      promotionDiscountBps: breakdown.promotionDiscountBps,
+      sellerOverrideApplied: breakdown.sellerOverrideApplied,
+    };
+  } catch (err) {
+    // No active fee config or evaluation failed — order proceeds without snapshot.
+    // Fee fields will be null on this order and refunds will fall back to totalCents.
+    logger.warn('Fee evaluation failed; order created without fee snapshot', { claimId, err: err instanceof Error ? err.message : String(err) });
+  }
+
   const [order] = await prisma.$transaction([
     prisma.order.create({
       data: {
         claimId: claim.id, buyerId: user.id, sellerId, totalCents: priceCents, status: 'PENDING_PAYMENT',
+        ...(feeData ?? {}),
         lines: { create: { inventoryItemId: claim.queueItem.inventoryItemId, title: claim.queueItem.inventoryItem.title, priceCents, quantity: 1 } },
       },
       include: { lines: { include: { inventoryItem: true } }, payments: true },

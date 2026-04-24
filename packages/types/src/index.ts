@@ -307,12 +307,44 @@ export interface Order {
   seller?: Pick<User, 'id' | 'name' | 'email'>;
   status: OrderStatus;
   totalCents: number;
+  // Immutable fee snapshot captured at order creation
+  feeConfigVersionId: string | null;
+  feeConfigVersion: number | null;
+  subtotalCents: number | null;
+  commissionBps: number | null;
+  commissionCents: number | null;
+  processorFeeBps: number | null;
+  processorFeeCents: number | null;
+  shippingCents: number | null;
+  buyerTotalCents: number | null;
+  sellerPayoutCents: number | null;
+  promotionCode: string | null;
+  promotionDiscountBps: number | null;
+  sellerOverrideApplied: boolean | null;
   createdAt: Date;
   updatedAt: Date;
   lines?: OrderLine[];
   payments?: Payment[];
   shipment?: Shipment | null;
   supportTickets?: SupportTicket[];
+  refunds?: OrderRefund[];
+}
+
+export type RefundType = 'FULL' | 'PARTIAL';
+
+export interface OrderRefund {
+  id: string;
+  orderId: string;
+  issuedById: string;
+  issuedBy?: Pick<User, 'id' | 'name' | 'email'>;
+  refundType: RefundType;
+  refundAmountCents: number;
+  commissionReversalCents: number;
+  processorFeeReversalCents: number;
+  sellerClawbackCents: number;
+  payoutOffsetCents: number;
+  reason: string | null;
+  createdAt: Date;
 }
 
 // ─── Disputes ─────────────────────────────────────────────────────────────────
