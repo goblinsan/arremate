@@ -7,7 +7,7 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const from = (location.state as { from?: Location })?.from?.pathname ?? '/';
+  const from = (location.state as { from?: Location })?.from?.pathname ?? '/profile';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
