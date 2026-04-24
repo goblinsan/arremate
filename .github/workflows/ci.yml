@@ -81,6 +81,11 @@ jobs:
             exit 1
           fi
 
+      - name: Apply staging database schema
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_STAGING }}
+        run: pnpm --filter @arremate/database db:push
+
       - name: Set staging API secret
         env:
           DATABASE_URL_STAGING: ${{ secrets.DATABASE_URL_STAGING }}
@@ -167,6 +172,11 @@ jobs:
             echo "DATABASE_URL_PRODUCTION is not set"
             exit 1
           fi
+
+      - name: Apply production database schema
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL_PRODUCTION }}
+        run: pnpm --filter @arremate/database db:push
 
       - name: Set production API secret
         env:

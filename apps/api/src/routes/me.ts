@@ -1,9 +1,24 @@
 import { Hono } from 'hono';
-import { prisma } from '@arremate/database';
+import { prisma, Prisma } from '@arremate/database';
 import { authenticate } from '../plugins/authenticate.js';
 import type { AppEnv } from '../types.js';
 
 const app = new Hono<AppEnv>();
+
+const legacyMeSelect = {
+  id: true,
+  email: true,
+  name: true,
+  role: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+function isMissingActiveRoleColumnError(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError
+    && err.code === 'P2022'
+    && String(err.meta?.column ?? '').includes('activeRole');
+}
 
 /**
  * GET /v1/me
@@ -51,6 +66,17 @@ app.patch('/v1/me', authenticate, async (c) => {
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: { name: rawName || null },
+  }).catch(async (err) => {
+    if (!isMissingActiveRoleColumnError(err)) throw err;
+    const legacyUser = await prisma.user.update({
+      where: { id: user.id },
+      data: { name: rawName || null },
+      select: legacyMeSelect,
+    });
+    return {
+      ...legacyUser,
+      activeRole: null,
+    };
   });
 
   return c.json({
@@ -87,7 +113,18 @@ app.post('/v1/me/switch-profile', authenticate, async (c) => {
   const updated = await prisma.user.update({
     where: { id: user.id },
     data: { activeRole: body.role },
+  }).catch((err) => {
+    if (!isMissingActiveRoleColumnError(err)) throw err;
+    return null;
   });
+
+  if (!updated) {
+    return c.json({
+      statusCode: 503,
+      error: 'Service Unavailable',
+      message: 'Profile switching is unavailable until the database schema is updated',
+    }, 503);
+  }
 
   return c.json({
     id: updated.id,

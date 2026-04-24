@@ -1,6 +1,33 @@
 import { prisma, Prisma, type User } from '@arremate/database';
 import type { CognitoJwtPayload } from '@arremate/auth';
 
+const legacyUserSelect = {
+  id: true,
+  cognitoSub: true,
+  email: true,
+  name: true,
+  role: true,
+  isSuspended: true,
+  suspendedAt: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
+type LegacyUserRecord = Prisma.UserGetPayload<{ select: typeof legacyUserSelect }>;
+
+function isMissingActiveRoleColumnError(err: unknown): boolean {
+  return err instanceof Prisma.PrismaClientKnownRequestError
+    && err.code === 'P2022'
+    && String(err.meta?.column ?? '').includes('activeRole');
+}
+
+function withNullActiveRole(user: LegacyUserRecord): User {
+  return {
+    ...user,
+    activeRole: null,
+  };
+}
+
 function parseNormalizedEmailList(raw: string | undefined): Set<string> {
   if (!raw) return new Set<string>();
   return new Set(
@@ -38,7 +65,7 @@ export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
   const adminPromotion = shouldBeAdmin(claims, email);
 
   try {
-    const user = await prisma.user.upsert({
+    return await prisma.user.upsert({
       where: { cognitoSub: sub },
       update: {
         // Keep email in sync in case the user changed it in Cognito.
@@ -54,9 +81,26 @@ export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
         role: adminPromotion ? 'ADMIN' : 'BUYER',
       },
     });
-
-    return user;
   } catch (err) {
+    if (isMissingActiveRoleColumnError(err)) {
+      const legacyUser = await prisma.user.upsert({
+        where: { cognitoSub: sub },
+        update: {
+          email,
+          ...(adminPromotion ? { role: 'ADMIN' as const } : {}),
+        },
+        create: {
+          cognitoSub: sub,
+          email,
+          name: claims['cognito:username'] ?? claims.username ?? null,
+          role: adminPromotion ? 'ADMIN' : 'BUYER',
+        },
+        select: legacyUserSelect,
+      });
+
+      return withNullActiveRole(legacyUser);
+    }
+
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       // First check: is there already a record for this Cognito identity?
       const bySub = await prisma.user.findUnique({ where: { cognitoSub: sub } });
@@ -70,14 +114,29 @@ export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
       if (byEmail) {
         if (!byEmail.cognitoSub) {
           try {
-            return await prisma.user.update({
+            const linked = await prisma.user.update({
               where: { id: byEmail.id },
               data: {
                 cognitoSub: sub,
                 ...(adminPromotion ? { role: 'ADMIN' as const } : {}),
               },
             });
+
+            return linked;
           } catch (linkErr) {
+            if (isMissingActiveRoleColumnError(linkErr)) {
+              const linked = await prisma.user.update({
+                where: { id: byEmail.id },
+                data: {
+                  cognitoSub: sub,
+                  ...(adminPromotion ? { role: 'ADMIN' as const } : {}),
+                },
+                select: legacyUserSelect,
+              });
+
+              return withNullActiveRole(linked);
+            }
+
             // A concurrent request may have already linked this cognitoSub.
             if (linkErr instanceof Prisma.PrismaClientKnownRequestError && linkErr.code === 'P2002') {
               const linked = await prisma.user.findUnique({ where: { cognitoSub: sub } });
