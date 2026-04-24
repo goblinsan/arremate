@@ -357,6 +357,70 @@ export interface ModerationCase {
   createdAt: Date;
 }
 
+// ─── Fee Configuration ────────────────────────────────────────────────────────
+
+export type ShippingModel = 'INCLUDED' | 'PASS_THROUGH' | 'FIXED';
+
+export interface FeeConfig {
+  id: string;
+  version: number;
+  label: string | null;
+  commissionBps: number;
+  processorFeeBps: number;
+  shippingModel: ShippingModel;
+  shippingFixedCents: number;
+  metadata: Record<string, unknown> | null;
+  isActive: boolean;
+  effectiveFrom: Date;
+  effectiveTo: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  sellerOverrides?: FeeSellerOverride[];
+  promotions?: FeePromotion[];
+}
+
+export interface FeeSellerOverride {
+  id: string;
+  feeConfigId: string;
+  sellerId: string;
+  seller?: Pick<User, 'id' | 'name' | 'email'>;
+  commissionBps: number;
+  reason: string | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FeePromotion {
+  id: string;
+  feeConfigId: string | null;
+  code: string;
+  discountBps: number;
+  sellerId: string | null;
+  seller?: Pick<User, 'id' | 'name' | 'email'> | null;
+  validFrom: Date;
+  validTo: Date;
+  maxUsages: number | null;
+  usageCount: number;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface FeeBreakdown {
+  configVersionId: string;
+  configVersion: number;
+  subtotalCents: number;
+  commissionBps: number;
+  commissionCents: number;
+  processorFeeBps: number;
+  processorFeeCents: number;
+  shippingCents: number;
+  totalBuyerCents: number;
+  sellerPayoutCents: number;
+  promotionCode: string | null;
+  promotionDiscountBps: number;
+  sellerOverrideApplied: boolean;
+}
+
 // ─── API helpers ─────────────────────────────────────────────────────────────
 
 export interface ApiResponse<T> {

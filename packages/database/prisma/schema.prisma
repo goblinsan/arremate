@@ -23,22 +23,24 @@ model User {
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
 
-  auctions              Auction[]          @relation("SellerAuctions")
+  auctions              Auction[]           @relation("SellerAuctions")
   bids                  Bid[]
   sellerApplication     SellerApplication?
   sellerAccount         SellerAccount?
   auditEvents           AuditEvent[]
-  shows                 Show[]             @relation("SellerShows")
-  inventoryItems        InventoryItem[]    @relation("SellerInventory")
-  chatMessages          ChatMessage[]      @relation("UserChatMessages")
-  claims                Claim[]            @relation("BuyerClaims")
-  buyerOrders           Order[]            @relation("BuyerOrders")
-  sellerOrders          Order[]            @relation("SellerOrders")
-  supportTickets        SupportTicket[]    @relation("UserSupportTickets")
-  raisedDisputes        Dispute[]          @relation("DisputeRaisedBy")
-  resolvedDisputes      Dispute[]          @relation("DisputeResolvedBy")
-  moderationCasesAbout  ModerationCase[]   @relation("ModerationCaseUser")
-  moderationCasesActed  ModerationCase[]   @relation("ModerationCaseActor")
+  shows                 Show[]              @relation("SellerShows")
+  inventoryItems        InventoryItem[]     @relation("SellerInventory")
+  chatMessages          ChatMessage[]       @relation("UserChatMessages")
+  claims                Claim[]             @relation("BuyerClaims")
+  buyerOrders           Order[]             @relation("BuyerOrders")
+  sellerOrders          Order[]             @relation("SellerOrders")
+  supportTickets        SupportTicket[]     @relation("UserSupportTickets")
+  raisedDisputes        Dispute[]           @relation("DisputeRaisedBy")
+  resolvedDisputes      Dispute[]           @relation("DisputeResolvedBy")
+  moderationCasesAbout  ModerationCase[]    @relation("ModerationCaseUser")
+  moderationCasesActed  ModerationCase[]    @relation("ModerationCaseActor")
+  feeOverrides          FeeSellerOverride[] @relation("SellerFeeOverrides")
+  feePromotions         FeePromotion[]      @relation("SellerFeePromotions")
 
   @@map("users")
 }
@@ -515,4 +517,66 @@ model ModerationCase {
   createdAt  DateTime             @default(now())
 
   @@map("moderation_cases")
+}
+
+// ─── Fee Configuration ────────────────────────────────────────────────────────
+
+enum ShippingModel {
+  INCLUDED
+  PASS_THROUGH
+  FIXED
+}
+
+model FeeConfig {
+  id                 String              @id @default(cuid())
+  version            Int
+  label              String?
+  commissionBps      Int
+  processorFeeBps    Int                 @default(0)
+  shippingModel      ShippingModel       @default(INCLUDED)
+  shippingFixedCents Int                 @default(0)
+  metadata           Json?
+  isActive           Boolean             @default(false)
+  effectiveFrom      DateTime
+  effectiveTo        DateTime?
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+
+  sellerOverrides    FeeSellerOverride[]
+  promotions         FeePromotion[]
+
+  @@map("fee_configs")
+}
+
+model FeeSellerOverride {
+  id            String    @id @default(cuid())
+  feeConfigId   String
+  feeConfig     FeeConfig @relation(fields: [feeConfigId], references: [id], onDelete: Cascade)
+  sellerId      String
+  seller        User      @relation("SellerFeeOverrides", fields: [sellerId], references: [id])
+  commissionBps Int
+  reason        String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@unique([feeConfigId, sellerId])
+  @@map("fee_seller_overrides")
+}
+
+model FeePromotion {
+  id            String     @id @default(cuid())
+  feeConfigId   String?
+  feeConfig     FeeConfig? @relation(fields: [feeConfigId], references: [id], onDelete: SetNull)
+  code          String     @unique
+  discountBps   Int
+  sellerId      String?
+  seller        User?      @relation("SellerFeePromotions", fields: [sellerId], references: [id])
+  validFrom     DateTime
+  validTo       DateTime
+  maxUsages     Int?
+  usageCount    Int        @default(0)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@map("fee_promotions")
 }
