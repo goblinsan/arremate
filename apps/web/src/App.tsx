@@ -13,6 +13,7 @@ import SellerInventoryFormPage from './pages/SellerInventoryFormPage';
 import SellerOrdersPage from './pages/SellerOrdersPage';
 import SellerOrderDetailPage from './pages/SellerOrderDetailPage';
 import SellerPayoutLedgerPage from './pages/SellerPayoutLedgerPage';
+import PayoutCalculatorPage from './pages/PayoutCalculatorPage';
 import BuyerOrdersPage from './pages/BuyerOrdersPage';
 import BuyerOrderDetailPage from './pages/BuyerOrderDetailPage';
 import UpcomingShowsPage from './pages/UpcomingShowsPage';
@@ -232,6 +233,16 @@ function AppShell() {
                   >
                     Repasses
                   </NavLink>
+                  <NavLink
+                    to="/seller/payout-calculator"
+                    className={({ isActive }) =>
+                      `text-sm font-medium transition-colors ${
+                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+                      }`
+                    }
+                  >
+                    Calculadora
+                  </NavLink>
                 </>
               )}
               {isAuthenticated && !isSellerMode && (
@@ -300,6 +311,7 @@ function AppShell() {
           <Route path="/seller/orders" element={<SellerOrdersPage />} />
           <Route path="/seller/orders/:orderId" element={<SellerOrderDetailPage />} />
           <Route path="/seller/payouts" element={<SellerPayoutLedgerPage />} />
+          <Route path="/seller/payout-calculator" element={<PayoutCalculatorPage />} />
           <Route path="/orders" element={<BuyerOrdersPage />} />
           <Route path="/orders/:orderId" element={<BuyerOrderDetailPage />} />
           <Route path="/shows/:id/live" element={<LiveRoomPage />} />
