@@ -31,8 +31,8 @@ const navItems = [
   { to: '/users', label: 'Usuários', icon: Users },
   { to: '/payments', label: 'Pagamentos', icon: CreditCard },
   { to: '/audit', label: 'Auditoria', icon: ClipboardList },
-  { to: '/reconciliation', label: 'Reconciliacao', icon: BarChart2 },
-  { to: '/health', label: 'Saude', icon: HeartPulse },
+  { to: '/reconciliation', label: 'Reconciliação', icon: BarChart2 },
+  { to: '/health', label: 'Saúde', icon: HeartPulse },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 

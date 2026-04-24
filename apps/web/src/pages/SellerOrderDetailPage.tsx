@@ -256,7 +256,7 @@ export default function SellerOrderDetailPage() {
             )}
             <li className="py-2 flex justify-between">
               <span className="text-gray-600">
-                Comissao da plataforma
+                Comissão da plataforma
                 {order.commissionBps != null && (
                   <span className="ml-1 text-xs text-gray-400">({bps(order.commissionBps)})</span>
                 )}
@@ -281,7 +281,7 @@ export default function SellerOrderDetailPage() {
             </li>
           </ul>
           <p className="text-xs text-gray-400 mt-3">
-            Os valores de repasse sao estimativas baseadas na configuracao de taxas no momento do pedido e podem estar sujeitos a ajustes.
+            Os valores de repasse são estimativas baseadas na configuração de taxas no momento do pedido e podem estar sujeitos a ajustes.
           </p>
         </div>
       ) : null}

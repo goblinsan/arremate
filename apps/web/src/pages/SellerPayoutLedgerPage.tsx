@@ -35,13 +35,13 @@ function exportCsv(orders: Order[]) {
     'Comprador',
     'Status',
     'Subtotal',
-    'Comissao Plataforma (taxa)',
-    'Comissao Plataforma (R$)',
+    'Comissão Plataforma (taxa)',
+    'Comissão Plataforma (R$)',
     'Taxa Processadora (taxa)',
     'Taxa Processadora (R$)',
     'Frete',
-    'Codigo Promocao',
-    'Desconto Promocao',
+    'Código Promoção',
+    'Desconto Promoção',
     'Taxa Personalizada',
     'Repasse Estimado',
   ].join(';');
@@ -59,7 +59,7 @@ function exportCsv(orders: Order[]) {
     o.shippingCents != null ? (o.shippingCents / 100).toFixed(2) : '0.00',
     o.promotionCode ?? '',
     o.promotionDiscountBps != null ? bps(o.promotionDiscountBps) : '',
-    o.sellerOverrideApplied ? 'Sim' : 'Nao',
+    o.sellerOverrideApplied ? 'Sim' : 'Não',
     o.sellerPayoutCents != null ? (o.sellerPayoutCents / 100).toFixed(2) : '',
   ].join(';'));
 
@@ -106,7 +106,7 @@ export default function SellerPayoutLedgerPage() {
   if (!isAuthenticated) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-600 mb-4">Voce precisa estar logado para ver seus repasses.</p>
+        <p className="text-gray-600 mb-4">Você precisa estar logado para ver seus repasses.</p>
         <Link to="/login" className="text-brand-500 font-medium hover:underline">Fazer login</Link>
       </div>
     );
@@ -122,7 +122,7 @@ export default function SellerPayoutLedgerPage() {
       <div className="mb-8 flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 mb-1">Repasses e extratos</h1>
-          <p className="text-sm text-gray-500">Historico detalhado de taxas e valores repassados por pedido.</p>
+          <p className="text-sm text-gray-500">Histórico detalhado de taxas e valores repassados por pedido.</p>
         </div>
 
         {ordersWithFees.length > 0 && (
@@ -144,7 +144,7 @@ export default function SellerPayoutLedgerPage() {
             <p className="text-2xl font-bold text-green-700">{brl(totalPayout)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
-            <p className="text-xs text-gray-500 mb-1">Comissao plataforma total</p>
+            <p className="text-xs text-gray-500 mb-1">Comissão plataforma total</p>
             <p className="text-2xl font-bold text-gray-800">{brl(totalCommission)}</p>
           </div>
           <div className="bg-white rounded-xl border border-gray-100 shadow-sm p-5">
@@ -187,7 +187,7 @@ export default function SellerPayoutLedgerPage() {
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
                   <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Status</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Subtotal</th>
-                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Comissao</th>
+                  <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Comissão</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Taxa proc.</th>
                   <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Repasse</th>
                 </tr>
@@ -260,8 +260,8 @@ export default function SellerPayoutLedgerPage() {
           </div>
           <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center gap-2 text-xs text-gray-400">
             <Info className="w-3.5 h-3.5 shrink-0" />
-            Os valores de repasse sao estimativas baseadas na configuracao de taxas vigente no momento de cada pedido.
-            N/D indica pedidos criados antes da configuracao de taxas estar ativa.
+            Os valores de repasse são estimativas baseadas na configuração de taxas vigente no momento de cada pedido.
+            N/D indica pedidos criados antes da configuração de taxas estar ativa.
           </div>
         </div>
       )}

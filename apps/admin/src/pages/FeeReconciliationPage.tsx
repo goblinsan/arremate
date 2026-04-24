@@ -35,13 +35,13 @@ function exportCsv(orders: Order[]) {
     'Comprador',
     'Status',
     'Subtotal',
-    'Comissao (taxa)',
-    'Comissao (R$)',
+    'Comissão (taxa)',
+    'Comissão (R$)',
     'Taxa Proc. (taxa)',
     'Taxa Proc. (R$)',
     'Frete',
-    'Codigo Promocao',
-    'Desconto Promocao',
+    'Código Promoção',
+    'Desconto Promoção',
     'Taxa Personalizada',
     'Repasse Vendedor',
     'Total Comprador',
@@ -61,7 +61,7 @@ function exportCsv(orders: Order[]) {
     o.shippingCents != null ? (o.shippingCents / 100).toFixed(2) : '0.00',
     o.promotionCode ?? '',
     o.promotionDiscountBps != null ? bps(o.promotionDiscountBps) : '',
-    o.sellerOverrideApplied ? 'Sim' : 'Nao',
+    o.sellerOverrideApplied ? 'Sim' : 'Não',
     o.sellerPayoutCents != null ? (o.sellerPayoutCents / 100).toFixed(2) : '',
     o.buyerTotalCents != null ? (o.buyerTotalCents / 100).toFixed(2) : (o.totalCents / 100).toFixed(2),
   ].join(';'));
@@ -133,9 +133,9 @@ export default function FeeReconciliationPage() {
     <div>
       <div className="flex items-start justify-between gap-4 mb-6 flex-wrap">
         <div>
-          <h1 className="text-xl font-bold text-gray-900">Reconciliacao de taxas</h1>
+          <h1 className="text-xl font-bold text-gray-900">Reconciliação de taxas</h1>
           <p className="text-sm text-gray-500 mt-0.5">
-            Visao consolidada das taxas aplicadas em todos os pedidos.
+            Visão consolidada das taxas aplicadas em todos os pedidos.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -160,15 +160,15 @@ export default function FeeReconciliationPage() {
       {ordersWithFees.length > 0 && (
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-4">
-            <p className="text-xs text-gray-500">Pedidos (pagina)</p>
+            <p className="text-xs text-gray-500">Pedidos (página)</p>
             <p className="text-xl font-bold text-gray-900">{orders.length}</p>
           </div>
           <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-4">
-            <p className="text-xs text-gray-500">Comissao (pagina)</p>
+            <p className="text-xs text-gray-500">Comissão (página)</p>
             <p className="text-xl font-bold text-gray-900">{brl(pageCommission)}</p>
           </div>
           <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-4">
-            <p className="text-xs text-gray-500">Taxa proc. (pagina)</p>
+            <p className="text-xs text-gray-500">Taxa proc. (página)</p>
             <p className="text-xl font-bold text-gray-900">{brl(pageProcessorFee)}</p>
           </div>
           <div className="bg-white rounded-lg border border-gray-100 shadow-sm p-4">
@@ -225,7 +225,7 @@ export default function FeeReconciliationPage() {
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Vendedor</th>
                     <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Status</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Subtotal</th>
-                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Comissao</th>
+                    <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Comissão</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Taxa proc.</th>
                     <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Repasse</th>
                     <th className="text-center px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide whitespace-nowrap">Override</th>
@@ -309,13 +309,13 @@ export default function FeeReconciliationPage() {
             <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between gap-4 flex-wrap text-xs text-gray-500">
               <span className="flex items-center gap-1.5">
                 <Info className="w-3.5 h-3.5 shrink-0" />
-                N/D indica pedidos sem instantaneo de taxa. Override indica configuracao de taxa personalizada por vendedor.
+                N/D indica pedidos sem instantâneo de taxa. Override indica configuração de taxa personalizada por vendedor.
               </span>
               <span>{total} pedidos no total</span>
             </div>
           </div>
 
-          {/* Pagination */}
+          {/* Págination */}
           {totalPages > 1 && (
             <div className="mt-4 flex items-center justify-center gap-2">
               <button
@@ -326,14 +326,14 @@ export default function FeeReconciliationPage() {
                 Anterior
               </button>
               <span className="text-sm text-gray-500">
-                Pagina {page} de {totalPages}
+                Página {page} de {totalPages}
               </span>
               <button
                 disabled={page === totalPages}
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 className="px-3 py-1.5 text-sm border border-gray-200 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
               >
-                Proxima
+                Próxima
               </button>
             </div>
           )}
