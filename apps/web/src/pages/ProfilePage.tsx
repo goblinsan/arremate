@@ -39,6 +39,20 @@ export default function ProfilePage() {
   useEffect(() => {
     if (isLoading || !isAuthenticated) return;
 
+    if (contextProfile) {
+      setProfile((current) => ({
+        ...(current ?? {
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+        }),
+        ...contextProfile,
+      }));
+      setName(contextProfile.name ?? '');
+      setIsFetching(false);
+      setError(null);
+      return;
+    }
+
     async function loadProfile() {
       setIsFetching(true);
       setError(null);
@@ -67,7 +81,7 @@ export default function ProfilePage() {
     }
 
     loadProfile().catch(() => undefined);
-  }, [getAccessToken, isAuthenticated, isLoading]);
+  }, [contextProfile, getAccessToken, isAuthenticated, isLoading]);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
