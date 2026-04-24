@@ -17,15 +17,16 @@ interface MeResponse {
 }
 
 export default function ProfilePage() {
-  const { isAuthenticated, isLoading, getAccessToken, currentRole, isSeller, switchProfile } = useAuth();
+  const { isAuthenticated, isLoading, getAccessToken, currentRole, isSeller, switchProfile, profile: contextProfile } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [profile, setProfile] = useState<MeResponse | null>(null);
-  const [name, setName] = useState('');
+  const [name, setName] = useState(contextProfile?.name ?? '');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [isFetching, setIsFetching] = useState(true);
+  // If auth context already has profile data (loaded during login), skip initial loading state
+  const [isFetching, setIsFetching] = useState(!contextProfile);
   const [isSaving, setIsSaving] = useState(false);
   const [isSwitching, setIsSwitching] = useState(false);
 
@@ -218,7 +219,7 @@ export default function ProfilePage() {
           <input
             id="email"
             type="email"
-            value={profile?.email ?? ''}
+            value={profile?.email ?? contextProfile?.email ?? ''}
             className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500"
             disabled
             readOnly
@@ -235,7 +236,10 @@ export default function ProfilePage() {
           <input
             id="role"
             type="text"
-            value={profile?.role === 'SELLER' ? 'Vendedor' : profile?.role === 'ADMIN' ? 'Administrador' : 'Comprador'}
+            value={(() => {
+              const role = profile?.role ?? contextProfile?.role;
+              return role === 'SELLER' ? 'Vendedor' : role === 'ADMIN' ? 'Administrador' : 'Comprador';
+            })()}
             className="w-full border border-gray-200 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-500"
             disabled
             readOnly

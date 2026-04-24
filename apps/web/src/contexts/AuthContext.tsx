@@ -367,14 +367,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await startHostedAuth('login', provider);
   }
 
-  function signOut(): void {
+  const signOut = useCallback((): void => {
     clearTokens();
     setTokens(null);
     setUser(null);
     setProfile(null);
-  }
+  }, []);
 
-  function getAccessToken(): string | null {
+  const getAccessToken = useCallback((): string | null => {
     if (!tokens) return null;
     const payload = decodeJwtPayload(tokens.accessToken);
     if (!payload || isTokenExpired(payload)) {
@@ -382,7 +382,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return null;
     }
     return tokens.accessToken;
-  }
+  }, [tokens, signOut]);
 
   async function switchProfile(role: 'BUYER' | 'SELLER'): Promise<void> {
     const token = getAccessToken();
