@@ -10,23 +10,28 @@ interface CognitoGetUserResponse {
 }
 
 async function fetchCognitoUserProfile(region: string, accessToken: string): Promise<{ email?: string; username?: string }> {
-  const endpoint = `https://cognito-idp.${region}.amazonaws.com/`;
-  const response = await fetch(endpoint, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/x-amz-json-1.1',
-      'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetUser',
-    },
-    body: JSON.stringify({ AccessToken: accessToken }),
-  });
+  try {
+    const endpoint = `https://cognito-idp.${region}.amazonaws.com/`;
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-amz-json-1.1',
+        'X-Amz-Target': 'AWSCognitoIdentityProviderService.GetUser',
+      },
+      body: JSON.stringify({ AccessToken: accessToken }),
+    });
 
-  if (!response.ok) return {};
-  const body = (await response.json()) as CognitoGetUserResponse;
-  const email = body.UserAttributes?.find((attr) => attr.Name === 'email')?.Value;
-  return {
-    email,
-    username: body.Username,
-  };
+    if (!response.ok) return {};
+    const body = (await response.json()) as CognitoGetUserResponse;
+    const email = body.UserAttributes?.find((attr) => attr.Name === 'email')?.Value;
+    return {
+      email,
+      username: body.Username,
+    };
+  } catch (err) {
+    console.warn('[authenticate] fetchCognitoUserProfile failed:', err instanceof Error ? err.message : err);
+    return {};
+  }
 }
 
 function getCognitoConfig() {
