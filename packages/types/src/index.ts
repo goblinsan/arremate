@@ -393,6 +393,21 @@ export interface ModerationCase {
 
 export type ShippingModel = 'INCLUDED' | 'PASS_THROUGH' | 'FIXED';
 
+export type FeeType =
+  | 'COMMISSION'
+  | 'PROCESSOR_FEE'
+  | 'SUBSCRIPTION'
+  | 'PROMOTED_LISTING'
+  | 'PREMIUM_SERVICE'
+  | 'PAYOUT_ACCELERATION'
+  | 'LOGISTICS_MARGIN';
+
+export interface FeeLineItem {
+  type: FeeType;
+  amountCents: number;
+  description: string | null;
+}
+
 export interface FeeConfig {
   id: string;
   version: number;
@@ -451,6 +466,25 @@ export interface FeeBreakdown {
   promotionCode: string | null;
   promotionDiscountBps: number;
   sellerOverrideApplied: boolean;
+  /** All fee line items for this breakdown. Always includes COMMISSION and PROCESSOR_FEE;
+   *  future monetization products (subscriptions, promoted listings, etc.) are appended here. */
+  feeLineItems: FeeLineItem[];
+}
+
+/** Adjacent ledger entry for fee products that are not tied to a single order.
+ *  Examples: subscription charges, promoted-listing fees, payout-acceleration fees.
+ *  Order-adjacent entries (e.g. logistics margin) may optionally reference an order. */
+export interface SettlementLedgerEntry {
+  id: string;
+  sellerId: string;
+  seller?: Pick<User, 'id' | 'name' | 'email'>;
+  feeType: FeeType;
+  amountCents: number;
+  description: string | null;
+  orderId: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ─── Monetization Analytics ──────────────────────────────────────────────────

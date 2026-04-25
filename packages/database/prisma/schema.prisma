@@ -42,6 +42,7 @@ model User {
   feeOverrides          FeeSellerOverride[] @relation("SellerFeeOverrides")
   feePromotions         FeePromotion[]      @relation("SellerFeePromotions")
   issuedRefunds         OrderRefund[]       @relation("IssuedRefunds")
+  settlementEntries     SettlementLedgerEntry[] @relation("SellerLedgerEntries")
 
   @@map("users")
 }
@@ -336,6 +337,7 @@ model Order {
   supportTickets SupportTicket[]
   disputes       Dispute[]
   refunds        OrderRefund[]
+  ledgerEntries  SettlementLedgerEntry[]
 
   @@map("orders")
 }
@@ -570,6 +572,16 @@ enum ShippingModel {
   FIXED
 }
 
+enum FeeType {
+  COMMISSION
+  PROCESSOR_FEE
+  SUBSCRIPTION
+  PROMOTED_LISTING
+  PREMIUM_SERVICE
+  PAYOUT_ACCELERATION
+  LOGISTICS_MARGIN
+}
+
 model FeeConfig {
   id                 String              @id @default(cuid())
   version            Int
@@ -622,4 +634,25 @@ model FeePromotion {
   updatedAt     DateTime   @updatedAt
 
   @@map("fee_promotions")
+}
+
+// ─── Settlement Ledger ────────────────────────────────────────────────────────
+// Adjacent ledger entries for fee products that are not tied to a single order
+// (e.g. subscriptions, promoted-listing charges, payout-acceleration fees).
+// Order-adjacent entries (e.g. logistics margin) may optionally reference an order.
+
+model SettlementLedgerEntry {
+  id          String   @id @default(cuid())
+  sellerId    String
+  seller      User     @relation("SellerLedgerEntries", fields: [sellerId], references: [id])
+  feeType     FeeType
+  amountCents Int
+  description String?
+  orderId     String?
+  order       Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("settlement_ledger_entries")
 }
