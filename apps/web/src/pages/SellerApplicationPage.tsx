@@ -6,6 +6,22 @@ import type { SellerApplication, ApplicationStatus, DocumentType } from '@arrema
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 
+const MIME_BY_EXT: Record<string, string> = {
+  pdf: 'application/pdf',
+  jpg: 'image/jpeg',
+  jpeg: 'image/jpeg',
+  png: 'image/png',
+  webp: 'image/webp',
+};
+
+function resolveContentType(file: File): string {
+  if (file.type) return file.type;
+  const dotIndex = file.name.lastIndexOf('.');
+  if (dotIndex === -1) return '';
+  const ext = file.name.slice(dotIndex + 1).toLowerCase();
+  return MIME_BY_EXT[ext] ?? '';
+}
+
 const DOCUMENT_TYPES: { value: DocumentType; label: string }[] = [
   { value: 'IDENTITY', label: 'Documento de identidade (RG / CNH / Passaporte)' },
   { value: 'ADDRESS_PROOF', label: 'Comprovante de endereço' },
@@ -204,6 +220,11 @@ export default function SellerApplicationPage() {
     setUploadStatus((prev) => ({ ...prev, [uploadKey]: 'uploading' }));
 
     try {
+      const contentType = resolveContentType(file);
+      if (!contentType) {
+        throw new Error('Formato de arquivo não suportado. Use PDF, JPG, PNG ou WEBP.');
+      }
+
       const token = getAccessToken();
 
       // Step 1: Get a signed upload URL
@@ -216,7 +237,7 @@ export default function SellerApplicationPage() {
         body: JSON.stringify({
           documentType,
           fileName: file.name,
-          contentType: file.type,
+          contentType,
         }),
       });
 
@@ -228,11 +249,15 @@ export default function SellerApplicationPage() {
       const { uploadUrl, s3Key } = await urlRes.json() as { uploadUrl: string; s3Key: string };
 
       // Step 2: Upload directly to S3
-      await fetch(uploadUrl, {
+      const s3Res = await fetch(uploadUrl, {
         method: 'PUT',
-        headers: { 'Content-Type': file.type },
+        headers: { 'Content-Type': contentType },
         body: file,
       });
+
+      if (!s3Res.ok) {
+        throw new Error(`Erro ao enviar arquivo para o armazenamento (${s3Res.status}).`);
+      }
 
       // Step 3: Register the document with the API
       const docRes = await fetch(`${API_URL}/v1/seller-applications/me/documents`, {
@@ -245,7 +270,7 @@ export default function SellerApplicationPage() {
           documentType,
           fileName: file.name,
           s3Key,
-          contentType: file.type,
+          contentType,
           sizeBytes: file.size,
         }),
       });

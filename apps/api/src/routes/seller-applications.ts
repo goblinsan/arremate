@@ -8,6 +8,7 @@ import type { AppEnv } from '../types.js';
 const app = new Hono<AppEnv>();
 
 const ALLOWED_CONTENT_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'application/pdf'];
+const ALLOWED_DOCUMENT_TYPES: DocumentType[] = ['IDENTITY', 'ADDRESS_PROOF', 'BUSINESS_REGISTRATION', 'OTHER'];
 
 app.post('/v1/seller-applications', authenticate, async (c) => {
   const user = c.get('currentUser');
@@ -72,6 +73,9 @@ app.post('/v1/seller-applications/me/documents/upload-url', authenticate, async 
   if (!documentType || !fileName || !contentType) {
     return c.json({ statusCode: 400, error: 'Bad Request', message: 'documentType, fileName, and contentType are required' }, 400);
   }
+  if (!ALLOWED_DOCUMENT_TYPES.includes(documentType as DocumentType)) {
+    return c.json({ statusCode: 400, error: 'Bad Request', message: `documentType must be one of: ${ALLOWED_DOCUMENT_TYPES.join(', ')}` }, 400);
+  }
   if (!ALLOWED_CONTENT_TYPES.includes(contentType)) {
     return c.json({ statusCode: 400, error: 'Bad Request', message: `contentType must be one of: ${ALLOWED_CONTENT_TYPES.join(', ')}` }, 400);
   }
@@ -97,6 +101,9 @@ app.post('/v1/seller-applications/me/documents', authenticate, async (c) => {
 
   if (!documentType || !fileName || !s3Key || !contentType) {
     return c.json({ statusCode: 400, error: 'Bad Request', message: 'documentType, fileName, s3Key, and contentType are required' }, 400);
+  }
+  if (!ALLOWED_DOCUMENT_TYPES.includes(documentType as DocumentType)) {
+    return c.json({ statusCode: 400, error: 'Bad Request', message: `documentType must be one of: ${ALLOWED_DOCUMENT_TYPES.join(', ')}` }, 400);
   }
 
   const doc = await prisma.sellerDocument.create({
