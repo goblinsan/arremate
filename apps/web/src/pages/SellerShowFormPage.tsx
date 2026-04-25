@@ -310,7 +310,7 @@ export default function SellerShowFormPage() {
             <button
               type="submit"
               disabled={isSaving}
-              className="bg-gray-100 hover:bg-gray-200 disabled:opacity-60 text-gray-700 font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+              className="bg-brand-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
             >
               {isSaving ? 'Salvando…' : 'Salvar'}
             </button>
