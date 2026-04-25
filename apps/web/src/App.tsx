@@ -18,6 +18,7 @@ import BuyerOrdersPage from './pages/BuyerOrdersPage';
 import BuyerOrderDetailPage from './pages/BuyerOrderDetailPage';
 import UpcomingShowsPage from './pages/UpcomingShowsPage';
 import ShowDetailPage from './pages/ShowDetailPage';
+import AuctionsPage from './pages/AuctionsPage';
 import LiveRoomPage from './pages/LiveRoomPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
@@ -305,14 +306,7 @@ function AppShell() {
           />
           <Route path="/shows" element={<UpcomingShowsPage />} />
           <Route path="/shows/:id" element={<ShowDetailPage />} />
-          <Route
-            path="/auctions"
-            element={
-              <div className="max-w-7xl mx-auto px-4 py-16 text-center text-gray-500">
-                Leilões em breve…
-              </div>
-            }
-          />
+          <Route path="/auctions" element={<AuctionsPage />} />
           <Route path="/seller-application" element={<SellerApplicationPage />} />
           <Route path="/seller/shows" element={<SellerShowsPage />} />
           <Route path="/seller/shows/:id" element={<SellerShowFormPage />} />
