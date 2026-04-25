@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Radio, ArrowLeft } from 'lucide-react';
@@ -32,10 +32,18 @@ export default function SellerShowFormPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [addItemId, setAddItemId] = useState('');
+  // Tracks whether the current show was just created via POST (skip the redundant GET).
+  const skipNextLoadRef = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (!isNew) loadShow();
+    if (!isNew) {
+      if (skipNextLoadRef.current) {
+        skipNextLoadRef.current = false;
+      } else {
+        loadShow();
+      }
+    }
     loadInventory();
   }, [isAuthenticated, id]);
 
@@ -121,7 +129,10 @@ export default function SellerShowFormPage() {
       const data: Show = await res.json();
       setShow(data);
       setSuccessMessage('Show salvo com sucesso!');
-      if (isNew) navigate(`/seller/shows/${data.id}`, { replace: true });
+      if (isNew) {
+        skipNextLoadRef.current = true;
+        navigate(`/seller/shows/${data.id}`, { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar show.');
     } finally {
