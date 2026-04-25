@@ -20,21 +20,22 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 };
 
 export default function BuyerOrdersPage() {
-  const { getAccessToken, isAuthenticated } = useAuth();
+  const { getAccessToken, isAuthenticated, isLoading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (authLoading || !isAuthenticated) return;
     fetchOrders();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   async function fetchOrders() {
     setIsLoading(true);
     setError(null);
     try {
       const token = getAccessToken();
+      if (!token) return;
       const res = await fetch(`${API_URL}/v1/buyer/orders`, {
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -46,6 +47,10 @@ export default function BuyerOrdersPage() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  if (authLoading) {
+    return <div className="max-w-3xl mx-auto px-4 py-16 text-center text-gray-400">Carregando…</div>;
   }
 
   if (!isAuthenticated) {
@@ -65,8 +70,15 @@ export default function BuyerOrdersPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">
-          {error}
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6 flex items-center justify-between gap-4">
+          <span>{error}</span>
+          <button
+            onClick={fetchOrders}
+            aria-label="Tentar carregar pedidos novamente"
+            className="shrink-0 text-xs font-medium underline hover:no-underline"
+          >
+            Tentar novamente
+          </button>
         </div>
       )}
 

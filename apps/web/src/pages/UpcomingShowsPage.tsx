@@ -26,7 +26,7 @@ export default function UpcomingShowsPage() {
       const res = await fetch(`${API_URL}/v1/shows`);
       if (!res.ok) throw new Error('Erro ao carregar shows.');
       const body = await res.json() as { data: PublicShow[] };
-      setShows(body.data);
+      setShows(Array.isArray(body?.data) ? body.data : []);
     } catch {
       setError('Erro ao carregar os próximos shows.');
     } finally {
@@ -42,7 +42,16 @@ export default function UpcomingShowsPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6 flex items-center justify-between gap-4">
+          <span>{error}</span>
+          <button
+            onClick={fetchShows}
+            aria-label="Tentar carregar shows novamente"
+            className="shrink-0 text-xs font-medium underline hover:no-underline"
+          >
+            Tentar novamente
+          </button>
+        </div>
       )}
 
       {isLoading ? (

@@ -23,28 +23,29 @@ const STATUS_COLORS: Record<ShowStatus, string> = {
 };
 
 export default function SellerShowsPage() {
-  const { getAccessToken, isAuthenticated } = useAuth();
+  const { getAccessToken, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [shows, setShows] = useState<Show[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (authLoading || !isAuthenticated) return;
     fetchShows();
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]);
 
   async function fetchShows() {
     setIsLoading(true);
     setError(null);
     try {
       const token = getAccessToken();
+      if (!token) return;
       const res = await fetch(`${API_URL}/v1/seller/shows`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Erro ao carregar shows.');
       const body = await res.json() as { data: Show[] };
-      setShows(body.data);
+      setShows(Array.isArray(body?.data) ? body.data : []);
     } catch {
       setError('Erro ao carregar shows.');
     } finally {
@@ -56,6 +57,7 @@ export default function SellerShowsPage() {
     if (!confirm('Confirma o cancelamento deste show?')) return;
     try {
       const token = getAccessToken();
+      if (!token) return;
       const res = await fetch(`${API_URL}/v1/seller/shows/${id}/cancel`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}` },
@@ -68,6 +70,10 @@ export default function SellerShowsPage() {
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao cancelar show.');
     }
+  }
+
+  if (authLoading) {
+    return <div className="max-w-5xl mx-auto px-4 py-16 text-center text-gray-400">Carregando…</div>;
   }
 
   if (!isAuthenticated) {
@@ -95,7 +101,16 @@ export default function SellerShowsPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6 flex items-center justify-between gap-4">
+          <span>{error}</span>
+          <button
+            onClick={fetchShows}
+            aria-label="Tentar carregar shows novamente"
+            className="shrink-0 text-xs font-medium underline hover:no-underline"
+          >
+            Tentar novamente
+          </button>
+        </div>
       )}
 
       {isLoading ? (
