@@ -26,7 +26,7 @@ export default function SellerShowsPage() {
   const { getAccessToken, isAuthenticated, isLoading: authLoading } = useAuth();
   const navigate = useNavigate();
   const [shows, setShows] = useState<Show[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -105,6 +105,7 @@ export default function SellerShowsPage() {
           <span>{error}</span>
           <button
             onClick={fetchShows}
+            aria-label="Tentar carregar shows novamente"
             className="shrink-0 text-xs font-medium underline hover:no-underline"
           >
             Tentar novamente

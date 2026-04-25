@@ -22,7 +22,7 @@ const STATUS_COLORS: Record<OrderStatus, string> = {
 export default function BuyerOrdersPage() {
   const { getAccessToken, isAuthenticated, isLoading: authLoading } = useAuth();
   const [orders, setOrders] = useState<Order[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -74,6 +74,7 @@ export default function BuyerOrdersPage() {
           <span>{error}</span>
           <button
             onClick={fetchOrders}
+            aria-label="Tentar carregar pedidos novamente"
             className="shrink-0 text-xs font-medium underline hover:no-underline"
           >
             Tentar novamente

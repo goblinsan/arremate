@@ -49,6 +49,7 @@ export default function AuctionsPage() {
           <span>{error}</span>
           <button
             onClick={fetchShows}
+            aria-label="Tentar carregar leilões novamente"
             className="shrink-0 text-xs font-medium underline hover:no-underline"
           >
             Tentar novamente
