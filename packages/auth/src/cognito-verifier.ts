@@ -13,6 +13,7 @@ export interface CognitoVerifierOptions {
 // Cache RemoteJWKSet instances by JWKS URL so the same instance (and its
 // built-in key cache) is reused across calls, avoiding repeated network
 // round-trips to the Cognito JWKS endpoint on every request.
+// Node.js runs in a single-threaded event loop, so a plain Map is safe here.
 const jwksInstanceCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
 
 function getCachedJWKS(jwksUri: URL): ReturnType<typeof createRemoteJWKSet> {
