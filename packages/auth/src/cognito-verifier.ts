@@ -10,6 +10,22 @@ export interface CognitoVerifierOptions {
   tokenUse?: 'id' | 'access';
 }
 
+// Cache RemoteJWKSet instances by JWKS URL so the same instance (and its
+// built-in key cache) is reused across calls, avoiding repeated network
+// round-trips to the Cognito JWKS endpoint on every request.
+// Node.js runs in a single-threaded event loop, so a plain Map is safe here.
+const jwksInstanceCache = new Map<string, ReturnType<typeof createRemoteJWKSet>>();
+
+function getCachedJWKS(jwksUri: URL): ReturnType<typeof createRemoteJWKSet> {
+  const key = jwksUri.toString();
+  let instance = jwksInstanceCache.get(key);
+  if (!instance) {
+    instance = createRemoteJWKSet(jwksUri);
+    jwksInstanceCache.set(key, instance);
+  }
+  return instance;
+}
+
 /**
  * Verifies a Cognito JWT (ID or access token) using the user pool's JWKS.
  *
@@ -27,7 +43,7 @@ export async function verifyCognitoToken(
   const issuer = `https://cognito-idp.${region}.amazonaws.com/${userPoolId}`;
   const jwksUri = new URL(`${issuer}/.well-known/jwks.json`);
 
-  const JWKS = createRemoteJWKSet(jwksUri);
+  const JWKS = getCachedJWKS(jwksUri);
 
   const verifyOptions: Parameters<typeof jwtVerify>[2] = {
     issuer,

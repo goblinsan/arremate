@@ -315,7 +315,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           storeTokens(newTokens);
           setTokens(newTokens);
           setUser(userFromTokens(newTokens));
-          await fetchProfile(result.AccessToken);
+          // Fetch profile in background so isLoading resolves quickly
+          void fetchProfile(result.AccessToken);
           return;
         }
 
@@ -325,7 +326,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           if (payload && !isTokenExpired(payload)) {
             setTokens(stored);
             setUser(userFromTokens(stored));
-            await fetchProfile(stored.accessToken);
+            // Fetch profile in background – don't block isLoading on a network call
+            void fetchProfile(stored.accessToken);
           } else {
             clearTokens();
           }

@@ -123,17 +123,8 @@ export default function ProfilePage() {
     setError(null);
     try {
       await switchProfile(role);
-      // Refresh local profile data
-      const token = getAccessToken();
-      if (token) {
-        const res = await fetch(`${API_URL}/v1/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        if (res.ok) {
-          const data = await res.json() as MeResponse;
-          setProfile(data);
-        }
-      }
+      // switchProfile() already updates the AuthContext profile state, which
+      // will trigger the useEffect above to sync local state.
       setSuccess(`Perfil alterado para ${role === 'SELLER' ? 'Vendedor' : 'Comprador'} com sucesso.`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível trocar o perfil.');

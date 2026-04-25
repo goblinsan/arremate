@@ -53,6 +53,9 @@ function shouldBeAdmin(claims: CognitoJwtPayload, email: string): boolean {
  *
  * The `cognitoSub` is used as the stable identity link between Cognito and
  * the local database record.
+ *
+ * Fast path: if the user already exists and neither the email nor the role
+ * needs updating, the record is returned immediately without a write query.
  */
 export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
   const { sub } = claims;
@@ -63,6 +66,22 @@ export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
     ?? `${sub}@users.arremate.local`;
 
   const adminPromotion = shouldBeAdmin(claims, email);
+
+  // Fast path: avoid a DB write on every request for existing, up-to-date users.
+  try {
+    const existing = await prisma.user.findUnique({ where: { cognitoSub: sub } });
+    if (existing) {
+      const emailUpToDate = existing.email === email;
+      const roleUpToDate = !adminPromotion || existing.role === 'ADMIN';
+      if (emailUpToDate && roleUpToDate) {
+        return existing;
+      }
+    }
+  } catch (fastPathErr) {
+    if (!isMissingActiveRoleColumnError(fastPathErr)) throw fastPathErr;
+    // Legacy schema without activeRole column – fall through to the upsert
+    // which handles the same error via legacyUserSelect.
+  }
 
   try {
     return await prisma.user.upsert({
