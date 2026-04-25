@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Routes, Route, Link, NavLink, useNavigate } from 'react-router-dom';
-import { ShoppingCart, Store, UserRound, LogOut, Plus } from 'lucide-react';
+import { ShoppingCart, Store, UserRound, LogOut, Plus, Menu, X } from 'lucide-react';
 import HomePage from './pages/HomePage';
 import LoginPage from './pages/LoginPage';
 import ProfilePage from './pages/ProfilePage';
@@ -135,6 +135,7 @@ function ProfileSwitcher() {
 function AppShell() {
   const { isAuthenticated, currentRole, startSignUp } = useAuth();
   const navigate = useNavigate();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isSellerMode = currentRole === 'SELLER' || currentRole === 'ADMIN';
 
@@ -146,6 +147,16 @@ function AppShell() {
       navigate(`/login?oauthError=${encodeURIComponent(message)}`);
     }
   }
+
+  const navLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `text-sm font-medium transition-colors ${
+      isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
+    }`;
+
+  const mobileNavLinkClass = ({ isActive }: { isActive: boolean }) =>
+    `block px-4 py-3 text-base font-medium rounded-lg transition-colors ${
+      isActive ? 'text-brand-500 bg-brand-50' : 'text-gray-700 hover:text-brand-500 hover:bg-gray-50'
+    }`;
 
   return (
     <div className="min-h-screen bg-white">
@@ -161,99 +172,36 @@ function AppShell() {
             </Link>
 
             <nav className="hidden md:flex items-center gap-8">
-              <NavLink
-                to="/"
-                className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${
-                    isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                  }`
-                }
-              >
+              <NavLink to="/" className={navLinkClass}>
                 Home
               </NavLink>
-              <NavLink
-                to="/shows"
-                className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${
-                    isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                  }`
-                }
-              >
+              <NavLink to="/shows" className={navLinkClass}>
                 Shows
               </NavLink>
-              <NavLink
-                to="/auctions"
-                className={({ isActive }) =>
-                  `text-sm font-medium transition-colors ${
-                    isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                  }`
-                }
-              >
+              <NavLink to="/auctions" className={navLinkClass}>
                 Leilões
               </NavLink>
               {isAuthenticated && isSellerMode && (
                 <>
-                  <NavLink
-                    to="/seller/shows"
-                    className={({ isActive }) =>
-                      `text-sm font-medium transition-colors ${
-                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                      }`
-                    }
-                  >
+                  <NavLink to="/seller/shows" className={navLinkClass}>
                     Meus Shows
                   </NavLink>
-                  <NavLink
-                    to="/seller/inventory"
-                    className={({ isActive }) =>
-                      `text-sm font-medium transition-colors ${
-                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                      }`
-                    }
-                  >
+                  <NavLink to="/seller/inventory" className={navLinkClass}>
                     Inventário
                   </NavLink>
-                  <NavLink
-                    to="/seller/orders"
-                    className={({ isActive }) =>
-                      `text-sm font-medium transition-colors ${
-                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                      }`
-                    }
-                  >
+                  <NavLink to="/seller/orders" className={navLinkClass}>
                     Pedidos
                   </NavLink>
-                  <NavLink
-                    to="/seller/payouts"
-                    className={({ isActive }) =>
-                      `text-sm font-medium transition-colors ${
-                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                      }`
-                    }
-                  >
+                  <NavLink to="/seller/payouts" className={navLinkClass}>
                     Repasses
                   </NavLink>
-                  <NavLink
-                    to="/seller/payout-calculator"
-                    className={({ isActive }) =>
-                      `text-sm font-medium transition-colors ${
-                        isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                      }`
-                    }
-                  >
+                  <NavLink to="/seller/payout-calculator" className={navLinkClass}>
                     Calculadora
                   </NavLink>
                 </>
               )}
               {isAuthenticated && !isSellerMode && (
-                <NavLink
-                  to="/orders"
-                  className={({ isActive }) =>
-                    `text-sm font-medium transition-colors ${
-                      isActive ? 'text-brand-500' : 'text-gray-600 hover:text-brand-500'
-                    }`
-                  }
-                >
+                <NavLink to="/orders" className={navLinkClass}>
                   Minhas Compras
                 </NavLink>
               )}
@@ -278,9 +226,72 @@ function AppShell() {
                   </button>
                 </>
               )}
+              <button
+                className="md:hidden p-2 rounded-lg text-gray-600 hover:text-brand-500 hover:bg-gray-50 transition-colors"
+                onClick={() => setMobileMenuOpen((v) => !v)}
+                aria-label={mobileMenuOpen ? 'Fechar menu' : 'Abrir menu'}
+                aria-expanded={mobileMenuOpen}
+              >
+                {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              </button>
             </div>
           </div>
         </div>
+
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t border-gray-100 bg-white px-4 py-3 space-y-1">
+            <NavLink to="/" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+              Home
+            </NavLink>
+            <NavLink to="/shows" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+              Shows
+            </NavLink>
+            <NavLink to="/auctions" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+              Leilões
+            </NavLink>
+            {isAuthenticated && isSellerMode && (
+              <>
+                <NavLink to="/seller/shows" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+                  Meus Shows
+                </NavLink>
+                <NavLink to="/seller/inventory" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+                  Inventário
+                </NavLink>
+                <NavLink to="/seller/orders" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+                  Pedidos
+                </NavLink>
+                <NavLink to="/seller/payouts" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+                  Repasses
+                </NavLink>
+                <NavLink to="/seller/payout-calculator" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+                  Calculadora
+                </NavLink>
+              </>
+            )}
+            {isAuthenticated && !isSellerMode && (
+              <NavLink to="/orders" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+                Minhas Compras
+              </NavLink>
+            )}
+            {!isAuthenticated && (
+              <div className="pt-2 border-t border-gray-100 flex flex-col gap-2">
+                <Link
+                  to="/login"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="block px-4 py-3 text-base font-medium text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                  Entrar
+                </Link>
+                <button
+                  onClick={() => { setMobileMenuOpen(false); handleRegisterClick(); }}
+                  className="w-full bg-brand-500 hover:bg-orange-600 text-white text-base font-semibold px-4 py-3 rounded-lg transition-colors"
+                >
+                  Cadastrar
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </header>
 
       <main>
