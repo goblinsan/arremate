@@ -63,6 +63,8 @@ export default function SellerApplicationPage() {
   });
 
   const [uploadStatus, setUploadStatus] = useState<Record<string, string>>({});
+  const [isFetchingCep, setIsFetchingCep] = useState(false);
+  const [cepError, setCepError] = useState<string | null>(null);
 
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -102,6 +104,43 @@ export default function SellerApplicationPage() {
 
   function handleChange(e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) {
     setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  }
+
+  async function handleCepChange(e: ChangeEvent<HTMLInputElement>) {
+    const raw = e.target.value;
+    setForm((prev) => ({ ...prev, postalCode: raw }));
+    setCepError(null);
+
+    const digits = raw.replace(/\D/g, '');
+    if (digits.length !== 8) return;
+
+    setIsFetchingCep(true);
+    try {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 8000);
+      let res: Response;
+      try {
+        res = await fetch(`https://viacep.com.br/ws/${digits}/json/`, { signal: controller.signal });
+      } finally {
+        clearTimeout(timeoutId);
+      }
+      if (!res.ok) throw new Error('CEP não encontrado.');
+      const data = await res.json() as { erro?: boolean; logradouro?: string; localidade?: string; uf?: string };
+      if (data.erro) {
+        setCepError('CEP não encontrado.');
+        return;
+      }
+      setForm((prev) => ({
+        ...prev,
+        addressLine1: data.logradouro ?? prev.addressLine1,
+        city: data.localidade ?? prev.city,
+        state: data.uf ?? prev.state,
+      }));
+    } catch {
+      setCepError('Erro ao buscar CEP. Verifique e tente novamente.');
+    } finally {
+      setIsFetchingCep(false);
+    }
   }
 
   async function handleSaveDraft(e: FormEvent) {
@@ -361,6 +400,28 @@ export default function SellerApplicationPage() {
         <section className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <h2 className="text-base font-semibold text-gray-800 mb-4">Endereço</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
+              <div className="relative">
+                <input
+                  name="postalCode"
+                  value={form.postalCode}
+                  onChange={handleCepChange}
+                  disabled={isReadOnly}
+                  placeholder="00000-000"
+                  maxLength={9}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-500"
+                />
+                {isFetchingCep && (
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-xs text-gray-400">
+                    Buscando…
+                  </span>
+                )}
+              </div>
+              {cepError && (
+                <p className="text-xs text-red-600 mt-1">{cepError}</p>
+              )}
+            </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-1">Logradouro</label>
               <input
@@ -400,17 +461,6 @@ export default function SellerApplicationPage() {
                 disabled={isReadOnly}
                 placeholder="SP"
                 maxLength={2}
-                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">CEP</label>
-              <input
-                name="postalCode"
-                value={form.postalCode}
-                onChange={handleChange}
-                disabled={isReadOnly}
-                placeholder="00000-000"
                 className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-500"
               />
             </div>
