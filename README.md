@@ -153,7 +153,18 @@ Required repository secrets:
 - `CLOUDFLARE_API_TOKEN`
 - `CLOUDFLARE_ACCOUNT_ID`
 - `DATABASE_URL_STAGING`
+- `DIRECT_URL_STAGING` (optional; falls back to `DATABASE_URL_STAGING`)
 - `DATABASE_URL_PRODUCTION`
+- `DIRECT_URL_PRODUCTION` (optional; falls back to `DATABASE_URL_PRODUCTION`)
+
+Required repository variables:
+
+- `VITE_COGNITO_DOMAIN`
+
+Cloudflare Worker runtime secrets (set directly in Cloudflare, not in GitHub):
+
+- `AWS_ACCESS_KEY_ID`
+- `AWS_SECRET_ACCESS_KEY`
 
 API Worker environments are configured in [apps/api/wrangler.toml](apps/api/wrangler.toml).
 

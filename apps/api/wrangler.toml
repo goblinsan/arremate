@@ -21,7 +21,7 @@ CORS_ORIGINS = "https://arrematelive.com,https://www.arrematelive.com,https://ad
 COGNITO_REGION = "sa-east-1"
 COGNITO_USER_POOL_ID = "sa-east-1_xnhLw2zr0"
 COGNITO_WEB_CLIENT_ID = "20t0nesdp1safrcr5adf71hrqa"
-AWS_REGION = "us-east-1"
+AWS_REGION = "sa-east-1"
 S3_DOCUMENTS_BUCKET = "arremate-seller-documents"
 S3_UPLOAD_URL_EXPIRY_SECONDS = "300"
 
@@ -41,7 +41,7 @@ CORS_ORIGIN = "*"
 COGNITO_REGION = "sa-east-1"
 COGNITO_USER_POOL_ID = "sa-east-1_xnhLw2zr0"
 COGNITO_WEB_CLIENT_ID = "20t0nesdp1safrcr5adf71hrqa"
-AWS_REGION = "us-east-1"
+AWS_REGION = "sa-east-1"
 S3_DOCUMENTS_BUCKET = "arremate-seller-documents"
 S3_UPLOAD_URL_EXPIRY_SECONDS = "300"
 
