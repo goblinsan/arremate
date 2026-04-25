@@ -204,3 +204,54 @@ describe('calculateFee – determinism', () => {
     expect(r1).toEqual(r2);
   });
 });
+
+// ─── feeLineItems (extensible fee type model) ───────────────────────────────
+
+describe('calculateFee – feeLineItems', () => {
+  it('always includes COMMISSION and PROCESSOR_FEE as the first two line items', () => {
+    const result = calculateFee({
+      config: defaultConfig,
+      subtotalCents: 10_000,
+      sellerOverride: null,
+      promotion: null,
+    });
+
+    expect(result.feeLineItems).toHaveLength(2);
+    expect(result.feeLineItems[0]).toEqual({ type: 'COMMISSION', amountCents: 1000, description: null });
+    expect(result.feeLineItems[1]).toEqual({ type: 'PROCESSOR_FEE', amountCents: 250, description: null });
+  });
+
+  it('appends extra fee line items supplied by the caller', () => {
+    const result = calculateFee({
+      config: defaultConfig,
+      subtotalCents: 10_000,
+      sellerOverride: null,
+      promotion: null,
+      extraFees: [
+        { type: 'LOGISTICS_MARGIN', amountCents: 300, description: 'Frete plataforma' },
+      ],
+    });
+
+    expect(result.feeLineItems).toHaveLength(3);
+    expect(result.feeLineItems[2]).toEqual({ type: 'LOGISTICS_MARGIN', amountCents: 300, description: 'Frete plataforma' });
+  });
+
+  it('reflects zero-bps fees correctly in feeLineItems', () => {
+    const zeroFeeConfig: FeeConfigSnapshot = { ...defaultConfig, commissionBps: 0, processorFeeBps: 0 };
+    const result = calculateFee({ config: zeroFeeConfig, subtotalCents: 5000, sellerOverride: null, promotion: null });
+
+    expect(result.feeLineItems[0]).toEqual({ type: 'COMMISSION', amountCents: 0, description: null });
+    expect(result.feeLineItems[1]).toEqual({ type: 'PROCESSOR_FEE', amountCents: 0, description: null });
+  });
+
+  it('reflects the post-override commission in the COMMISSION line item', () => {
+    const result = calculateFee({
+      config: defaultConfig,
+      subtotalCents: 10_000,
+      sellerOverride: { commissionBps: 500 },
+      promotion: null,
+    });
+
+    expect(result.feeLineItems[0]).toEqual({ type: 'COMMISSION', amountCents: 500, description: null });
+  });
+});

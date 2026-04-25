@@ -3,6 +3,8 @@ import { calculateFee } from './fee-calculator.js';
 import type {
   FeeConfigSnapshot,
   FeeBreakdown,
+  FeeLineItem,
+  FeeType,
   CalculateFeeParams,
   SellerOverrideSnapshot,
   PromotionSnapshot,
@@ -11,6 +13,8 @@ import type {
 export type {
   FeeConfigSnapshot,
   FeeBreakdown,
+  FeeLineItem,
+  FeeType,
   CalculateFeeParams,
   SellerOverrideSnapshot,
   PromotionSnapshot,
