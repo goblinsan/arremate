@@ -242,6 +242,22 @@ export interface GoLiveResponse {
   broadcast: BroadcastPayload;
 }
 
+/** Response shape returned by GET /v1/seller/sessions/:sessionId/broadcast-status. */
+export interface BroadcastStatusResponse {
+  sessionId: string;
+  status: SessionStatus;
+  ingestMode: IngestMode | null;
+  broadcastHealth: BroadcastHealth | null;
+  broadcastStartedAt: Date | null;
+  firstFrameAt: Date | null;
+  broadcastLastHeartbeatAt: Date | null;
+  reconnectCount: number;
+  broadcastErrorCode: string | null;
+  broadcastEndedReason: string | null;
+  publishUrl: string | null;
+  playbackUrl: string | null;
+}
+
 export interface LiveBid {
   id: string;
   sessionId: string;
