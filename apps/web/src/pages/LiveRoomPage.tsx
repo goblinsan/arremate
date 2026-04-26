@@ -51,6 +51,9 @@ export default function LiveRoomPage() {
   const [claim, setClaim] = useState<Claim | null>(null);
   const [isClaiming, setIsClaiming] = useState(false);
   const [claimError, setClaimError] = useState<string | null>(null);
+  const [bidAmount, setBidAmount] = useState('');
+  const [isBidding, setIsBidding] = useState(false);
+  const [bidError, setBidError] = useState<string | null>(null);
 
   // Order / payment state
   const [order, setOrder] = useState<Order | null>(null);
@@ -263,6 +266,58 @@ export default function LiveRoomPage() {
     }
   }
 
+  async function handlePlaceBid() {
+    if (!session || !session.pinnedItem) return;
+
+    const token = getAccessToken();
+    if (!token) {
+      setBidError('Você precisa estar logado para dar lances.');
+      return;
+    }
+
+    const amount = Number(bidAmount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setBidError('Informe um valor de lance válido.');
+      return;
+    }
+
+    setBidError(null);
+    setIsBidding(true);
+    try {
+      const res = await fetch(`${API_URL}/v1/sessions/${session.id}/bids`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ amount }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        setBidError((body as { message?: string }).message ?? 'Não foi possível registrar seu lance.');
+        return;
+      }
+
+      const data = await res.json() as {
+        queueItem: NonNullable<ShowSession['pinnedItem']>;
+      };
+
+      setSession((prev) => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          pinnedItem: data.queueItem,
+        };
+      });
+      setBidAmount('');
+    } catch {
+      setBidError('Não foi possível registrar seu lance.');
+    } finally {
+      setIsBidding(false);
+    }
+  }
+
   async function handleCreateOrder() {
     if (!claim) return;
     const token = getAccessToken();
@@ -335,6 +390,8 @@ export default function LiveRoomPage() {
   const isLive = show.status === 'LIVE';
   const isEnded = show.status === 'ENDED';
   const pinnedItem = session?.pinnedItem;
+  const livePrice = pinnedItem ? Number(pinnedItem.currentBid ?? pinnedItem.inventoryItem.startingPrice) : null;
+  const minNextBid = livePrice !== null ? livePrice + 1 : null;
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
@@ -445,9 +502,13 @@ export default function LiveRoomPage() {
                     {CONDITION_LABELS[pinnedItem.inventoryItem.condition]}
                   </p>
                   <p className="text-2xl font-extrabold text-brand-500">
-                    R$ {Number(pinnedItem.inventoryItem.startingPrice).toFixed(2)}
+                    R$ {Number(livePrice ?? 0).toFixed(2)}
                   </p>
-                  <p className="text-xs text-gray-400 mb-4">preço fixo</p>
+                  <p className="text-xs text-gray-400 mb-4">
+                    {pinnedItem.bidCount > 0
+                      ? `${pinnedItem.bidCount} lance${pinnedItem.bidCount === 1 ? '' : 's'} registrado${pinnedItem.bidCount === 1 ? '' : 's'}`
+                      : 'Sem lances ainda'}
+                  </p>
                 </div>
               </div>
 
@@ -460,6 +521,29 @@ export default function LiveRoomPage() {
                   </p>
                 ) : claim === null ? (
                   <>
+                    <div className="mb-3 bg-gray-50 border border-gray-200 rounded-xl p-3">
+                      <p className="text-xs text-gray-500 mb-2">Dar lance</p>
+                      <div className="flex gap-2">
+                        <input
+                          type="number"
+                          min={minNextBid ?? 1}
+                          step="1"
+                          value={bidAmount}
+                          onChange={(e) => setBidAmount(e.target.value)}
+                          placeholder={minNextBid ? `Mínimo: ${minNextBid.toFixed(2)}` : 'Valor do lance'}
+                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                        />
+                        <button
+                          onClick={handlePlaceBid}
+                          disabled={isBidding || pinnedItem.soldOut}
+                          className="bg-gray-800 hover:bg-gray-900 disabled:opacity-60 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+                        >
+                          {isBidding ? 'Enviando…' : 'Dar lance'}
+                        </button>
+                      </div>
+                      {bidError && <p className="text-xs text-red-600 mt-2">{bidError}</p>}
+                    </div>
+
                     {claimError && (
                       <p className="text-sm text-red-600 mb-2">{claimError}</p>
                     )}

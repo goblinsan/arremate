@@ -173,6 +173,9 @@ export interface ShowInventoryItem {
   inventoryItem?: InventoryItem;
   position: number;
   soldOut: boolean;
+  currentBid: number | null;
+  highestBidderId: string | null;
+  bidCount: number;
   createdAt: Date;
 }
 
@@ -193,6 +196,15 @@ export interface ShowSession {
   endedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+}
+
+export interface LiveBid {
+  id: string;
+  sessionId: string;
+  queueItemId: string;
+  bidderId: string;
+  amount: number;
+  createdAt: Date;
 }
 
 // ─── Audit ────────────────────────────────────────────────────────────────────

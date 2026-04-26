@@ -25,6 +25,8 @@ export default function SellerLiveControlPage() {
   const [isStarting, setIsStarting] = useState(false);
   const [isEnding, setIsEnding] = useState(false);
   const [isBastao, setIsBastao] = useState(false);
+  const [streamPlaybackUrl, setStreamPlaybackUrl] = useState('');
+  const [isUpdatingStream, setIsUpdatingStream] = useState(false);
   const [bastaoTarget, setBastaoTarget] = useState<{ showId: string; showTitle: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -69,6 +71,10 @@ export default function SellerLiveControlPage() {
       .catch(() => setError('Erro ao carregar show.'))
       .finally(() => setIsLoading(false));
   }, [isAuthenticated, showId, loadShow, loadSession]);
+
+  useEffect(() => {
+    setStreamPlaybackUrl(session?.playbackUrl ?? '');
+  }, [session?.playbackUrl]);
 
   async function handleGoLive() {
     if (!show) return;
@@ -191,6 +197,35 @@ export default function SellerLiveControlPage() {
     }
   }
 
+  async function handleUpdateStream() {
+    if (!session) return;
+    setError(null);
+    setIsUpdatingStream(true);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API_URL}/v1/seller/sessions/${session.id}/stream`, {
+        method: 'PATCH',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ playbackUrl: streamPlaybackUrl.trim() }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        throw new Error((body as { message?: string }).message ?? 'Erro ao atualizar stream.');
+      }
+
+      const updated: ShowSession = await res.json();
+      setSession(updated);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao atualizar stream.');
+    } finally {
+      setIsUpdatingStream(false);
+    }
+  }
+
   async function handleEndSession() {
     if (!session) return;
     if (!confirm('Encerrar a sessão ao vivo? Isso não pode ser desfeito.')) return;
@@ -308,6 +343,35 @@ export default function SellerLiveControlPage() {
       {/* Live control panel */}
       {isLive && session && (
         <>
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+            <h2 className="text-base font-semibold text-gray-800 mb-3">Video ao vivo</h2>
+            <p className="text-xs text-gray-500 mb-3">
+              Cole a URL publica de playback do seu stream (ex.: HLS .m3u8) para que compradores assistam ao vivo.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <input
+                type="url"
+                value={streamPlaybackUrl}
+                onChange={(e) => setStreamPlaybackUrl(e.target.value)}
+                placeholder="https://..."
+                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+              <button
+                onClick={handleUpdateStream}
+                disabled={isUpdatingStream || streamPlaybackUrl.trim().length === 0}
+                className="bg-brand-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+              >
+                {isUpdatingStream ? 'Atualizando…' : 'Atualizar video'}
+              </button>
+            </div>
+
+            {session.playbackUrl && (
+              <div className="mt-4 bg-black rounded-xl overflow-hidden aspect-video">
+                <video src={session.playbackUrl} controls autoPlay muted className="w-full h-full object-contain" />
+              </div>
+            )}
+          </div>
+
           {/* Currently pinned item */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
             <div className="flex items-center justify-between mb-4">

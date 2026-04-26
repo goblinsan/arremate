@@ -8,6 +8,13 @@ import type { AppEnv } from '../types.js';
 
 const app = new Hono<AppEnv>();
 const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')] as const;
+const MIN_BID_INCREMENT = 1;
+
+function asNumber(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const n = Number(value);
+  return Number.isFinite(n) ? n : null;
+}
 
 app.post('/v1/seller/shows/:showId/go-live', ...sellerGuard, async (c) => {
   const user = c.get('currentUser');
@@ -27,6 +34,34 @@ app.post('/v1/seller/shows/:showId/go-live', ...sellerGuard, async (c) => {
     prisma.show.update({ where: { id: showId }, data: { status: 'LIVE' } }),
   ]);
   return c.json(session, 201);
+});
+
+app.patch('/v1/seller/sessions/:sessionId/stream', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const sessionId = c.req.param('sessionId');
+  const body = await c.req.json<{ playbackUrl?: string }>().catch(() => ({} as { playbackUrl?: string }));
+
+  const session = await prisma.showSession.findUnique({ where: { id: sessionId }, include: { show: true } });
+  if (!session || session.show.sellerId !== user.id) {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  }
+
+  const playbackUrl = typeof body.playbackUrl === 'string' ? body.playbackUrl.trim() : '';
+  if (!playbackUrl) {
+    return c.json({ statusCode: 400, error: 'Bad Request', message: 'playbackUrl is required' }, 400);
+  }
+
+  if (!/^https?:\/\//i.test(playbackUrl)) {
+    return c.json({ statusCode: 400, error: 'Bad Request', message: 'playbackUrl must start with http:// or https://' }, 400);
+  }
+
+  const updated = await prisma.showSession.update({
+    where: { id: sessionId },
+    data: { playbackUrl },
+    include: { pinnedItem: { include: { inventoryItem: true } } },
+  });
+
+  return c.json(updated);
 });
 
 app.post('/v1/seller/sessions/:sessionId/pin', ...sellerGuard, async (c) => {
@@ -172,6 +207,145 @@ app.get('/v1/shows/:showId/session', async (c) => {
   }
 
   return c.json({ statusCode: 404, error: 'Not Found', message: 'No active session' }, 404);
+});
+
+app.post('/v1/sessions/:sessionId/bids', authenticate, async (c) => {
+  const user = c.get('currentUser');
+  const sessionId = c.req.param('sessionId');
+  const body = await c.req.json<{ amount?: number }>().catch(() => ({} as { amount?: number }));
+
+  const amount = Number(body.amount);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return c.json({ statusCode: 400, error: 'Bad Request', message: 'amount must be a positive number' }, 400);
+  }
+
+  const session = await prisma.showSession.findUnique({
+    where: { id: sessionId },
+    include: {
+      show: { select: { sellerId: true } },
+      pinnedItem: { include: { inventoryItem: true } },
+    },
+  });
+
+  if (!session) {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  }
+
+  if (session.status !== 'LIVE') {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'Bids are only accepted during a LIVE session' }, 409);
+  }
+
+  if (!session.pinnedItem || !session.pinnedItemId) {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'No item is currently pinned for bidding' }, 409);
+  }
+
+  if (session.show.sellerId === user.id) {
+    return c.json({ statusCode: 403, error: 'Forbidden', message: 'Sellers cannot bid on their own live item' }, 403);
+  }
+
+  if (session.pinnedItem.soldOut) {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'This item is no longer available for bidding' }, 409);
+  }
+
+  try {
+    const result = await prisma.$transaction(async (tx) => {
+      const latestItem = await tx.showInventoryItem.findUnique({
+        where: { id: session.pinnedItemId! },
+        include: { inventoryItem: { select: { startingPrice: true } } },
+      });
+
+      if (!latestItem) {
+        throw new Error('QUEUE_ITEM_NOT_FOUND');
+      }
+
+      if (latestItem.soldOut) {
+        throw new Error('ITEM_SOLD_OUT');
+      }
+
+      const currentBid = asNumber(latestItem.currentBid);
+      const startingPrice = asNumber(latestItem.inventoryItem.startingPrice) ?? 0;
+      const minimumBid = (currentBid ?? startingPrice) + MIN_BID_INCREMENT;
+
+      if (amount < minimumBid) {
+        throw new Error(`BID_TOO_LOW:${minimumBid}`);
+      }
+
+      const updatedItem = await tx.showInventoryItem.update({
+        where: { id: latestItem.id },
+        data: {
+          currentBid: amount,
+          highestBidderId: user.id,
+          bidCount: { increment: 1 },
+        },
+        include: {
+          inventoryItem: true,
+        },
+      });
+
+      const bid = await tx.liveBid.create({
+        data: {
+          sessionId,
+          queueItemId: latestItem.id,
+          bidderId: user.id,
+          amount,
+        },
+      });
+
+      return {
+        bid,
+        queueItem: updatedItem,
+      };
+    });
+
+    return c.json(result, 201);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : 'Unknown error';
+
+    if (message === 'QUEUE_ITEM_NOT_FOUND') {
+      return c.json({ statusCode: 404, error: 'Not Found', message: 'Pinned item not found' }, 404);
+    }
+
+    if (message === 'ITEM_SOLD_OUT') {
+      return c.json({ statusCode: 409, error: 'Conflict', message: 'This item is no longer available for bidding' }, 409);
+    }
+
+    if (message.startsWith('BID_TOO_LOW:')) {
+      const minimumBid = Number(message.split(':')[1]);
+      return c.json({
+        statusCode: 409,
+        error: 'Conflict',
+        message: `Bid too low. Minimum bid is R$ ${minimumBid.toFixed(2)}`,
+        minimumBid,
+      }, 409);
+    }
+
+    throw err;
+  }
+});
+
+app.get('/v1/sessions/:sessionId/bids', async (c) => {
+  const sessionId = c.req.param('sessionId');
+  const queueItemId = c.req.query('queueItemId');
+  const take = Math.min(100, Math.max(1, Number(c.req.query('limit') ?? '20')));
+
+  const session = await prisma.showSession.findUnique({ where: { id: sessionId }, select: { id: true } });
+  if (!session) {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  }
+
+  const bids = await prisma.liveBid.findMany({
+    where: {
+      sessionId,
+      ...(queueItemId ? { queueItemId } : {}),
+    },
+    include: {
+      bidder: { select: { id: true, name: true } },
+    },
+    orderBy: { createdAt: 'desc' },
+    take,
+  });
+
+  return c.json(bids.reverse());
 });
 
 export { app as liveSessionRoutes };

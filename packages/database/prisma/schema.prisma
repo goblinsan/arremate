@@ -25,6 +25,8 @@ model User {
 
   auctions              Auction[]           @relation("SellerAuctions")
   bids                  Bid[]
+  liveBids              LiveBid[]
+  highestBidItems       ShowInventoryItem[]  @relation("ShowItemHighestBidder")
   sellerApplication     SellerApplication?
   sellerAccount         SellerAccount?
   auditEvents           AuditEvent[]
@@ -241,10 +243,15 @@ model ShowInventoryItem {
   inventoryItem   InventoryItem @relation(fields: [inventoryItemId], references: [id])
   position        Int
   soldOut         Boolean       @default(false)
+  currentBid      Decimal?      @db.Decimal(12, 2)
+  highestBidderId String?
+  highestBidder   User?         @relation("ShowItemHighestBidder", fields: [highestBidderId], references: [id])
+  bidCount        Int           @default(0)
   createdAt       DateTime      @default(now())
 
   pinnedSessions  ShowSession[] @relation("PinnedSession")
   claims          Claim[]
+  bids            LiveBid[]
 
   @@unique([showId, inventoryItemId])
   @@map("show_inventory_items")
@@ -425,8 +432,24 @@ model ShowSession {
 
   chatMessages      ChatMessage[]
   claims            Claim[]
+  bids              LiveBid[]
 
   @@map("show_sessions")
+}
+
+model LiveBid {
+  id          String            @id @default(cuid())
+  sessionId   String
+  session     ShowSession       @relation(fields: [sessionId], references: [id])
+  queueItemId String
+  queueItem   ShowInventoryItem @relation(fields: [queueItemId], references: [id])
+  bidderId    String
+  bidder      User              @relation(fields: [bidderId], references: [id])
+  amount      Decimal           @db.Decimal(12, 2)
+  createdAt   DateTime          @default(now())
+
+  @@index([sessionId, queueItemId, createdAt])
+  @@map("live_bids")
 }
 
 // ─── Audit ────────────────────────────────────────────────────────────────────
