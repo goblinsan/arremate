@@ -348,6 +348,118 @@ app.post('/v1/sessions/:sessionId/bids', authenticate, async (c) => {
   }
 });
 
+// ─── Broadcast lifecycle endpoints ───────────────────────────────────────────
+
+app.post('/v1/seller/sessions/:sessionId/broadcast-started', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const sessionId = c.req.param('sessionId');
+  const session = await prisma.showSession.findUnique({ where: { id: sessionId }, include: { show: true } });
+  if (!session || session.show.sellerId !== user.id) {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  }
+  if (session.status !== 'LIVE' && session.status !== 'STARTING') {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'Session is not active' }, 409);
+  }
+
+  if (session.providerSessionId && session.providerName) {
+    try {
+      const provider = createLiveVideoProvider(session.providerName);
+      await provider.markBroadcastStarted?.(session.providerSessionId);
+    } catch {
+      // continue even if provider call fails
+    }
+  }
+
+  const updated = await prisma.showSession.update({
+    where: { id: sessionId },
+    data: {
+      status: 'LIVE',
+      broadcastStartedAt: session.broadcastStartedAt ?? new Date(),
+      broadcastHealth: 'GOOD',
+    },
+    include: { pinnedItem: { include: { inventoryItem: true } } },
+  });
+  return c.json(updated);
+});
+
+app.post('/v1/seller/sessions/:sessionId/broadcast-heartbeat', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const sessionId = c.req.param('sessionId');
+  const body = await c.req.json<{ health?: string }>().catch(() => ({} as { health?: string }));
+  const session = await prisma.showSession.findUnique({ where: { id: sessionId }, include: { show: true } });
+  if (!session || session.show.sellerId !== user.id) {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  }
+  if (session.status !== 'LIVE') {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'Session is not LIVE' }, 409);
+  }
+
+  const allowedHealth = ['GOOD', 'DEGRADED', 'DOWN'] as const;
+  type BroadcastHealthValue = typeof allowedHealth[number];
+  const health: BroadcastHealthValue = allowedHealth.includes(body.health as BroadcastHealthValue)
+    ? (body.health as BroadcastHealthValue)
+    : 'GOOD';
+
+  const updated = await prisma.showSession.update({
+    where: { id: sessionId },
+    data: { broadcastLastHeartbeatAt: new Date(), broadcastHealth: health },
+    include: { pinnedItem: { include: { inventoryItem: true } } },
+  });
+  return c.json(updated);
+});
+
+app.post('/v1/seller/sessions/:sessionId/broadcast-ended', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const sessionId = c.req.param('sessionId');
+  const body = await c.req.json<{ reason?: string }>().catch(() => ({} as { reason?: string }));
+  const session = await prisma.showSession.findUnique({ where: { id: sessionId }, include: { show: true } });
+  if (!session || session.show.sellerId !== user.id) {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  }
+  if (session.status !== 'LIVE' && session.status !== 'STARTING') {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'Session is not active' }, 409);
+  }
+
+  const reason = typeof body.reason === 'string' ? body.reason.trim() : null;
+
+  const updated = await prisma.$transaction(async (tx) => {
+    const endedSession = await tx.showSession.update({
+      where: { id: sessionId },
+      data: { status: 'ENDED', endedAt: new Date(), pinnedItemId: null, broadcastEndedReason: reason },
+      include: { pinnedItem: { include: { inventoryItem: true } } },
+    });
+    await tx.show.update({ where: { id: session.showId }, data: { status: 'ENDED' } });
+    return endedSession;
+  });
+  return c.json(updated);
+});
+
+app.get('/v1/seller/sessions/:sessionId/broadcast-status', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const sessionId = c.req.param('sessionId');
+  const session = await prisma.showSession.findUnique({
+    where: { id: sessionId },
+    include: { show: true, pinnedItem: { include: { inventoryItem: true } } },
+  });
+  if (!session || session.show.sellerId !== user.id) {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
+  }
+  return c.json({
+    sessionId: session.id,
+    status: session.status,
+    ingestMode: session.ingestMode,
+    broadcastHealth: session.broadcastHealth,
+    broadcastStartedAt: session.broadcastStartedAt,
+    firstFrameAt: session.firstFrameAt,
+    broadcastLastHeartbeatAt: session.broadcastLastHeartbeatAt,
+    reconnectCount: session.reconnectCount,
+    broadcastErrorCode: session.broadcastErrorCode,
+    broadcastEndedReason: session.broadcastEndedReason,
+    publishUrl: session.publishUrl,
+    playbackUrl: session.playbackUrl,
+  });
+});
+
 app.get('/v1/sessions/:sessionId/bids', async (c) => {
   const sessionId = c.req.param('sessionId');
   const queueItemId = c.req.query('queueItemId');
