@@ -183,6 +183,10 @@ export interface ShowInventoryItem {
 
 export type SessionStatus = 'STARTING' | 'LIVE' | 'ENDED';
 
+export type IngestMode = 'NATIVE_WEBRTC' | 'RTMP_EXTERNAL';
+
+export type BroadcastHealth = 'GOOD' | 'DEGRADED' | 'DOWN';
+
 export interface ShowSession {
   id: string;
   showId: string;
@@ -196,6 +200,22 @@ export interface ShowSession {
   endedAt: Date | null;
   createdAt: Date;
   updatedAt: Date;
+  // Native broadcast fields (nullable; absent or null means external-encoder workflow)
+  ingestMode: IngestMode | null;
+  providerName: string | null;
+  providerStreamId: string | null;
+  providerInputId: string | null;
+  providerPlaybackId: string | null;
+  publishUrl: string | null;
+  publishTokenExpiresAt: Date | null;
+  broadcastStartedAt: Date | null;
+  firstFrameAt: Date | null;
+  broadcastLastHeartbeatAt: Date | null;
+  broadcastHealth: BroadcastHealth | null;
+  /** Always a non-negative integer; defaults to 0 (never null because the Prisma field carries @default(0)). */
+  reconnectCount: number;
+  broadcastErrorCode: string | null;
+  broadcastEndedReason: string | null;
 }
 
 export interface LiveBid {
