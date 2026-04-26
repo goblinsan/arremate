@@ -40,6 +40,15 @@ const corsOrigin = configuredOrigins.length > 0
     }
   : (process.env.CORS_ORIGIN ?? '*');
 
+function resolveErrorCorsOrigin(requestOrigin: string | undefined): string | null {
+  if (typeof corsOrigin === 'function') {
+    return corsOrigin(requestOrigin ?? '');
+  }
+
+  if (!corsOrigin) return null;
+  return corsOrigin;
+}
+
 // ─── Middleware ──────────────────────────────────────────────────────────────
 app.use('*', cors({ origin: corsOrigin, allowHeaders: ['Authorization', 'Content-Type'] }));
 app.use('*', secureHeaders());
@@ -54,6 +63,14 @@ app.use('*', async (c, next) => {
 // ─── Global error handler ────────────────────────────────────────────────────
 app.onError((err, c) => {
   captureException(err, { url: c.req.url, method: c.req.method });
+
+  const requestOrigin = c.req.header('origin');
+  const allowedOrigin = resolveErrorCorsOrigin(requestOrigin);
+  if (allowedOrigin) {
+    c.header('access-control-allow-origin', allowedOrigin);
+    c.header('vary', 'Origin');
+  }
+
   const e = err as Error & { statusCode?: number; status?: number };
   const statusCode = e.statusCode ?? e.status ?? 500;
   return c.json({

@@ -83,6 +83,34 @@ export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
   }
 
   c.set('cognitoClaims', claims);
-  c.set('currentUser', await bootstrapUser(claims));
+  let currentUser;
+  try {
+    currentUser = await bootstrapUser(claims);
+  } catch (firstErr) {
+    // A single retry absorbs transient DB race/connection failures observed in production.
+    try {
+      currentUser = await bootstrapUser(claims);
+    } catch (secondErr) {
+      console.error(
+        '[authenticate] bootstrapUser failed',
+        {
+          requestId: c.req.header('x-request-id') ?? 'unknown',
+          url: c.req.url,
+          firstError: firstErr instanceof Error ? firstErr.message : String(firstErr),
+          secondError: secondErr instanceof Error ? secondErr.message : String(secondErr),
+        },
+      );
+      return c.json(
+        {
+          statusCode: 503,
+          error: 'Service Unavailable',
+          message: 'Authentication backend temporarily unavailable',
+        },
+        503,
+      );
+    }
+  }
+
+  c.set('currentUser', currentUser);
   await next();
 });
