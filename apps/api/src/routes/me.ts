@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { prisma, Prisma } from '@arremate/database';
+import { Prisma, withPrisma } from '@arremate/database';
 import { authenticate } from '../plugins/authenticate.js';
 import type { AppEnv } from '../types.js';
 
@@ -63,16 +63,16 @@ app.patch('/v1/me', authenticate, async (c) => {
     return c.json({ statusCode: 422, error: 'Unprocessable Entity', message: 'name must be 120 characters or fewer' }, 422);
   }
 
-  const updated = await prisma.user.update({
+  const updated = await withPrisma((prisma) => prisma.user.update({
     where: { id: user.id },
     data: { name: rawName || null },
-  }).catch(async (err) => {
+  })).catch(async (err) => {
     if (!isMissingActiveRoleColumnError(err)) throw err;
-    const legacyUser = await prisma.user.update({
+    const legacyUser = await withPrisma((prisma) => prisma.user.update({
       where: { id: user.id },
       data: { name: rawName || null },
       select: legacyMeSelect,
-    });
+    }));
     return {
       ...legacyUser,
       activeRole: null,
@@ -110,10 +110,10 @@ app.post('/v1/me/switch-profile', authenticate, async (c) => {
     return c.json({ statusCode: 403, error: 'Forbidden', message: 'You do not have an approved seller account' }, 403);
   }
 
-  const updated = await prisma.user.update({
+  const updated = await withPrisma((prisma) => prisma.user.update({
     where: { id: user.id },
     data: { activeRole: body.role },
-  }).catch((err) => {
+  })).catch((err) => {
     if (!isMissingActiveRoleColumnError(err)) throw err;
     return null;
   });

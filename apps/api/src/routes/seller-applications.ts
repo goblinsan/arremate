@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { prisma, type DocumentType } from '@arremate/database';
+import { withPrisma, type DocumentType } from '@arremate/database';
 import { authenticate } from '../plugins/authenticate.js';
 import { generateUploadUrl } from '../services/s3-upload.js';
 import { randomUUID } from 'crypto';
@@ -15,27 +15,27 @@ app.post('/v1/seller-applications', authenticate, async (c) => {
   const { businessName, businessType, taxId, phone, addressLine1, addressLine2, city, state, postalCode } =
     await c.req.json<Record<string, string | undefined>>();
 
-  const existing = await prisma.sellerApplication.findUnique({ where: { userId: user.id } });
+  const existing = await withPrisma((prisma) => prisma.sellerApplication.findUnique({ where: { userId: user.id } }));
 
   if (existing && existing.status !== 'DRAFT') {
     return c.json({ statusCode: 409, error: 'Conflict', message: 'Application already submitted and cannot be edited' }, 409);
   }
 
   const application = existing
-    ? await prisma.sellerApplication.update({
+    ? await withPrisma((prisma) => prisma.sellerApplication.update({
         where: { id: existing.id },
         data: { businessName, businessType, taxId, phone, addressLine1, addressLine2, city, state, postalCode },
-      })
-    : await prisma.sellerApplication.create({
+      }))
+    : await withPrisma((prisma) => prisma.sellerApplication.create({
         data: { userId: user.id, businessName, businessType, taxId, phone, addressLine1, addressLine2, city, state, postalCode },
-      });
+      }));
 
   return c.json(application, existing ? 200 : 201);
 });
 
 app.post('/v1/seller-applications/submit', authenticate, async (c) => {
   const user = c.get('currentUser');
-  const application = await prisma.sellerApplication.findUnique({ where: { userId: user.id } });
+  const application = await withPrisma((prisma) => prisma.sellerApplication.findUnique({ where: { userId: user.id } }));
 
   if (!application) return c.json({ statusCode: 404, error: 'Not Found', message: 'No seller application found' }, 404);
   if (application.status !== 'DRAFT') return c.json({ statusCode: 409, error: 'Conflict', message: `Application is already in status: ${application.status}` }, 409);
@@ -43,26 +43,26 @@ app.post('/v1/seller-applications/submit', authenticate, async (c) => {
     return c.json({ statusCode: 422, error: 'Unprocessable Entity', message: 'businessName, taxId, and phone are required before submission' }, 422);
   }
 
-  const submitted = await prisma.sellerApplication.update({
+  const submitted = await withPrisma((prisma) => prisma.sellerApplication.update({
     where: { id: application.id },
     data: { status: 'SUBMITTED', submittedAt: new Date() },
-  });
+  }));
   return c.json(submitted);
 });
 
 app.get('/v1/seller-applications/me', authenticate, async (c) => {
   const user = c.get('currentUser');
-  const application = await prisma.sellerApplication.findUnique({
+  const application = await withPrisma((prisma) => prisma.sellerApplication.findUnique({
     where: { userId: user.id },
     include: { documents: true },
-  });
+  }));
   if (!application) return c.json({ statusCode: 404, error: 'Not Found', message: 'No seller application found' }, 404);
   return c.json(application);
 });
 
 app.post('/v1/seller-applications/me/documents/upload-url', authenticate, async (c) => {
   const user = c.get('currentUser');
-  const application = await prisma.sellerApplication.findUnique({ where: { userId: user.id } });
+  const application = await withPrisma((prisma) => prisma.sellerApplication.findUnique({ where: { userId: user.id } }));
 
   if (!application) return c.json({ statusCode: 404, error: 'Not Found', message: 'No seller application found' }, 404);
   if (!['DRAFT', 'SUBMITTED'].includes(application.status)) {
@@ -88,7 +88,7 @@ app.post('/v1/seller-applications/me/documents/upload-url', authenticate, async 
 
 app.post('/v1/seller-applications/me/documents', authenticate, async (c) => {
   const user = c.get('currentUser');
-  const application = await prisma.sellerApplication.findUnique({ where: { userId: user.id } });
+  const application = await withPrisma((prisma) => prisma.sellerApplication.findUnique({ where: { userId: user.id } }));
 
   if (!application) return c.json({ statusCode: 404, error: 'Not Found', message: 'No seller application found' }, 404);
   if (!['DRAFT', 'SUBMITTED'].includes(application.status)) {
@@ -106,9 +106,9 @@ app.post('/v1/seller-applications/me/documents', authenticate, async (c) => {
     return c.json({ statusCode: 400, error: 'Bad Request', message: `documentType must be one of: ${ALLOWED_DOCUMENT_TYPES.join(', ')}` }, 400);
   }
 
-  const doc = await prisma.sellerDocument.create({
+  const doc = await withPrisma((prisma) => prisma.sellerDocument.create({
     data: { applicationId: application.id, documentType: documentType as DocumentType, fileName, s3Key, contentType, sizeBytes: sizeBytes ?? null },
-  });
+  }));
   return c.json(doc, 201);
 });
 
