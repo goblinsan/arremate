@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar } from 'lucide-react';
+import { Calendar, Radio } from 'lucide-react';
 import type { Show, ShowStatus } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -147,6 +147,11 @@ export default function SellerShowsPage() {
                     <Calendar className="w-3 h-3 shrink-0" /> {new Date(show.scheduledAt).toLocaleString('pt-BR')}
                   </p>
                 )}
+                {(show.status === 'SCHEDULED' || show.status === 'LIVE') && (
+                  <p className="text-xs text-brand-600 mt-1">
+                    Abra o painel ao vivo para iniciar/gerenciar o video da transmissao.
+                  </p>
+                )}
               </div>
               <div className="flex items-center gap-2 shrink-0">
                 <Link
@@ -155,6 +160,15 @@ export default function SellerShowsPage() {
                 >
                   Editar
                 </Link>
+                {(show.status === 'SCHEDULED' || show.status === 'LIVE') && (
+                  <Link
+                    to={`/seller/shows/${show.id}/live`}
+                    className="inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700"
+                  >
+                    <Radio className="w-3.5 h-3.5" />
+                    {show.status === 'LIVE' ? 'Painel ao vivo' : 'Ir ao vivo'}
+                  </Link>
+                )}
                 {(show.status === 'DRAFT' || show.status === 'SCHEDULED') && (
                   <button
                     onClick={() => handleCancel(show.id)}
