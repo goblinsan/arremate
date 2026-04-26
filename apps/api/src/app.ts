@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { randomUUID } from 'crypto';
-import { captureException } from '@arremate/observability';
+import { captureException, logger } from '@arremate/observability';
 import { meRoutes } from './routes/me.js';
 import { sellerApplicationRoutes } from './routes/seller-applications.js';
 import { adminSellerApplicationRoutes } from './routes/admin-seller-applications.js';
@@ -60,9 +60,48 @@ app.use('*', async (c, next) => {
   await next();
 });
 
+// ─── Request lifecycle telemetry ────────────────────────────────────────────
+app.use('*', async (c, next) => {
+  const startedAt = Date.now();
+
+  await next();
+
+  const elapsedMs = Date.now() - startedAt;
+  const method = c.req.method;
+  const pathname = new URL(c.req.url).pathname;
+  const status = c.res.status;
+  const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
+
+  const context = {
+    event: 'http.request.completed',
+    requestId: c.res.headers.get('x-request-id') ?? c.req.header('x-request-id') ?? 'unknown',
+    method,
+    path: pathname,
+    status,
+    elapsedMs,
+    origin: c.req.header('origin') ?? null,
+    cfRay: c.req.header('cf-ray') ?? null,
+    hasAuthorization: !!c.req.header('authorization'),
+  };
+
+  if (level === 'error') {
+    logger.error('http request failed', undefined, context);
+  } else if (level === 'warn') {
+    logger.warn('http request warning', context);
+  } else {
+    logger.info('http request', context);
+  }
+});
+
 // ─── Global error handler ────────────────────────────────────────────────────
 app.onError((err, c) => {
-  captureException(err, { url: c.req.url, method: c.req.method });
+  captureException(err, {
+    url: c.req.url,
+    method: c.req.method,
+    requestId: c.req.header('x-request-id') ?? 'unknown',
+    origin: c.req.header('origin') ?? null,
+    cfRay: c.req.header('cf-ray') ?? null,
+  });
 
   const requestOrigin = c.req.header('origin');
   const allowedOrigin = resolveErrorCorsOrigin(requestOrigin);

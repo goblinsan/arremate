@@ -1,6 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { extractBearerToken, verifyCognitoToken } from '@arremate/auth';
 import type { CognitoJwtPayload } from '@arremate/auth';
+import { logger } from '@arremate/observability';
 import { bootstrapUser } from '../services/user-bootstrap.js';
 import type { AppEnv } from '../types.js';
 
@@ -29,7 +30,11 @@ async function fetchCognitoUserProfile(region: string, accessToken: string): Pro
       username: body.Username,
     };
   } catch (err) {
-    console.warn('[authenticate] fetchCognitoUserProfile failed:', err instanceof Error ? err.message : err);
+    logger.warn('authenticate.fetchCognitoUserProfile failed', {
+      event: 'auth.cognito_profile_fetch.failed',
+      region,
+      error: err instanceof Error ? err.message : String(err),
+    });
     return {};
   }
 }
@@ -83,6 +88,7 @@ export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
   }
 
   c.set('cognitoClaims', claims);
+  const bootstrapStartedAt = Date.now();
   let currentUser;
   try {
     currentUser = await bootstrapUser(claims);
@@ -91,15 +97,14 @@ export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
     try {
       currentUser = await bootstrapUser(claims);
     } catch (secondErr) {
-      console.error(
-        '[authenticate] bootstrapUser failed',
-        {
-          requestId: c.req.header('x-request-id') ?? 'unknown',
-          url: c.req.url,
-          firstError: firstErr instanceof Error ? firstErr.message : String(firstErr),
-          secondError: secondErr instanceof Error ? secondErr.message : String(secondErr),
-        },
-      );
+      logger.error('authenticate.bootstrapUser failed', secondErr, {
+        event: 'auth.bootstrap.failed',
+        requestId: c.req.header('x-request-id') ?? 'unknown',
+        url: c.req.url,
+        elapsedMs: Date.now() - bootstrapStartedAt,
+        firstError: firstErr instanceof Error ? firstErr.message : String(firstErr),
+        secondError: secondErr instanceof Error ? secondErr.message : String(secondErr),
+      });
       return c.json(
         {
           statusCode: 503,
@@ -109,6 +114,17 @@ export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
         503,
       );
     }
+  }
+
+  const bootstrapElapsedMs = Date.now() - bootstrapStartedAt;
+  if (bootstrapElapsedMs > 350) {
+    logger.warn('authenticate.bootstrapUser slow', {
+      event: 'auth.bootstrap.slow',
+      requestId: c.req.header('x-request-id') ?? 'unknown',
+      url: c.req.url,
+      elapsedMs: bootstrapElapsedMs,
+      userId: currentUser.id,
+    });
   }
 
   c.set('currentUser', currentUser);

@@ -1,5 +1,6 @@
 import { prisma, Prisma, type User } from '@arremate/database';
 import type { CognitoJwtPayload } from '@arremate/auth';
+import { logger } from '@arremate/observability';
 
 const legacyUserSelect = {
   id: true,
@@ -166,14 +167,19 @@ export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
         }
         // The email is claimed by an account that is already linked to a
         // *different* Cognito identity – this is a genuine collision.
-        console.warn(
-          '[bootstrapUser] P2002: email already linked to a different cognitoSub',
-          { sub, email },
-        );
+        logger.warn('bootstrapUser email collision with different cognitoSub', {
+          event: 'auth.bootstrap.email_collision',
+          sub,
+          email,
+        });
       } else {
         // No record found for either cognitoSub or email despite the constraint
         // error – unexpected data inconsistency.
-        console.warn('[bootstrapUser] P2002 conflict but no user found for cognitoSub or email:', { sub, email });
+        logger.warn('bootstrapUser P2002 conflict but no matching records found', {
+          event: 'auth.bootstrap.p2002_no_match',
+          sub,
+          email,
+        });
       }
     }
     throw err;
