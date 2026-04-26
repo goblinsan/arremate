@@ -38,8 +38,7 @@ export default function HomePage() {
 
           <h1 className="text-5xl sm:text-6xl font-extrabold text-gray-900 leading-tight mb-2">
             Compre ao vivo,
-            <br />
-            <span className="text-brand-500">com confiança</span>
+            <span className="block text-brand-500">com confiança</span>
           </h1>
 
           <p className="text-xl text-gray-600 max-w-2xl mx-auto">
@@ -48,9 +47,12 @@ export default function HomePage() {
           </p>
 
           <div className="mt-8 flex flex-col sm:flex-row gap-4 justify-center">
-            <button className="bg-brand-500 hover:bg-orange-600 text-white font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg shadow-brand-500/30">
+            <Link
+              to="/shows"
+              className="bg-brand-500 hover:bg-orange-600 text-white font-bold px-8 py-4 rounded-xl text-lg transition-colors shadow-lg shadow-brand-500/30"
+            >
               Ver leilões ao vivo
-            </button>
+            </Link>
             <Link
               to="/seller-application"
               className="border-2 border-gray-200 hover:border-brand-500 text-gray-700 font-semibold px-8 py-4 rounded-xl text-lg transition-colors"
@@ -94,9 +96,12 @@ export default function HomePage() {
           <p className="text-orange-200 mb-8">
             Crie sua conta grátis e participe do próximo leilão ao vivo.
           </p>
-          <button className="bg-brand-500 hover:bg-orange-400 text-white font-bold px-10 py-4 rounded-xl text-lg transition-colors">
+          <Link
+            to="/login"
+            className="inline-block bg-brand-500 hover:bg-orange-400 text-white font-bold px-10 py-4 rounded-xl text-lg transition-colors"
+          >
             Criar conta grátis
-          </button>
+          </Link>
         </div>
       </section>
     </div>
