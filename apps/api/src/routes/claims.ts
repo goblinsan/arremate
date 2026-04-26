@@ -23,20 +23,21 @@ app.post('/v1/sessions/:sessionId/claim', authenticate, async (c) => {
   if (!session) return c.json({ statusCode: 404, error: 'Not Found', message: 'Session not found' }, 404);
   if (session.status !== 'LIVE') return c.json({ statusCode: 409, error: 'Conflict', message: 'Claims are only accepted during a LIVE session' }, 409);
   if (!session.pinnedItem || !session.pinnedItemId) return c.json({ statusCode: 409, error: 'Conflict', message: 'No item is currently available for claim' }, 409);
+  const pinnedItemId = session.pinnedItemId;
   if (session.pinnedItem.soldOut) return c.json({ statusCode: 409, error: 'Conflict', message: 'This item is no longer available' }, 409);
   const existingClaim = await prisma.claim.findFirst({
-    where: { sessionId, buyerId: user.id, queueItemId: session.pinnedItemId, status: { in: ['PENDING', 'CONFIRMED'] } },
+    where: { sessionId, buyerId: user.id, queueItemId: pinnedItemId, status: { in: ['PENDING', 'CONFIRMED'] } },
   });
   if (existingClaim) return c.json({ statusCode: 409, error: 'Conflict', message: 'You already have an active claim for this item' }, 409);
   const priceAtClaim = session.pinnedItem.currentBid ?? session.pinnedItem.inventoryItem.startingPrice;
   const expiresAt = new Date(Date.now() + CLAIM_EXPIRY_MINUTES * 60 * 1000);
   const claim = await prisma.$transaction(async (tx) => {
     const createdClaim = await tx.claim.create({
-      data: { sessionId, buyerId: user.id, queueItemId: session.pinnedItemId, priceAtClaim, expiresAt },
+      data: { sessionId, buyerId: user.id, queueItemId: pinnedItemId, priceAtClaim, expiresAt },
       include: { queueItem: { include: { inventoryItem: true } } },
     });
 
-    await tx.showInventoryItem.update({ where: { id: session.pinnedItemId }, data: { soldOut: true } });
+    await tx.showInventoryItem.update({ where: { id: pinnedItemId }, data: { soldOut: true } });
 
     return createdClaim;
   });
