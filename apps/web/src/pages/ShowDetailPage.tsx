@@ -35,14 +35,39 @@ export default function ShowDetailPage() {
   async function fetchShow() {
     setIsLoading(true);
     setError(null);
-    try {
+
+    async function requestShow(): Promise<PublicShow | null> {
       const res = await fetch(`${API_URL}/v1/shows/${id}`);
-      if (res.status === 404) {
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error('Erro ao carregar o show.');
+      return await res.json() as PublicShow;
+    }
+
+    try {
+      let data: PublicShow | null = null;
+      let loaded = false;
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          data = await requestShow();
+          loaded = true;
+          break;
+        } catch {
+          if (attempt < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+          }
+        }
+      }
+
+      if (!loaded) {
+        throw new Error('Erro ao carregar o show.');
+      }
+
+      if (!data) {
         setError('Show não encontrado.');
         return;
       }
-      if (!res.ok) throw new Error('Erro ao carregar show.');
-      const data: PublicShow = await res.json();
+
       setShow(data);
     } catch {
       setError('Erro ao carregar o show.');
@@ -59,7 +84,15 @@ export default function ShowDetailPage() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <p className="text-gray-600 mb-4">{error ?? 'Show não encontrado.'}</p>
-        <Link to="/shows" className="text-brand-500 hover:underline text-sm inline-flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" /> Ver todos os shows</Link>
+        <div className="flex items-center justify-center gap-4">
+          <button
+            onClick={fetchShow}
+            className="text-sm font-medium text-gray-600 hover:text-gray-800 hover:underline"
+          >
+            Tentar novamente
+          </button>
+          <Link to="/shows" className="text-brand-500 hover:underline text-sm inline-flex items-center gap-1"><ArrowLeft className="w-3.5 h-3.5" /> Ver todos os shows</Link>
+        </div>
       </div>
     );
   }
