@@ -8,6 +8,8 @@ const REFRESH_TOKEN_KEY = 'arremate.refreshToken';
 const OAUTH_STATE_KEY = 'arremate.oauth.state';
 const OAUTH_PKCE_VERIFIER_KEY = 'arremate.oauth.pkceVerifier';
 const OAUTH_MODE_KEY = 'arremate.oauth.mode';
+const POST_AUTH_REDIRECT_KEY = 'arremate.auth.postLoginRedirect';
+const FIRST_PROFILE_ROUTE_DONE_PREFIX = 'arremate.auth.firstProfileRouteDone:';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 
@@ -52,6 +54,8 @@ export interface AuthContextValue extends AuthState {
   switchProfile(role: 'BUYER' | 'SELLER'): Promise<void>;
   /** Reloads the user profile from the API. */
   reloadProfile(): Promise<void>;
+  /** Returns and clears a one-time post-auth redirect destination. */
+  consumePostAuthRedirect(): '/profile' | '/' | null;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -249,6 +253,29 @@ function clearTokens(): void {
   localStorage.removeItem(ID_TOKEN_KEY);
 }
 
+function resolvePostAuthRedirect(profile: UserProfile): '/profile' | '/' {
+  const key = `${FIRST_PROFILE_ROUTE_DONE_PREFIX}${profile.id}`;
+  const hasCompletedFirstProfileRoute = localStorage.getItem(key) === '1';
+
+  if (!hasCompletedFirstProfileRoute) {
+    localStorage.setItem(key, '1');
+    return '/profile';
+  }
+
+  return '/';
+}
+
+function storePostAuthRedirect(route: '/profile' | '/'): void {
+  sessionStorage.setItem(POST_AUTH_REDIRECT_KEY, route);
+}
+
+function consumeStoredPostAuthRedirect(): '/profile' | '/' | null {
+  const route = sessionStorage.getItem(POST_AUTH_REDIRECT_KEY);
+  sessionStorage.removeItem(POST_AUTH_REDIRECT_KEY);
+  if (route === '/profile' || route === '/') return route;
+  return null;
+}
+
 function userFromTokens(tokens: AuthTokens): AuthUser | null {
   const payload = decodeJwtPayload(tokens.idToken ?? tokens.accessToken);
   if (!payload) return null;
@@ -271,7 +298,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
-  const fetchProfile = useCallback(async (accessToken: string): Promise<void> => {
+  const fetchProfile = useCallback(async (accessToken: string): Promise<UserProfile | null> => {
     for (let attempt = 0; attempt < 3; attempt += 1) {
       try {
         const res = await fetch(`${API_URL}/v1/me`, {
@@ -280,7 +307,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (res.ok) {
           const data = await res.json() as UserProfile;
           setProfile(data);
-          return;
+          return data;
         }
       } catch {
         // Profile fetch is best-effort; retries absorb transient edge failures.
@@ -290,6 +317,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
       }
     }
+
+    return null;
   }, []);
 
   // Restore session from localStorage on mount.
@@ -322,8 +351,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           storeTokens(newTokens);
           setTokens(newTokens);
           setUser(userFromTokens(newTokens));
-          // Fetch profile in background so isLoading resolves quickly
-          void fetchProfile(result.AccessToken);
+          const profileData = await fetchProfile(result.AccessToken);
+          if (profileData) {
+            storePostAuthRedirect(resolvePostAuthRedirect(profileData));
+          }
           return;
         }
 
@@ -365,7 +396,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     storeTokens(newTokens);
     setTokens(newTokens);
     setUser(userFromTokens(newTokens));
-    await fetchProfile(result.AccessToken);
+    const profileData = await fetchProfile(result.AccessToken);
+    if (profileData) {
+      storePostAuthRedirect(resolvePostAuthRedirect(profileData));
+    }
   }
 
   async function startSignUp(): Promise<void> {
@@ -420,6 +454,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (token) await fetchProfile(token);
   }
 
+  function consumePostAuthRedirect(): '/profile' | '/' | null {
+    return consumeStoredPostAuthRedirect();
+  }
+
   const currentRole: 'BUYER' | 'SELLER' | 'ADMIN' | null = profile
     ? (profile.role === 'ADMIN' ? 'ADMIN' : (profile.activeRole ?? profile.role))
     : null;
@@ -442,6 +480,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         getAccessToken,
         switchProfile,
         reloadProfile,
+        consumePostAuthRedirect,
       }}
     >
       {children}

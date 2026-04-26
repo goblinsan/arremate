@@ -1,13 +1,18 @@
 import { useState, useEffect, type FormEvent } from 'react';
-import { useNavigate, useLocation, Link, useSearchParams } from 'react-router-dom';
+import { useNavigate, Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function LoginPage() {
-  const { signIn, startSignUp, startSocialSignIn, socialProviders, isAuthenticated } = useAuth();
+  const {
+    signIn,
+    startSignUp,
+    startSocialSignIn,
+    socialProviders,
+    isAuthenticated,
+    consumePostAuthRedirect,
+  } = useAuth();
   const navigate = useNavigate();
-  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const from = (location.state as { from?: Location })?.from?.pathname ?? '/profile';
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -18,9 +23,9 @@ export default function LoginPage() {
   // Redirect authenticated users away from the login page.
   useEffect(() => {
     if (isAuthenticated) {
-      navigate(from, { replace: true });
+      navigate('/', { replace: true });
     }
-  }, [isAuthenticated, from, navigate]);
+  }, [isAuthenticated, navigate]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -28,7 +33,8 @@ export default function LoginPage() {
     setIsSubmitting(true);
     try {
       await signIn(email, password);
-      navigate(from, { replace: true });
+      const postAuthRedirect = consumePostAuthRedirect();
+      navigate(postAuthRedirect ?? '/', { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login.');
     } finally {

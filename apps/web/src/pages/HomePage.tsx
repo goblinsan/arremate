@@ -1,4 +1,6 @@
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 const features = [
   {
@@ -24,9 +26,91 @@ const features = [
   },
 ] as const;
 
+const HOME_PROFILE_WARNING_DISMISSED_PREFIX = 'arremate.home.profileWarningDismissed:';
+
+function hasMissingCriticalProfileInfo(name: string | null | undefined): boolean {
+  return !(typeof name === 'string' && name.trim().length > 0);
+}
+
 export default function HomePage() {
+  const { isAuthenticated, profile } = useAuth();
+  const [warningDismissedForSession, setWarningDismissedForSession] = useState(false);
+  const [warningDismissedForever, setWarningDismissedForever] = useState(false);
+
+  const hasMissingCriticalInfo = useMemo(
+    () => hasMissingCriticalProfileInfo(profile?.name),
+    [profile?.name],
+  );
+
+  useEffect(() => {
+    if (!profile?.id) {
+      setWarningDismissedForever(false);
+      return;
+    }
+
+    const storageKey = `${HOME_PROFILE_WARNING_DISMISSED_PREFIX}${profile.id}`;
+    setWarningDismissedForever(localStorage.getItem(storageKey) === '1');
+  }, [profile?.id]);
+
+  const showCriticalInfoWarning = isAuthenticated
+    && !!profile
+    && hasMissingCriticalInfo
+    && !warningDismissedForSession
+    && !warningDismissedForever;
+
+  function handleDismissForSession() {
+    setWarningDismissedForSession(true);
+  }
+
+  function handleDismissForever() {
+    if (profile?.id) {
+      localStorage.setItem(`${HOME_PROFILE_WARNING_DISMISSED_PREFIX}${profile.id}`, '1');
+    }
+    setWarningDismissedForever(true);
+    setWarningDismissedForSession(true);
+  }
+
   return (
     <div>
+      {showCriticalInfoWarning && (
+        <section className="px-4 pt-6">
+          <div className="max-w-5xl mx-auto bg-amber-50 border border-amber-200 rounded-2xl px-5 py-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-sm font-semibold text-amber-900">Complete seu perfil</p>
+                <p className="text-sm text-amber-800 mt-1">
+                  Seu nome ainda nao foi preenchido. Complete as informacoes criticas para melhorar sua experiencia e confianca na plataforma.
+                </p>
+                <div className="mt-3 flex flex-wrap gap-3">
+                  <Link
+                    to="/profile"
+                    className="bg-amber-500 hover:bg-amber-600 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+                  >
+                    Completar perfil
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={handleDismissForever}
+                    className="text-sm font-medium text-amber-900 hover:text-amber-700"
+                  >
+                    Nao mostrar novamente
+                  </button>
+                </div>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleDismissForSession}
+                className="text-amber-700 hover:text-amber-900 text-sm font-semibold"
+                aria-label="Dispensar aviso"
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
       {/* Hero */}
       <section className="bg-gradient-to-br from-brand-50 via-orange-50 to-white py-16 sm:py-20 px-4">
         <div className="max-w-4xl mx-auto text-center">
