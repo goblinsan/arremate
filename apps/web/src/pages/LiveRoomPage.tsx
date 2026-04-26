@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Radio, Mic, Pin, Package, ShoppingCart, Check, MessageCircle, TriangleAlert, ArrowLeft, ArrowRight, QrCode } from 'lucide-react';
 import type { Show, ShowSession, ItemCondition, ChatMessage, Claim, Order, Payment } from '@arremate/types';
+import LivePlayer from '../components/LivePlayer';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 const POLL_INTERVAL_MS = 5000;
@@ -466,20 +467,7 @@ export default function LiveRoomPage() {
           )}
 
           {/* Playback area */}
-          {session?.playbackUrl ? (
-            <div className="bg-black rounded-2xl overflow-hidden mb-6 aspect-video flex items-center justify-center">
-              <video
-                src={session.playbackUrl}
-                controls
-                autoPlay
-                className="w-full h-full object-contain"
-              />
-            </div>
-          ) : (
-            <div className="bg-gray-900 rounded-2xl mb-6 aspect-video flex items-center justify-center text-gray-400 text-sm">
-              Transmissão ao vivo em breve…
-            </div>
-          )}
+          <LivePlayer playbackUrl={session?.playbackUrl} />
 
           {/* Pinned item */}
           {pinnedItem ? (

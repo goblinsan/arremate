@@ -16,6 +16,7 @@
     "@arremate/auth": "workspace:*",
     "@arremate/observability": "workspace:*",
     "@phosphor-icons/react": "^2.1.10",
+    "hls.js": "^1.6.16",
     "lucide-react": "^1.9.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
