@@ -13,14 +13,37 @@ function createPrismaClient() {
   if (!databaseUrl) throw new Error('DATABASE_URL is not set');
   const pool = new Pool({ connectionString: databaseUrl });
   const adapter = new PrismaNeon(pool);
-  return new PrismaClient({ adapter });
+  const prisma = new PrismaClient({ adapter });
+
+  return {
+    prisma,
+    dispose: async () => {
+      await prisma.$disconnect();
+      await pool.end();
+    },
+  };
 }
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
 
 export const prisma =
-  globalForPrisma.prisma ?? createPrismaClient();
+  globalForPrisma.prisma ?? createPrismaClient().prisma;
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
+
+/**
+ * Executes a database operation with a request-scoped Prisma client.
+ *
+ * This avoids cross-request I/O reuse issues in edge runtimes by ensuring
+ * each operation has isolated DB adapter/pool resources.
+ */
+export async function withPrisma<T>(operation: (client: PrismaClient) => Promise<T>): Promise<T> {
+  const { prisma: requestPrisma, dispose } = createPrismaClient();
+  try {
+    return await operation(requestPrisma);
+  } finally {
+    await dispose();
+  }
+}
 
 export * from '@prisma/client';
