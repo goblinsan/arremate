@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { Radio, Pin, Mic, ArrowLeft, Info } from 'lucide-react';
-import type { Show, ShowSession, ShowInventoryItem, InventoryItem } from '@arremate/types';
+import type { Show, ShowSession, ShowInventoryItem, InventoryItem, GoLiveResponse } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 
@@ -91,8 +91,8 @@ export default function SellerLiveControlPage() {
         const body = await res.json();
         throw new Error(body.message ?? 'Erro ao iniciar sessão.');
       }
-      const newSession: ShowSession = await res.json();
-      setSession(newSession);
+      const body = (await res.json()) as GoLiveResponse;
+      setSession(body.session);
       setShow((prev) => prev ? { ...prev, status: 'LIVE' } : prev);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao iniciar sessão.');

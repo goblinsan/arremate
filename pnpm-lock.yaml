@@ -323,6 +323,9 @@ importers:
 
   packages/video:
     devDependencies:
+      '@types/node':
+        specifier: ^20.19.39
+        version: 20.19.39
       typescript:
         specifier: ^5.4.5
         version: 5.9.3
