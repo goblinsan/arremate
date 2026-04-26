@@ -16,6 +16,11 @@ interface PublicShow extends Omit<Show, 'seller'> {
   queueItems: (ShowInventoryItem & { inventoryItem: InventoryItem })[];
 }
 
+const brlFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+});
+
 export default function ShowDetailPage() {
   const { id } = useParams<{ id: string }>();
   const [show, setShow] = useState<PublicShow | null>(null);
@@ -154,7 +159,7 @@ export default function ShowDetailPage() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-bold text-brand-500">
-                      R$ {Number(item.startingPrice).toFixed(2)}
+                      {brlFormatter.format(Number(item.startingPrice))}
                     </p>
                     <p className="text-xs text-gray-400">lance inicial</p>
                   </div>
