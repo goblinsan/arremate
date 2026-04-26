@@ -61,16 +61,42 @@ export default function ProfilePage() {
         const token = getAccessToken();
         if (!token) throw new Error('Sessão expirada. Faça login novamente.');
 
-        const res = await fetch(`${API_URL}/v1/me`, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        let data: MeResponse | null = null;
+        let lastError: Error | null = null;
 
-        if (!res.ok) {
-          const body = await res.json().catch(() => null) as { message?: string } | null;
-          throw new Error(body?.message ?? 'Não foi possível carregar seu perfil.');
+        for (let attempt = 0; attempt < 3; attempt += 1) {
+          try {
+            const res = await fetch(`${API_URL}/v1/me`, {
+              headers: { Authorization: `Bearer ${token}` },
+            });
+
+            if (res.ok) {
+              data = await res.json() as MeResponse;
+              break;
+            }
+
+            const body = await res.json().catch(() => null) as { message?: string } | null;
+            const message = body?.message ?? 'Não foi possível carregar seu perfil.';
+
+            if (res.status >= 500 && attempt < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+              continue;
+            }
+
+            throw new Error(message);
+          } catch (err) {
+            lastError = err instanceof Error ? err : new Error('Não foi possível carregar seu perfil.');
+            if (attempt < 2) {
+              await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+              continue;
+            }
+          }
         }
 
-        const data = await res.json() as MeResponse;
+        if (!data) {
+          throw (lastError ?? new Error('Não foi possível carregar seu perfil.'));
+        }
+
         setProfile(data);
         setName(data.name ?? '');
       } catch (err) {
@@ -138,6 +164,7 @@ export default function ProfilePage() {
   }
 
   const isSellerMode = currentRole === 'SELLER' || currentRole === 'ADMIN';
+  const canRetryProfileLoad = !!error && !profile && !contextProfile;
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
@@ -192,6 +219,15 @@ export default function ProfilePage() {
         {error && (
           <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
             {error}
+            {canRetryProfileLoad && (
+              <button
+                type="button"
+                onClick={() => window.location.reload()}
+                className="ml-3 font-semibold hover:underline"
+              >
+                Tentar novamente
+              </button>
+            )}
           </div>
         )}
 
