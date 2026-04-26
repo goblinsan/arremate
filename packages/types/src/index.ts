@@ -218,6 +218,30 @@ export interface ShowSession {
   broadcastEndedReason: string | null;
 }
 
+/**
+ * Broadcast control-plane payload returned alongside the session when a
+ * seller starts a live show.  Consumed by the seller UI to configure the
+ * native publisher or external encoder.
+ */
+export interface BroadcastPayload {
+  mode: IngestMode;
+  provider: string;
+  publishUrl?: string;
+  publishToken?: string;
+  expiresAt?: string;
+  playbackUrl?: string;
+  fallbackRtmp?: {
+    ingestUrl: string;
+    streamKey: string;
+  };
+}
+
+/** Response shape returned by POST /v1/seller/shows/:showId/go-live. */
+export interface GoLiveResponse {
+  session: ShowSession;
+  broadcast: BroadcastPayload;
+}
+
 export interface LiveBid {
   id: string;
   sessionId: string;

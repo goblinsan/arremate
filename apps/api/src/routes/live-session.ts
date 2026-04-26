@@ -24,17 +24,39 @@ app.post('/v1/seller/shows/:showId/go-live', ...sellerGuard, async (c) => {
   if (show.status !== 'SCHEDULED') return c.json({ statusCode: 409, error: 'Conflict', message: 'Only SCHEDULED shows can go live' }, 409);
   const activeSession = await prisma.showSession.findFirst({ where: { showId, status: { in: ['STARTING', 'LIVE'] } } });
   if (activeSession) return c.json({ statusCode: 409, error: 'Conflict', message: 'An active session already exists for this show' }, 409);
-  const provider = createLiveVideoProvider(process.env.LIVE_VIDEO_PROVIDER ?? 'stub');
-  const providerResult = await provider.createSession(showId);
+  const providerName = process.env.LIVE_VIDEO_PROVIDER ?? 'stub';
+  const provider = createLiveVideoProvider(providerName);
+  const broadcast = await provider.prepareBroadcast(showId);
+  const ingestMode = broadcast.publishUrl ? 'NATIVE_WEBRTC' : 'RTMP_EXTERNAL';
   const session = await prisma.$transaction(async (tx) => {
     const createdSession = await tx.showSession.create({
-      data: { showId, status: 'LIVE', providerSessionId: providerResult.providerSessionId, playbackUrl: providerResult.playbackUrl ?? null, startedAt: new Date() },
+      data: {
+        showId,
+        status: 'LIVE',
+        providerSessionId: broadcast.providerSessionId,
+        playbackUrl: broadcast.playbackUrl ?? null,
+        publishUrl: broadcast.publishUrl ?? null,
+        ingestMode,
+        providerName,
+        startedAt: new Date(),
+      },
       include: { pinnedItem: { include: { inventoryItem: true } } },
     });
     await tx.show.update({ where: { id: showId }, data: { status: 'LIVE' } });
     return createdSession;
   });
-  return c.json(session, 201);
+  return c.json({
+    session,
+    broadcast: {
+      mode: ingestMode,
+      provider: providerName,
+      publishUrl: broadcast.publishUrl,
+      publishToken: broadcast.publishToken,
+      expiresAt: broadcast.expiresAt,
+      playbackUrl: broadcast.playbackUrl,
+      fallbackRtmp: broadcast.fallbackRtmp,
+    },
+  }, 201);
 });
 
 app.patch('/v1/seller/sessions/:sessionId/stream', ...sellerGuard, async (c) => {
