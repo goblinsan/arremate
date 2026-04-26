@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Radio, Pin, Mic, ArrowLeft } from 'lucide-react';
+import { Radio, Pin, Mic, ArrowLeft, Info } from 'lucide-react';
 import type { Show, ShowSession, ShowInventoryItem, InventoryItem } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -27,6 +27,7 @@ export default function SellerLiveControlPage() {
   const [isBastao, setIsBastao] = useState(false);
   const [streamPlaybackUrl, setStreamPlaybackUrl] = useState('');
   const [isUpdatingStream, setIsUpdatingStream] = useState(false);
+  const [showStreamGuide, setShowStreamGuide] = useState(false);
   const [bastaoTarget, setBastaoTarget] = useState<{ showId: string; showTitle: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -344,7 +345,31 @@ export default function SellerLiveControlPage() {
       {isLive && session && (
         <>
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-            <h2 className="text-base font-semibold text-gray-800 mb-3">Video ao vivo</h2>
+            <div className="flex items-center justify-between gap-3 mb-3">
+              <h2 className="text-base font-semibold text-gray-800">Video ao vivo</h2>
+              <button
+                type="button"
+                onClick={() => setShowStreamGuide((prev) => !prev)}
+                className="text-xs text-brand-600 hover:text-brand-700 font-medium inline-flex items-center gap-1"
+              >
+                <Info className="w-3.5 h-3.5" />
+                {showStreamGuide ? 'Fechar guia' : 'Como transmitir'}
+              </button>
+            </div>
+
+            {showStreamGuide && (
+              <div className="mb-4 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 text-xs text-gray-700 space-y-2">
+                <p className="font-semibold text-gray-800">Guia rapido (funciona hoje)</p>
+                <ol className="list-decimal pl-4 space-y-1">
+                  <li>Clique em Ir ao vivo no Arremate.</li>
+                  <li>Inicie o stream no Larix (iPhone) ou PRISM/OBS (desktop).</li>
+                  <li>Copie a URL publica HLS (.m3u8).</li>
+                  <li>Cole abaixo e clique em Atualizar video.</li>
+                </ol>
+                <p className="text-gray-600">Dica: aguarde 10-30s e confirme no modo comprador.</p>
+              </div>
+            )}
+
             <p className="text-xs text-gray-500 mb-3">
               Cole a URL publica de playback do seu stream (ex.: HLS .m3u8) para que compradores assistam ao vivo.
             </p>
