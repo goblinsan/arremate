@@ -1,0 +1,409 @@
+project: "Arremate Native Streaming"
+repository: "goblinsan/arremate"
+
+milestones:
+  - title: "Phase 0: Playback and Schema Readiness"
+    description: "Prepare the current live stack for native streaming by hardening buyer playback, extending shared contracts, and adding rollout-safe live-session metadata."
+  - title: "Phase 1: Provider and API Control Plane"
+    description: "Expand the provider abstraction and add the Worker-side control plane needed for native browser broadcasting."
+  - title: "Phase 2: Seller Native Broadcast Studio"
+    description: "Implement the browser-native seller broadcast experience inside the existing live control page while preserving external encoder fallback."
+  - title: "Phase 3: Reliability, Rollout, and Operations"
+    description: "Add feature gating, telemetry, operational tooling, and rollout controls to make native streaming safe in production."
+
+epics:
+  - title: "Harden buyer playback for provider-backed live streams"
+    body: |
+      ## Context
+      The buyer live room currently renders `session.playbackUrl` directly in a raw
+      `<video>` element. That is not sufficient for reliable cross-browser HLS
+      playback once native browser broadcasting starts returning provider-managed
+      playback URLs.
+
+      ## Required outcome
+      Add a playback abstraction that keeps the current `ShowSession.playbackUrl`
+      contract but supports both:
+      - native HLS playback in Safari
+      - JavaScript-assisted playback in browsers that do not natively handle HLS
+
+      ## Architecture notes
+      - Keep the current `GET /v1/shows/:showId/session` polling model.
+      - Do not introduce a separate player backend service.
+      - The buyer room route and current layout should remain intact.
+
+      ## Acceptance criteria
+      - Buyer playback works in Safari and Chrome when given a provider HLS URL.
+      - `LiveRoomPage` consumes a dedicated player abstraction instead of raw inline playback.
+      - The current "transmissão em breve" state remains available when playback is not yet ready.
+    milestone: "Phase 0: Playback and Schema Readiness"
+    status: "Todo"
+    labels: ["video", "frontend", "buyer-experience"]
+    children:
+      - title: "Add LivePlayer component with native HLS and hls.js fallback"
+        body: |
+          ## Instructions
+          Create a reusable player component for the buyer web app that:
+          - uses native HLS when the browser supports it
+          - falls back to `hls.js` when needed
+          - accepts the existing `playbackUrl` contract
+
+          ## Acceptance criteria
+          - The player can attach to a provider HLS manifest URL.
+          - Safari playback does not depend on `hls.js`.
+          - Non-Safari browsers are supported through a controlled fallback path.
+        labels: ["video", "frontend"]
+      - title: "Refactor LiveRoomPage to use LivePlayer while preserving current polling flow"
+        body: |
+          ## Instructions
+          Replace the raw `<video src={session.playbackUrl}>` usage in `LiveRoomPage`
+          with the new playback abstraction. Preserve the current polling and current
+          buyer journey for chat, pinning, bids, claims, and payment.
+
+          ## Acceptance criteria
+          - `LiveRoomPage` still polls `GET /v1/shows/:showId/session`.
+          - Playback rendering moves through a dedicated component.
+          - The room still handles `STARTING`, `LIVE`, and `ENDED` session states.
+        labels: ["video", "frontend", "live-room"]
+      - title: "Add browser coverage tests for HLS playback compatibility"
+        body: |
+          ## Instructions
+          Add tests around the new buyer playback path and verify support assumptions
+          for Safari and Chrome-family browsers.
+
+          ## Acceptance criteria
+          - Playback capability detection is tested.
+          - The buyer playback path fails gracefully when the manifest cannot be attached.
+          - The implementation is documented well enough for future provider swaps.
+        labels: ["video", "qa"]
+
+  - title: "Extend ShowSession schema and shared contracts for native broadcast state"
+    body: |
+      ## Context
+      `ShowSession` currently stores only the fields needed for the external-encoder
+      workflow: status, provider session id, playback URL, pin state, and timestamps.
+      Native broadcasting needs richer state for ingest mode, health, heartbeats,
+      first-frame timing, and rollout-safe recovery.
+
+      ## Required outcome
+      Extend the Prisma model and shared TypeScript contracts so native streaming
+      state can be represented without breaking the current live session flow.
+
+      ## Constraints
+      - New fields must be additive and nullable for rollout safety.
+      - The repo currently deploys schema changes via `db:push`, so partial deploy
+        windows must be tolerated.
+
+      ## Acceptance criteria
+      - Prisma can represent native broadcast metadata on `ShowSession`.
+      - `packages/types` exposes the same live-session metadata to the web and API.
+      - Existing routes continue to work when the new fields are absent or null.
+    milestone: "Phase 0: Playback and Schema Readiness"
+    status: "Todo"
+    labels: ["database", "types", "video"]
+    children:
+      - title: "Add rollout-safe ShowSession fields for ingest mode, health, and heartbeat tracking"
+        body: |
+          ## Instructions
+          Extend the Prisma `ShowSession` model with nullable fields for:
+          - ingest mode
+          - provider metadata
+          - publish credential expiry
+          - broadcast start and first-frame timestamps
+          - heartbeat freshness
+          - broadcast health and reconnect count
+          - ended reason and error code
+
+          ## Acceptance criteria
+          - All new fields are additive and safe to deploy with `db:push`.
+          - Current live-session flows remain compatible during rollout.
+        labels: ["database", "video"]
+      - title: "Update shared ShowSession types for native broadcast lifecycle data"
+        body: |
+          ## Instructions
+          Extend `packages/types` so buyer, seller, and API code can use the new
+          native broadcast metadata through a shared contract.
+
+          ## Acceptance criteria
+          - `ShowSession` shared types include the new broadcast fields.
+          - Type names remain clear and consistent with Prisma semantics.
+        labels: ["types", "video"]
+      - title: "Document schema rollout and compatibility requirements for native streaming fields"
+        body: |
+          ## Instructions
+          Update the relevant docs or runbooks so native-streaming schema changes are
+          applied with the same production-safety guidance established elsewhere in
+          the repo.
+
+          ## Acceptance criteria
+          - Rollout notes mention additive nullable fields and partial deploy safety.
+          - The schema expectations are discoverable by future implementers.
+        labels: ["database", "docs"]
+
+  - title: "Expand the video provider layer for browser-native broadcast support"
+    body: |
+      ## Context
+      `packages/video` currently exposes only a minimal `createSession` and
+      `endSession` contract with a `stub` provider. Native browser broadcasting
+      requires richer provider-managed control-plane data such as publish URLs,
+      short-lived publish credentials, fallback RTMP metadata, and webhook support.
+
+      ## Required outcome
+      Expand the provider abstraction so the API can request broadcast configuration
+      from a managed live-video provider without coupling route handlers to provider
+      implementation details.
+
+      ## Acceptance criteria
+      - The provider package supports native browser broadcast preparation.
+      - `stub` remains available for local development and tests.
+      - Provider-specific code stays inside `packages/video`.
+    milestone: "Phase 1: Provider and API Control Plane"
+    status: "Todo"
+    labels: ["video", "backend", "provider-integration"]
+    children:
+      - title: "Expand LiveVideoProvider contract for prepare-broadcast and webhook use cases"
+        body: |
+          ## Instructions
+          Replace the current minimal contract with a provider interface that can
+          prepare a browser-native broadcast and optionally verify provider webhooks.
+
+          ## Acceptance criteria
+          - The interface can return publish URL, token, playback URL, and fallback RTMP data.
+          - The contract supports provider lifecycle reconciliation needs.
+        labels: ["video", "backend"]
+      - title: "Implement a real managed live-video provider adapter behind LIVE_VIDEO_PROVIDER"
+        body: |
+          ## Instructions
+          Implement the first real provider adapter behind the existing
+          `LIVE_VIDEO_PROVIDER` environment variable pattern. Cloudflare Stream Live
+          is the expected first candidate unless a spike shows it is unsuitable for
+          Safari browser ingest.
+
+          ## Acceptance criteria
+          - A non-stub adapter exists.
+          - Provider credentials are read from environment configuration, not bundled into the frontend.
+          - Local development can still use the `stub` provider.
+        labels: ["video", "backend", "provider-integration"]
+      - title: "Preserve stub provider parity for local testing and deterministic API flows"
+        body: |
+          ## Instructions
+          Keep the `stub` provider aligned with the expanded contract so the API and
+          frontend can exercise native broadcast flows without depending on a live
+          provider account.
+
+          ## Acceptance criteria
+          - The `stub` provider satisfies the new contract.
+          - Local and CI paths can exercise the new control-plane flow deterministically.
+        labels: ["video", "testing"]
+
+  - title: "Extend the live-session API for native broadcast lifecycle and provider webhooks"
+    body: |
+      ## Context
+      The current live-session API already has a meaningful control-plane shape:
+      sellers call `POST /v1/seller/shows/:showId/go-live`, buyers poll
+      `GET /v1/shows/:showId/session`, and external encoders can still update the
+      playback URL with `PATCH /v1/seller/sessions/:sessionId/stream`.
+
+      ## Required outcome
+      Extend that existing surface for native browser broadcast support instead of
+      creating a parallel session model.
+
+      ## Architecture notes
+      - `go-live` should remain the seller entry point.
+      - Webhooks should be added under the existing webhook route family.
+      - The Worker remains control plane only; it should not handle media transport.
+
+      ## Acceptance criteria
+      - `go-live` can return native broadcast configuration.
+      - Broadcast lifecycle endpoints exist for started, heartbeat, ended, and status.
+      - Provider webhooks can reconcile stream state into `ShowSession`.
+      - The external-encoder fallback path remains functional.
+    milestone: "Phase 1: Provider and API Control Plane"
+    status: "Todo"
+    labels: ["backend", "video", "api"]
+    children:
+      - title: "Extend go-live endpoint to return native broadcast configuration without breaking current callers"
+        body: |
+          ## Instructions
+          Evolve `POST /v1/seller/shows/:showId/go-live` so it still creates the
+          `ShowSession` and marks the show `LIVE`, but now also returns the native
+          broadcast configuration needed by the seller UI.
+
+          ## Acceptance criteria
+          - Existing live-session creation behavior is preserved.
+          - The response includes the `ShowSession` plus broadcast metadata.
+          - Session state remains compatible with current buyer polling.
+        labels: ["backend", "api", "video"]
+      - title: "Add broadcast-started, heartbeat, broadcast-ended, and broadcast-status session endpoints"
+        body: |
+          ## Instructions
+          Add lifecycle endpoints on the existing seller session namespace for:
+          - `broadcast-started`
+          - `broadcast-heartbeat`
+          - `broadcast-ended`
+          - `broadcast-status`
+
+          ## Acceptance criteria
+          - Endpoints enforce seller ownership and existing auth guards.
+          - Heartbeat updates can drive session health state.
+          - Refresh recovery is possible from the seller UI.
+        labels: ["backend", "api", "video"]
+      - title: "Add provider webhook route under the existing webhook surface"
+        body: |
+          ## Instructions
+          Extend the current webhook route family with a live-video webhook endpoint
+          for provider lifecycle events such as first-frame, ready, and ended.
+
+          ## Acceptance criteria
+          - Webhook signatures are validated.
+          - Provider lifecycle events can update `ShowSession`.
+          - Webhook processing is additive to current Pix webhook handling.
+        labels: ["backend", "api", "webhooks", "video"]
+      - title: "Preserve external encoder fallback through stream patch endpoint during rollout"
+        body: |
+          ## Instructions
+          Keep `PATCH /v1/seller/sessions/:sessionId/stream` operational during the
+          native rollout so Larix, PRISM, and manual HLS override remain available
+          for recovery and support.
+
+          ## Acceptance criteria
+          - Manual playback URL updates still work.
+          - Native rollout does not remove the fallback path prematurely.
+        labels: ["backend", "video", "fallback"]
+
+  - title: "Build the seller native broadcast studio in the existing live control page"
+    body: |
+      ## Context
+      Sellers currently start a session and then manually paste a playback URL.
+      Native streaming should be delivered through the existing
+      `SellerLiveControlPage` rather than a separate control surface.
+
+      ## Required outcome
+      Add a browser-native studio flow with camera and microphone preflight, local
+      preview, publish state, and reconnect UX, while preserving pinning, sold-out,
+      and end-session controls on the same page.
+
+      ## Acceptance criteria
+      - Sellers can preview camera and microphone from the existing live control page.
+      - Native publish can be started and stopped from the page.
+      - The current queue, pin, sold-out, and bastão controls remain intact.
+      - The external encoder fallback remains reachable.
+    milestone: "Phase 2: Seller Native Broadcast Studio"
+    status: "Todo"
+    labels: ["frontend", "video", "seller-tools"]
+    children:
+      - title: "Add camera and microphone preflight UX with iPhone Safari guidance"
+        body: |
+          ## Instructions
+          Add a seller preflight flow that explains permissions, checks browser
+          capability, and provides iPhone-specific guidance before prompting for
+          camera and microphone access.
+
+          ## Acceptance criteria
+          - Permission prompts are preceded by explanatory UI.
+          - Unsupported or denied states are recoverable.
+          - Mobile Safari-specific guidance is present where needed.
+        labels: ["frontend", "video", "mobile-web"]
+      - title: "Add local media preview and publish state machine to SellerLiveControlPage"
+        body: |
+          ## Instructions
+          Implement local preview and a publish state machine for:
+          - `IDLE`
+          - `PREPARING`
+          - `READY`
+          - `CONNECTING`
+          - `LIVE`
+          - `RECONNECTING`
+          - `ENDED`
+          - `ERROR`
+
+          ## Acceptance criteria
+          - Sellers can see a preview before going live.
+          - Page state reflects broadcast lifecycle clearly.
+          - The page can recover from refresh or reconnect scenarios.
+        labels: ["frontend", "video", "seller-tools"]
+      - title: "Integrate native publish start and stop controls with the live-session API"
+        body: |
+          ## Instructions
+          Wire the seller UI to the expanded `go-live` and broadcast lifecycle API
+          so the browser can start and stop a native broadcast without manual HLS paste.
+
+          ## Acceptance criteria
+          - Start and stop actions use the provider-backed control plane.
+          - Broadcast lifecycle events are reflected in page state.
+          - Existing end-session behavior remains intact.
+        labels: ["frontend", "backend", "video"]
+      - title: "Keep external encoder fallback accessible inside SellerLiveControlPage during rollout"
+        body: |
+          ## Instructions
+          Retain a clear advanced fallback section that lets support and sellers
+          revert to external encoders when native publishing fails or is disabled.
+
+          ## Acceptance criteria
+          - The fallback path remains on the page.
+          - The native-first UX is primary, but the fallback is still operational.
+        labels: ["frontend", "video", "fallback"]
+
+  - title: "Add telemetry, rollout controls, and operational support for native streaming"
+    body: |
+      ## Context
+      Native broadcasting should not become default until the team can measure
+      success rate, diagnose failures, and selectively enable the feature.
+
+      ## Required outcome
+      Add rollout gating, telemetry, runbooks, and minimal admin or system-health
+      visibility so support can manage production incidents.
+
+      ## Acceptance criteria
+      - Native broadcast availability can be gated by environment configuration.
+      - Start success, reconnects, and fallback usage can be measured.
+      - Operational documentation exists for seller troubleshooting and incident response.
+      - Admin or internal ops surfaces can inspect enough state to triage failures.
+    milestone: "Phase 3: Reliability, Rollout, and Operations"
+    status: "Todo"
+    labels: ["operations", "video", "observability"]
+    children:
+      - title: "Add environment-based feature gating and seller allowlist controls for native broadcast rollout"
+        body: |
+          ## Instructions
+          Add simple rollout controls that fit the current repo architecture, such as:
+          - `NATIVE_BROADCAST_ENABLED`
+          - `NATIVE_BROADCAST_ALLOWLIST_EMAILS`
+
+          ## Acceptance criteria
+          - Native broadcast can be enabled or disabled without code changes.
+          - Access can be limited to a controlled rollout cohort.
+        labels: ["operations", "backend", "video"]
+      - title: "Record native streaming telemetry for start success, first frame, reconnects, and fallback usage"
+        body: |
+          ## Instructions
+          Instrument the native broadcast flow with structured logging and persisted
+          session metadata so the team can measure:
+          - start success
+          - time to first frame
+          - reconnect frequency
+          - fallback usage
+
+          ## Acceptance criteria
+          - The repo emits enough telemetry to support rollout decisions.
+          - Metrics can be derived from logs or persisted session fields.
+        labels: ["observability", "video", "backend"]
+      - title: "Write runbooks for seller camera, microphone, network, and provider failure scenarios"
+        body: |
+          ## Instructions
+          Add or extend runbooks so operations can guide sellers through native
+          streaming problems and safely move them to fallback encoders when needed.
+
+          ## Acceptance criteria
+          - Runbooks cover permission failures, device loss, degraded network, and provider incidents.
+          - Fallback-to-external guidance is documented.
+        labels: ["docs", "operations", "video"]
+      - title: "Add internal visibility for native stream health in admin or system health surfaces"
+        body: |
+          ## Instructions
+          Surface enough native streaming health information for internal operators to
+          understand active session state and identify degraded or failed broadcasts.
+
+          ## Acceptance criteria
+          - Operators can inspect native stream state without querying raw database rows.
+          - The visibility lives in an existing internal surface where possible.
+        labels: ["admin", "operations", "video"]
