@@ -26,13 +26,14 @@ app.post('/v1/seller/shows/:showId/go-live', ...sellerGuard, async (c) => {
   if (activeSession) return c.json({ statusCode: 409, error: 'Conflict', message: 'An active session already exists for this show' }, 409);
   const provider = createLiveVideoProvider(process.env.LIVE_VIDEO_PROVIDER ?? 'stub');
   const providerResult = await provider.createSession(showId);
-  const [session] = await prisma.$transaction([
-    prisma.showSession.create({
+  const session = await prisma.$transaction(async (tx) => {
+    const createdSession = await tx.showSession.create({
       data: { showId, status: 'LIVE', providerSessionId: providerResult.providerSessionId, playbackUrl: providerResult.playbackUrl ?? null, startedAt: new Date() },
       include: { pinnedItem: { include: { inventoryItem: true } } },
-    }),
-    prisma.show.update({ where: { id: showId }, data: { status: 'LIVE' } }),
-  ]);
+    });
+    await tx.show.update({ where: { id: showId }, data: { status: 'LIVE' } });
+    return createdSession;
+  });
   return c.json(session, 201);
 });
 
@@ -144,14 +145,15 @@ app.post('/v1/seller/sessions/:sessionId/passar-bastao', ...sellerGuard, async (
     }
   }
 
-  const [updatedSession] = await prisma.$transaction([
-    prisma.showSession.update({
+  const updatedSession = await prisma.$transaction(async (tx) => {
+    const endedSession = await tx.showSession.update({
       where: { id: sessionId },
       data: { status: 'ENDED', endedAt: new Date(), pinnedItemId: null, raidedToShowId: targetShow.id },
       include: { pinnedItem: { include: { inventoryItem: true } } },
-    }),
-    prisma.show.update({ where: { id: session.showId }, data: { status: 'ENDED' } }),
-  ]);
+    });
+    await tx.show.update({ where: { id: session.showId }, data: { status: 'ENDED' } });
+    return endedSession;
+  });
 
   return c.json({ session: updatedSession, targetShowId: targetShow.id, targetShowTitle: targetShow.title });
 });
@@ -170,14 +172,15 @@ app.post('/v1/seller/sessions/:sessionId/end', ...sellerGuard, async (c) => {
       // continue with local state update even if provider call fails
     }
   }
-  const [updatedSession] = await prisma.$transaction([
-    prisma.showSession.update({
+  const updatedSession = await prisma.$transaction(async (tx) => {
+    const endedSession = await tx.showSession.update({
       where: { id: sessionId },
       data: { status: 'ENDED', endedAt: new Date(), pinnedItemId: null },
       include: { pinnedItem: { include: { inventoryItem: true } } },
-    }),
-    prisma.show.update({ where: { id: session.showId }, data: { status: 'ENDED' } }),
-  ]);
+    });
+    await tx.show.update({ where: { id: session.showId }, data: { status: 'ENDED' } });
+    return endedSession;
+  });
   return c.json(updatedSession);
 });
 

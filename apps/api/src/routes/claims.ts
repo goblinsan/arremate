@@ -30,13 +30,16 @@ app.post('/v1/sessions/:sessionId/claim', authenticate, async (c) => {
   if (existingClaim) return c.json({ statusCode: 409, error: 'Conflict', message: 'You already have an active claim for this item' }, 409);
   const priceAtClaim = session.pinnedItem.currentBid ?? session.pinnedItem.inventoryItem.startingPrice;
   const expiresAt = new Date(Date.now() + CLAIM_EXPIRY_MINUTES * 60 * 1000);
-  const [claim] = await prisma.$transaction([
-    prisma.claim.create({
+  const claim = await prisma.$transaction(async (tx) => {
+    const createdClaim = await tx.claim.create({
       data: { sessionId, buyerId: user.id, queueItemId: session.pinnedItemId, priceAtClaim, expiresAt },
       include: { queueItem: { include: { inventoryItem: true } } },
-    }),
-    prisma.showInventoryItem.update({ where: { id: session.pinnedItemId }, data: { soldOut: true } }),
-  ]);
+    });
+
+    await tx.showInventoryItem.update({ where: { id: session.pinnedItemId }, data: { soldOut: true } });
+
+    return createdClaim;
+  });
   return c.json(claim, 201);
 });
 
