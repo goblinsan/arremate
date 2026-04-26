@@ -24,13 +24,6 @@ function createPrismaClient() {
   };
 }
 
-const globalForPrisma = globalThis as unknown as { prisma: PrismaClient };
-
-export const prisma =
-  globalForPrisma.prisma ?? createPrismaClient().prisma;
-
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = prisma;
-
 /**
  * Executes a database operation with a request-scoped Prisma client.
  *
@@ -45,5 +38,46 @@ export async function withPrisma<T>(operation: (client: PrismaClient) => Promise
     await dispose();
   }
 }
+
+type PrismaDelegate = Record<string, unknown>;
+
+function createDelegateProxy(delegateName: string): PrismaDelegate {
+  return new Proxy({}, {
+    get(_target, delegateMethod) {
+      if (delegateMethod === 'then') return undefined;
+
+      return (...args: unknown[]) => withPrisma(async (client) => {
+        const delegate = (client as unknown as Record<string, unknown>)[delegateName] as PrismaDelegate | undefined;
+        const method = delegate?.[String(delegateMethod)];
+        if (typeof method !== 'function') {
+          throw new Error(`Prisma delegate method not found: ${delegateName}.${String(delegateMethod)}`);
+        }
+        return (method as (...methodArgs: unknown[]) => unknown).apply(delegate, args);
+      });
+    },
+  });
+}
+
+/**
+ * Backward-compatible Prisma export that keeps existing `prisma.model.method(...)`
+ * call sites unchanged while executing each operation with request-scoped DB I/O.
+ */
+export const prisma = new Proxy({} as PrismaClient, {
+  get(_target, prop) {
+    if (prop === 'then') return undefined;
+
+    if (typeof prop === 'string' && !prop.startsWith('$')) {
+      return createDelegateProxy(prop);
+    }
+
+    return (...args: unknown[]) => withPrisma(async (client) => {
+      const member = (client as unknown as Record<string, unknown>)[String(prop)];
+      if (typeof member !== 'function') {
+        throw new Error(`Prisma client method not found: ${String(prop)}`);
+      }
+      return (member as (...methodArgs: unknown[]) => unknown).apply(client, args);
+    });
+  },
+});
 
 export * from '@prisma/client';
