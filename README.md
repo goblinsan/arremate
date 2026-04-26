@@ -156,6 +156,7 @@ Required repository secrets:
 - `DIRECT_URL_STAGING` (optional; falls back to `DATABASE_URL_STAGING`)
 - `DATABASE_URL_PRODUCTION`
 - `DIRECT_URL_PRODUCTION` (optional; falls back to `DATABASE_URL_PRODUCTION`)
+- `SYNTHETIC_PROBE_BEARER` (Cognito access token for scheduled API health probes)
 
 Required repository variables:
 

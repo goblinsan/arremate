@@ -1,0 +1,82 @@
+name: Synthetic API Probe
+
+on:
+  schedule:
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  probe-production:
+    name: Probe Production API
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      API_BASE_URL: https://api.arrematelive.com
+      PROBE_BEARER_TOKEN: ${{ secrets.SYNTHETIC_PROBE_BEARER }}
+      PROBE_ORIGIN: https://arrematelive.com
+    steps:
+      - name: Validate probe secret
+        run: |
+          if [ -z "$PROBE_BEARER_TOKEN" ]; then
+            echo "SYNTHETIC_PROBE_BEARER is not set"
+            exit 1
+          fi
+
+      - name: Probe /v1/me (expect 200)
+        run: |
+          set -euo pipefail
+
+          status=$(curl -sS -o /tmp/probe_me_body.json -w "%{http_code}" \
+            -H "Authorization: Bearer $PROBE_BEARER_TOKEN" \
+            -H "Origin: $PROBE_ORIGIN" \
+            "$API_BASE_URL/v1/me")
+
+          echo "status=$status"
+          head -c 1000 /tmp/probe_me_body.json || true
+          echo
+
+          if [ "$status" != "200" ]; then
+            echo "Probe failed for /v1/me; expected 200"
+            exit 1
+          fi
+
+      - name: Probe /v1/seller-applications/me (expect 200 or 404)
+        run: |
+          set -euo pipefail
+
+          status=$(curl -sS -o /tmp/probe_seller_app_body.json -w "%{http_code}" \
+            -H "Authorization: Bearer $PROBE_BEARER_TOKEN" \
+            -H "Origin: $PROBE_ORIGIN" \
+            "$API_BASE_URL/v1/seller-applications/me")
+
+          echo "status=$status"
+          head -c 1000 /tmp/probe_seller_app_body.json || true
+          echo
+
+          if [ "$status" != "200" ] && [ "$status" != "404" ]; then
+            echo "Probe failed for /v1/seller-applications/me; expected 200 or 404"
+            exit 1
+          fi
+
+      - name: Probe /v1/shows burst (expect all 200)
+        run: |
+          set -euo pipefail
+
+          failures=0
+          for i in $(seq 1 25); do
+            status=$(curl -sS -o /dev/null -w "%{http_code}" \
+              -H "Origin: $PROBE_ORIGIN" \
+              "$API_BASE_URL/v1/shows")
+            echo "attempt=$i status=$status"
+            if [ "$status" != "200" ]; then
+              failures=$((failures + 1))
+            fi
+          done
+
+          if [ "$failures" -gt 0 ]; then
+            echo "Probe failed for /v1/shows burst; failures=$failures"
+            exit 1
+          fi
