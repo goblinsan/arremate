@@ -89,15 +89,49 @@ export default function SellerApplicationPage() {
 
   async function fetchApplication() {
     setIsLoading(true);
-    try {
+    setError(null);
+
+    async function requestApplication(): Promise<SellerApplication | null> {
       const token = getAccessToken();
+      if (!token) throw new Error('Sessão expirada. Faça login novamente.');
+
       const res = await fetch(`${API_URL}/v1/seller-applications/me`, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      if (res.status === 404) {
+
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error('Erro ao carregar solicitação.');
+      return await res.json() as SellerApplication;
+    }
+
+    try {
+      const data = await requestApplication();
+      if (!data) {
         setApplication(null);
-      } else if (res.ok) {
-        const data: SellerApplication = await res.json();
+        return;
+      }
+
+      setApplication(data);
+      setForm({
+        businessName: data.businessName ?? '',
+        businessType: data.businessType ?? '',
+        taxId: data.taxId ?? '',
+        phone: data.phone ?? '',
+        addressLine1: data.addressLine1 ?? '',
+        addressLine2: data.addressLine2 ?? '',
+        city: data.city ?? '',
+        state: data.state ?? '',
+        postalCode: data.postalCode ?? '',
+      });
+    } catch {
+      // Retry once to absorb occasional transient API/edge failures.
+      try {
+        const data = await requestApplication();
+        if (!data) {
+          setApplication(null);
+          return;
+        }
+
         setApplication(data);
         setForm({
           businessName: data.businessName ?? '',
@@ -110,9 +144,9 @@ export default function SellerApplicationPage() {
           state: data.state ?? '',
           postalCode: data.postalCode ?? '',
         });
+      } catch {
+        setError('Erro ao carregar solicitação.');
       }
-    } catch {
-      setError('Erro ao carregar solicitação.');
     } finally {
       setIsLoading(false);
     }
@@ -303,6 +337,20 @@ export default function SellerApplicationPage() {
     return (
       <div className="max-w-2xl mx-auto px-4 py-16 text-center text-gray-400">
         Carregando…
+      </div>
+    );
+  }
+
+  if (error && !application) {
+    return (
+      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+        <p className="text-gray-600 mb-4">{error}</p>
+        <button
+          onClick={fetchApplication}
+          className="text-brand-500 font-medium hover:underline"
+        >
+          Tentar novamente
+        </button>
       </div>
     );
   }

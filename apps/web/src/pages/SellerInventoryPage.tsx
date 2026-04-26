@@ -32,16 +32,30 @@ export default function SellerInventoryPage() {
   async function fetchItems() {
     setIsLoading(true);
     setError(null);
-    try {
+
+    async function requestItems(): Promise<InventoryItem[]> {
       const token = getAccessToken();
+      if (!token) throw new Error('Sessão expirada. Faça login novamente.');
+
       const res = await fetch(`${API_URL}/v1/seller/inventory`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) throw new Error('Erro ao carregar inventário.');
       const body = await res.json() as { data: InventoryItem[] };
-      setItems(body.data);
+      return body.data;
+    }
+
+    try {
+      const data = await requestItems();
+      setItems(data);
     } catch {
-      setError('Erro ao carregar inventário.');
+      // Retry once to absorb occasional transient API/edge failures.
+      try {
+        const data = await requestItems();
+        setItems(data);
+      } catch {
+        setError('Erro ao carregar inventário.');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -90,12 +104,20 @@ export default function SellerInventoryPage() {
       </div>
 
       {error && (
-        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6">{error}</div>
+        <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3 mb-6 flex items-center justify-between gap-3">
+          <span>{error}</span>
+          <button
+            onClick={fetchItems}
+            className="text-sm font-semibold text-red-700 hover:underline"
+          >
+            Tentar novamente
+          </button>
+        </div>
       )}
 
       {isLoading ? (
         <div className="text-center text-gray-400 py-16">Carregando…</div>
-      ) : items.length === 0 ? (
+      ) : error ? null : items.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 rounded-2xl">
           <p className="text-gray-500 mb-4">Seu inventário está vazio.</p>
           <button
