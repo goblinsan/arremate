@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent, type ChangeEvent } from 'react';
+import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { ArrowLeft, Image } from 'lucide-react';
@@ -38,9 +38,15 @@ export default function SellerInventoryFormPage() {
   const [uploadStatus, setUploadStatus] = useState<Record<string, string>>({});
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  // Tracks whether we just navigated from /new to /:id after a successful create.
+  const skipNextLoadRef = useRef(false);
 
   useEffect(() => {
     if (!isAuthenticated || isNew) return;
+    if (skipNextLoadRef.current) {
+      skipNextLoadRef.current = false;
+      return;
+    }
     loadItem();
   }, [isAuthenticated, id]);
 
@@ -112,7 +118,10 @@ export default function SellerInventoryFormPage() {
       setItem(data);
       setImages(data.images ?? []);
       setSuccessMessage('Item salvo com sucesso!');
-      if (isNew) navigate(`/seller/inventory/${data.id}`, { replace: true });
+      if (isNew) {
+        skipNextLoadRef.current = true;
+        navigate(`/seller/inventory/${data.id}`, { replace: true });
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao salvar item.');
     } finally {

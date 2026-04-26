@@ -12,6 +12,11 @@ const CONDITION_LABELS: Record<ItemCondition, string> = {
   REFURBISHED: 'Recondicionado',
 };
 
+const brlFormatter = new Intl.NumberFormat('pt-BR', {
+  style: 'currency',
+  currency: 'BRL',
+});
+
 export default function SellerInventoryPage() {
   const { getAccessToken, isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -122,7 +127,7 @@ export default function SellerInventoryPage() {
                   <h2 className="font-semibold text-gray-900 truncate mb-1">{item.title}</h2>
                   <p className="text-xs text-gray-400 mb-2">{CONDITION_LABELS[item.condition]}</p>
                   <p className="text-sm font-bold text-brand-500">
-                    R$ {Number(item.startingPrice).toFixed(2)}
+                    {brlFormatter.format(Number(item.startingPrice))}
                   </p>
                   <div className="flex items-center gap-3 mt-3">
                     <Link
