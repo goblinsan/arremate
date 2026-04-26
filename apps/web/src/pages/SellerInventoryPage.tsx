@@ -46,16 +46,25 @@ export default function SellerInventoryPage() {
     }
 
     try {
-      const data = await requestItems();
-      setItems(data);
-    } catch {
-      // Retry once to absorb occasional transient API/edge failures.
-      try {
-        const data = await requestItems();
-        setItems(data);
-      } catch {
-        setError('Erro ao carregar inventário.');
+      let loaded = false;
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          const data = await requestItems();
+          setItems(data);
+          loaded = true;
+          break;
+        } catch {
+          if (attempt < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+          }
+        }
       }
+
+      if (!loaded) {
+        throw new Error('Erro ao carregar inventário.');
+      }
+    } catch {
+      setError('Erro ao carregar inventário.');
     } finally {
       setIsLoading(false);
     }

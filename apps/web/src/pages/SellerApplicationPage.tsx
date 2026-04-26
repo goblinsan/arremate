@@ -105,7 +105,25 @@ export default function SellerApplicationPage() {
     }
 
     try {
-      const data = await requestApplication();
+      let data: SellerApplication | null = null;
+      let loaded = false;
+
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          data = await requestApplication();
+          loaded = true;
+          break;
+        } catch {
+          if (attempt < 2) {
+            await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+          }
+        }
+      }
+
+      if (!loaded) {
+        throw new Error('Erro ao carregar solicitação.');
+      }
+
       if (!data) {
         setApplication(null);
         return;
@@ -124,29 +142,7 @@ export default function SellerApplicationPage() {
         postalCode: data.postalCode ?? '',
       });
     } catch {
-      // Retry once to absorb occasional transient API/edge failures.
-      try {
-        const data = await requestApplication();
-        if (!data) {
-          setApplication(null);
-          return;
-        }
-
-        setApplication(data);
-        setForm({
-          businessName: data.businessName ?? '',
-          businessType: data.businessType ?? '',
-          taxId: data.taxId ?? '',
-          phone: data.phone ?? '',
-          addressLine1: data.addressLine1 ?? '',
-          addressLine2: data.addressLine2 ?? '',
-          city: data.city ?? '',
-          state: data.state ?? '',
-          postalCode: data.postalCode ?? '',
-        });
-      } catch {
-        setError('Erro ao carregar solicitação.');
-      }
+      setError('Erro ao carregar solicitação.');
     } finally {
       setIsLoading(false);
     }

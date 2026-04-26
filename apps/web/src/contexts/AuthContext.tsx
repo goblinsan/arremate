@@ -272,16 +272,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
 
   const fetchProfile = useCallback(async (accessToken: string): Promise<void> => {
-    try {
-      const res = await fetch(`${API_URL}/v1/me`, {
-        headers: { Authorization: `Bearer ${accessToken}` },
-      });
-      if (res.ok) {
-        const data = await res.json() as UserProfile;
-        setProfile(data);
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const res = await fetch(`${API_URL}/v1/me`, {
+          headers: { Authorization: `Bearer ${accessToken}` },
+        });
+        if (res.ok) {
+          const data = await res.json() as UserProfile;
+          setProfile(data);
+          return;
+        }
+      } catch {
+        // Profile fetch is best-effort; retries absorb transient edge failures.
       }
-    } catch {
-      // Profile fetch is best-effort; auth state is still valid
+
+      if (attempt < 2) {
+        await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
+      }
     }
   }, []);
 
