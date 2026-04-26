@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Radio, Pin, Mic, ArrowLeft, Info } from 'lucide-react';
-import type { Show, ShowSession, ShowInventoryItem, InventoryItem, GoLiveResponse } from '@arremate/types';
+import { Radio, Pin, Mic, ArrowLeft, Info, Camera, CameraOff, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, MonitorPlay, Wifi, WifiOff } from 'lucide-react';
+import type { Show, ShowSession, ShowInventoryItem, InventoryItem, GoLiveResponse, BroadcastPayload } from '@arremate/types';
+import { useBroadcastPublisher } from '../hooks/useBroadcastPublisher';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 
@@ -30,6 +31,29 @@ export default function SellerLiveControlPage() {
   const [showStreamGuide, setShowStreamGuide] = useState(false);
   const [bastaoTarget, setBastaoTarget] = useState<{ showId: string; showTitle: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [broadcast, setBroadcast] = useState<BroadcastPayload | null>(null);
+  const [showFallback, setShowFallback] = useState(false);
+
+  const localVideoRef = useRef<HTMLVideoElement | null>(null);
+
+  const {
+    publishState,
+    localStream,
+    error: publishError,
+    reconnectCount,
+    startPreview,
+    stopPreview,
+    startPublish,
+    stopPublish,
+    reset: resetPublisher,
+  } = useBroadcastPublisher();
+
+  // Attach local stream to preview element
+  useEffect(() => {
+    if (localVideoRef.current) {
+      localVideoRef.current.srcObject = localStream;
+    }
+  }, [localStream]);
 
   const loadShow = useCallback(async () => {
     if (!showId) return;
@@ -93,6 +117,7 @@ export default function SellerLiveControlPage() {
       }
       const body = (await res.json()) as GoLiveResponse;
       setSession(body.session);
+      setBroadcast(body.broadcast);
       setShow((prev) => prev ? { ...prev, status: 'LIVE' } : prev);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao iniciar sessão.');
@@ -233,6 +258,7 @@ export default function SellerLiveControlPage() {
     setError(null);
     setIsEnding(true);
     try {
+      stopPublish();
       const token = getAccessToken();
       const res = await fetch(`${API_URL}/v1/seller/sessions/${session.id}/end`, {
         method: 'POST',
@@ -245,6 +271,7 @@ export default function SellerLiveControlPage() {
       const ended: ShowSession = await res.json();
       setSession(ended);
       setShow((prev) => prev ? { ...prev, status: 'ENDED' } : prev);
+      resetPublisher();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao encerrar sessão.');
     } finally {
@@ -344,58 +371,235 @@ export default function SellerLiveControlPage() {
       {/* Live control panel */}
       {isLive && session && (
         <>
-          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
-            <div className="flex items-center justify-between gap-3 mb-3">
-              <h2 className="text-base font-semibold text-gray-800">Video ao vivo</h2>
-              <button
-                type="button"
-                onClick={() => setShowStreamGuide((prev) => !prev)}
-                className="text-xs text-brand-600 hover:text-brand-700 font-medium inline-flex items-center gap-1"
-              >
-                <Info className="w-3.5 h-3.5" />
-                {showStreamGuide ? 'Fechar guia' : 'Como transmitir'}
-              </button>
-            </div>
-
-            {showStreamGuide && (
-              <div className="mb-4 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 text-xs text-gray-700 space-y-2">
-                <p className="font-semibold text-gray-800">Guia rapido (funciona hoje)</p>
-                <ol className="list-decimal pl-4 space-y-1">
-                  <li>Clique em Ir ao vivo no Arremate.</li>
-                  <li>Inicie o stream no Larix (iPhone) ou PRISM/OBS (desktop).</li>
-                  <li>Copie a URL publica HLS (.m3u8).</li>
-                  <li>Cole abaixo e clique em Atualizar video.</li>
-                </ol>
-                <p className="text-gray-600">Dica: aguarde 10-30s e confirme no modo comprador.</p>
+          {/* Native Broadcast Studio */}
+          {broadcast?.mode === 'NATIVE_WEBRTC' && broadcast.publishUrl && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+              <div className="flex items-center justify-between gap-3 mb-4">
+                <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                  <MonitorPlay className="w-4 h-4 text-brand-500" />
+                  Studio de transmissao
+                </h2>
+                {publishState === 'LIVE' && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">
+                    <Radio className="w-3 h-3" /> Ao vivo
+                  </span>
+                )}
+                {publishState === 'RECONNECTING' && (
+                  <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-yellow-100 text-yellow-700 px-2.5 py-1 rounded-full">
+                    <RefreshCw className="w-3 h-3 animate-spin" /> Reconectando…
+                  </span>
+                )}
               </div>
-            )}
 
-            <p className="text-xs text-gray-500 mb-3">
-              Cole a URL publica de playback do seu stream (ex.: HLS .m3u8) para que compradores assistam ao vivo.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <input
-                type="url"
-                value={streamPlaybackUrl}
-                onChange={(e) => setStreamPlaybackUrl(e.target.value)}
-                placeholder="https://..."
-                className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
-              />
-              <button
-                onClick={handleUpdateStream}
-                disabled={isUpdatingStream || streamPlaybackUrl.trim().length === 0}
-                className="bg-brand-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
-              >
-                {isUpdatingStream ? 'Atualizando…' : 'Atualizar video'}
-              </button>
+              {/* Preflight: IDLE state */}
+              {publishState === 'IDLE' && (
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-5 text-center">
+                  <Camera className="w-8 h-8 text-gray-300 mx-auto mb-3" />
+                  <p className="text-sm font-medium text-gray-700 mb-1">Pronto para transmitir pelo navegador</p>
+                  <p className="text-xs text-gray-500 mb-4 max-w-xs mx-auto">
+                    O Arremate vai solicitar acesso a camera e microfone. Aceite a permissao para ver o preview e comecar a transmissao.
+                  </p>
+                  {typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent) && (
+                    <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs text-blue-700 text-left">
+                      <p className="font-semibold mb-1 flex items-center gap-1"><Info className="w-3.5 h-3.5" /> iPhone / iPad</p>
+                      <p>Certifique-se de que o Safari tem permissao de Camera e Microfone em Ajustes do iPhone. Em Safari, acesse Ajustes &gt; Safari &gt; Camera e Microfone e selecione Permitir.</p>
+                    </div>
+                  )}
+                  <button
+                    onClick={startPreview}
+                    className="bg-brand-500 hover:bg-orange-600 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors inline-flex items-center gap-2"
+                  >
+                    <Camera className="w-4 h-4" /> Ativar camera e microfone
+                  </button>
+                </div>
+              )}
+
+              {/* Preflight: PREPARING state */}
+              {publishState === 'PREPARING' && (
+                <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-5 text-center">
+                  <Camera className="w-8 h-8 text-gray-300 mx-auto mb-3 animate-pulse" />
+                  <p className="text-sm text-gray-500">Aguardando permissao de camera e microfone…</p>
+                  <p className="text-xs text-gray-400 mt-1">Aceite a solicitacao do navegador para continuar.</p>
+                </div>
+              )}
+
+              {/* Preview: READY / CONNECTING / LIVE / RECONNECTING state */}
+              {(publishState === 'READY' || publishState === 'CONNECTING' || publishState === 'LIVE' || publishState === 'RECONNECTING') && (
+                <div className="space-y-4">
+                  {/* Local preview */}
+                  <div className="relative bg-black rounded-xl overflow-hidden aspect-video">
+                    <video
+                      ref={localVideoRef}
+                      autoPlay
+                      muted
+                      playsInline
+                      className="w-full h-full object-cover"
+                    />
+                    {publishState === 'READY' && (
+                      <div className="absolute bottom-2 left-2 text-xs font-semibold bg-black/60 text-white px-2 py-0.5 rounded-full">
+                        Preview
+                      </div>
+                    )}
+                    {publishState === 'LIVE' && (
+                      <div className="absolute bottom-2 left-2 text-xs font-semibold bg-red-600/90 text-white px-2 py-0.5 rounded-full flex items-center gap-1">
+                        <Radio className="w-2.5 h-2.5" /> Ao vivo
+                      </div>
+                    )}
+                    {publishState === 'CONNECTING' && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <span className="text-white text-sm font-medium">Conectando…</span>
+                      </div>
+                    )}
+                    {publishState === 'RECONNECTING' && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                        <span className="text-white text-sm font-medium flex items-center gap-2">
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Reconectando… (tentativa {reconnectCount})
+                        </span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Publish controls */}
+                  <div className="flex flex-wrap gap-3 items-center">
+                    {(publishState === 'READY') && (
+                      <button
+                        onClick={() => void startPublish(broadcast.publishUrl!, broadcast.publishToken)}
+                        className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors inline-flex items-center gap-2"
+                      >
+                        <Wifi className="w-4 h-4" /> Iniciar transmissao
+                      </button>
+                    )}
+                    {(publishState === 'LIVE' || publishState === 'CONNECTING' || publishState === 'RECONNECTING') && (
+                      <button
+                        onClick={stopPublish}
+                        className="bg-gray-700 hover:bg-gray-800 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors inline-flex items-center gap-2"
+                      >
+                        <WifiOff className="w-4 h-4" /> Parar transmissao
+                      </button>
+                    )}
+                    <button
+                      onClick={stopPreview}
+                      className="text-gray-400 hover:text-gray-600 text-xs font-medium inline-flex items-center gap-1 transition-colors"
+                    >
+                      <CameraOff className="w-3.5 h-3.5" /> Desativar camera
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Error state */}
+              {publishState === 'ERROR' && (
+                <div className="rounded-xl border border-red-100 bg-red-50 px-4 py-4">
+                  <div className="flex items-start gap-2 mb-3">
+                    <AlertTriangle className="w-4 h-4 text-red-500 shrink-0 mt-0.5" />
+                    <p className="text-sm text-red-700">{publishError ?? 'Erro ao transmitir.'}</p>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={startPreview}
+                      className="text-xs bg-red-100 hover:bg-red-200 text-red-700 font-semibold px-4 py-2 rounded-lg transition-colors inline-flex items-center gap-1"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Tentar novamente
+                    </button>
+                    <button
+                      onClick={() => setShowFallback(true)}
+                      className="text-xs bg-gray-100 hover:bg-gray-200 text-gray-600 font-semibold px-4 py-2 rounded-lg transition-colors"
+                    >
+                      Usar encoder externo
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
+          )}
 
-            {session.playbackUrl && (
-              <div className="mt-4 bg-black rounded-xl overflow-hidden aspect-video">
-                <video src={session.playbackUrl} controls autoPlay muted className="w-full h-full object-contain" />
+          {/* External encoder fallback - primary panel when no native publish URL, or opened manually */}
+          {(broadcast?.mode !== 'NATIVE_WEBRTC' || !broadcast?.publishUrl || showFallback) && (
+            <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+              <div className="flex items-center justify-between gap-3 mb-3">
+                <h2 className="text-base font-semibold text-gray-800">Video ao vivo</h2>
+                <button
+                  type="button"
+                  onClick={() => setShowStreamGuide((prev) => !prev)}
+                  className="text-xs text-brand-600 hover:text-brand-700 font-medium inline-flex items-center gap-1"
+                >
+                  <Info className="w-3.5 h-3.5" />
+                  {showStreamGuide ? 'Fechar guia' : 'Como transmitir'}
+                </button>
               </div>
-            )}
-          </div>
+
+              {showStreamGuide && (
+                <div className="mb-4 rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3 text-xs text-gray-700 space-y-2">
+                  <p className="font-semibold text-gray-800">Guia rapido (funciona hoje)</p>
+                  <ol className="list-decimal pl-4 space-y-1">
+                    <li>Clique em Ir ao vivo no Arremate.</li>
+                    <li>Inicie o stream no Larix (iPhone) ou PRISM/OBS (desktop).</li>
+                    <li>Copie a URL publica HLS (.m3u8).</li>
+                    <li>Cole abaixo e clique em Atualizar video.</li>
+                  </ol>
+                  <p className="text-gray-600">Dica: aguarde 10-30s e confirme no modo comprador.</p>
+                </div>
+              )}
+
+              {/* RTMP ingest credentials when available */}
+              {(broadcast?.fallbackRtmp ?? session.publishUrl) && (
+                <div className="mb-4 rounded-xl border border-gray-100 bg-gray-50 px-4 py-3 text-xs text-gray-700 space-y-2">
+                  <p className="font-semibold text-gray-800">Dados para encoder externo (RTMP)</p>
+                  {broadcast?.fallbackRtmp && (
+                    <>
+                      <div>
+                        <span className="text-gray-500 font-medium">URL de ingest:</span>
+                        <code className="ml-2 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-800 select-all">{broadcast.fallbackRtmp.ingestUrl}</code>
+                      </div>
+                      <div>
+                        <span className="text-gray-500 font-medium">Stream key:</span>
+                        <code className="ml-2 bg-white border border-gray-200 rounded px-2 py-0.5 text-xs text-gray-800 select-all">{broadcast.fallbackRtmp.streamKey}</code>
+                      </div>
+                    </>
+                  )}
+                </div>
+              )}
+
+              <p className="text-xs text-gray-500 mb-3">
+                Cole a URL publica de playback do seu stream (ex.: HLS .m3u8) para que compradores assistam ao vivo.
+              </p>
+              <div className="flex flex-col sm:flex-row gap-3">
+                <input
+                  type="url"
+                  value={streamPlaybackUrl}
+                  onChange={(e) => setStreamPlaybackUrl(e.target.value)}
+                  placeholder="https://..."
+                  className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <button
+                  onClick={handleUpdateStream}
+                  disabled={isUpdatingStream || streamPlaybackUrl.trim().length === 0}
+                  className="bg-brand-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold px-5 py-2.5 rounded-lg text-sm transition-colors"
+                >
+                  {isUpdatingStream ? 'Atualizando…' : 'Atualizar video'}
+                </button>
+              </div>
+
+              {session.playbackUrl && (
+                <div className="mt-4 bg-black rounded-xl overflow-hidden aspect-video">
+                  <video src={session.playbackUrl} controls autoPlay muted className="w-full h-full object-contain" />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Encoder external toggle - only shown when native is available but fallback is not yet open */}
+          {broadcast?.mode === 'NATIVE_WEBRTC' && broadcast.publishUrl && !showFallback && (
+            <button
+              type="button"
+              onClick={() => setShowFallback((prev) => !prev)}
+              className="w-full text-xs text-gray-400 hover:text-gray-600 font-medium flex items-center justify-center gap-1.5 mb-6 py-2 transition-colors"
+            >
+              {showFallback ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
+              Encoder externo (avancado)
+            </button>
+          )}
 
           {/* Currently pinned item */}
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
