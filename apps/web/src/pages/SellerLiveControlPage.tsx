@@ -377,7 +377,7 @@ export default function SellerLiveControlPage() {
               <div className="flex items-center justify-between gap-3 mb-4">
                 <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
                   <MonitorPlay className="w-4 h-4 text-brand-500" />
-                  Studio de transmissao
+                  Studio de transmissão
                 </h2>
                 {publishState === 'LIVE' && (
                   <span className="inline-flex items-center gap-1.5 text-xs font-semibold bg-red-100 text-red-600 px-2.5 py-1 rounded-full">
@@ -397,19 +397,19 @@ export default function SellerLiveControlPage() {
                   <Camera className="w-8 h-8 text-gray-300 mx-auto mb-3" />
                   <p className="text-sm font-medium text-gray-700 mb-1">Pronto para transmitir pelo navegador</p>
                   <p className="text-xs text-gray-500 mb-4 max-w-xs mx-auto">
-                    O Arremate vai solicitar acesso a camera e microfone. Aceite a permissao para ver o preview e comecar a transmissao.
+                    O Arremate vai solicitar acesso à câmera e microfone. Aceite a permissão para ver o preview e começar a transmissão.
                   </p>
                   {typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent) && (
                     <div className="mb-4 rounded-lg border border-blue-100 bg-blue-50 px-3 py-2.5 text-xs text-blue-700 text-left">
                       <p className="font-semibold mb-1 flex items-center gap-1"><Info className="w-3.5 h-3.5" /> iPhone / iPad</p>
-                      <p>Certifique-se de que o Safari tem permissao de Camera e Microfone em Ajustes do iPhone. Em Safari, acesse Ajustes &gt; Safari &gt; Camera e Microfone e selecione Permitir.</p>
+                      <p>Certifique-se de que o Safari tem permissão de Câmera e Microfone em Ajustes do iPhone. Em Safari, acesse Ajustes &gt; Safari &gt; Câmera e Microfone e selecione Permitir.</p>
                     </div>
                   )}
                   <button
                     onClick={startPreview}
                     className="bg-brand-500 hover:bg-orange-600 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors inline-flex items-center gap-2"
                   >
-                    <Camera className="w-4 h-4" /> Ativar camera e microfone
+                    <Camera className="w-4 h-4" /> Ativar câmera e microfone
                   </button>
                 </div>
               )}
@@ -418,8 +418,8 @@ export default function SellerLiveControlPage() {
               {publishState === 'PREPARING' && (
                 <div className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-5 text-center">
                   <Camera className="w-8 h-8 text-gray-300 mx-auto mb-3 animate-pulse" />
-                  <p className="text-sm text-gray-500">Aguardando permissao de camera e microfone…</p>
-                  <p className="text-xs text-gray-400 mt-1">Aceite a solicitacao do navegador para continuar.</p>
+                  <p className="text-sm text-gray-500">Aguardando permissão de câmera e microfone…</p>
+                  <p className="text-xs text-gray-400 mt-1">Aceite a solicitação do navegador para continuar.</p>
                 </div>
               )}
 
@@ -467,7 +467,7 @@ export default function SellerLiveControlPage() {
                         onClick={() => void startPublish(broadcast.publishUrl!, broadcast.publishToken)}
                         className="bg-red-500 hover:bg-red-600 text-white font-bold px-6 py-2.5 rounded-xl text-sm transition-colors inline-flex items-center gap-2"
                       >
-                        <Wifi className="w-4 h-4" /> Iniciar transmissao
+                        <Wifi className="w-4 h-4" /> Iniciar transmissão
                       </button>
                     )}
                     {(publishState === 'LIVE' || publishState === 'CONNECTING' || publishState === 'RECONNECTING') && (
@@ -475,14 +475,14 @@ export default function SellerLiveControlPage() {
                         onClick={stopPublish}
                         className="bg-gray-700 hover:bg-gray-800 text-white font-semibold px-6 py-2.5 rounded-xl text-sm transition-colors inline-flex items-center gap-2"
                       >
-                        <WifiOff className="w-4 h-4" /> Parar transmissao
+                        <WifiOff className="w-4 h-4" /> Parar transmissão
                       </button>
                     )}
                     <button
                       onClick={stopPreview}
                       className="text-gray-400 hover:text-gray-600 text-xs font-medium inline-flex items-center gap-1 transition-colors"
                     >
-                      <CameraOff className="w-3.5 h-3.5" /> Desativar camera
+                      <CameraOff className="w-3.5 h-3.5" /> Desativar câmera
                     </button>
                   </div>
                 </div>
@@ -597,7 +597,7 @@ export default function SellerLiveControlPage() {
               className="w-full text-xs text-gray-400 hover:text-gray-600 font-medium flex items-center justify-center gap-1.5 mb-6 py-2 transition-colors"
             >
               {showFallback ? <ChevronUp className="w-3.5 h-3.5" /> : <ChevronDown className="w-3.5 h-3.5" />}
-              Encoder externo (avancado)
+              Encoder externo (avançado)
             </button>
           )}
 

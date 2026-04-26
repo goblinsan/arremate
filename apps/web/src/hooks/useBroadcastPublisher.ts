@@ -69,7 +69,7 @@ export function useBroadcastPublisher(): BroadcastPublisherState & BroadcastPubl
 
   const startPreview = useCallback(async () => {
     if (!isWebRTCSupported()) {
-      setError('Seu navegador nao suporta transmissao nativa. Use o modo encoder externo.');
+      setError('Seu navegador não suporta transmissão nativa. Use o modo encoder externo.');
       setPublishState('ERROR');
       return;
     }
@@ -111,7 +111,7 @@ export function useBroadcastPublisher(): BroadcastPublisherState & BroadcastPubl
 
       const stream = localStream;
       if (!stream) {
-        setError('Nenhuma midia local disponivel para publicar.');
+        setError('Nenhuma mídia local disponível para publicar.');
         setPublishState('ERROR');
         return;
       }
@@ -147,7 +147,7 @@ export function useBroadcastPublisher(): BroadcastPublisherState & BroadcastPubl
                 }
               }, RECONNECT_DELAY_MS);
             } else {
-              setError('Conexao perdida apos multiplas tentativas. Verifique sua rede e tente novamente.');
+              setError('Conexão perdida após múltiplas tentativas. Verifique sua rede e tente novamente.');
               setPublishState('ERROR');
             }
           }
@@ -174,7 +174,7 @@ export function useBroadcastPublisher(): BroadcastPublisherState & BroadcastPubl
       } catch (err) {
         if (isUnmountedRef.current) return;
         cleanupPC();
-        setError(err instanceof Error ? err.message : 'Erro ao conectar ao servidor de transmissao.');
+        setError(err instanceof Error ? err.message : 'Erro ao conectar ao servidor de transmissão.');
         setPublishState('ERROR');
       }
     },
@@ -226,19 +226,19 @@ export function useBroadcastPublisher(): BroadcastPublisherState & BroadcastPubl
 function getMediaErrorMessage(err: unknown): string {
   if (err instanceof Error) {
     if (err.name === 'NotAllowedError' || err.name === 'PermissionDeniedError') {
-      return 'Permissao de camera/microfone negada. Verifique as configuracoes do navegador e tente novamente.';
+      return 'Permissão de câmera/microfone negada. Verifique as configurações do navegador e tente novamente.';
     }
     if (err.name === 'NotFoundError' || err.name === 'DevicesNotFoundError') {
-      return 'Camera ou microfone nao encontrado. Conecte um dispositivo e tente novamente.';
+      return 'Câmera ou microfone não encontrado. Conecte um dispositivo e tente novamente.';
     }
     if (err.name === 'NotReadableError' || err.name === 'TrackStartError') {
-      return 'Camera ou microfone em uso por outro aplicativo. Feche-o e tente novamente.';
+      return 'Câmera ou microfone em uso por outro aplicativo. Feche-o e tente novamente.';
     }
     if (err.name === 'OverconstrainedError') {
-      return 'Configuracao de camera nao suportada pelo dispositivo.';
+      return 'Configuração de câmera não suportada pelo dispositivo.';
     }
     if (err.name === 'SecurityError') {
-      return 'Acesso a camera/microfone bloqueado por politica de seguranca. Use HTTPS.';
+      return 'Acesso a câmera/microfone bloqueado por política de segurança. Use HTTPS.';
     }
     return err.message;
   }
