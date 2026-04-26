@@ -414,21 +414,48 @@ enum SessionStatus {
   ENDED
 }
 
+enum IngestMode {
+  NATIVE_WEBRTC
+  RTMP_EXTERNAL
+}
+
+enum BroadcastHealth {
+  GOOD
+  DEGRADED
+  DOWN
+}
+
 model ShowSession {
-  id                String            @id @default(cuid())
-  showId            String
-  show              Show              @relation(fields: [showId], references: [id])
-  status            SessionStatus     @default(STARTING)
-  providerSessionId String?
-  playbackUrl       String?
-  pinnedItemId      String?
-  pinnedItem        ShowInventoryItem? @relation("PinnedSession", fields: [pinnedItemId], references: [id])
-  raidedToShowId    String?
-  raidedToShow      Show?             @relation("RaidedSessions", fields: [raidedToShowId], references: [id])
-  startedAt         DateTime?
-  endedAt           DateTime?
-  createdAt         DateTime          @default(now())
-  updatedAt         DateTime          @updatedAt
+  id                      String            @id @default(cuid())
+  showId                  String
+  show                    Show              @relation(fields: [showId], references: [id])
+  status                  SessionStatus     @default(STARTING)
+  providerSessionId       String?
+  playbackUrl             String?
+  pinnedItemId            String?
+  pinnedItem              ShowInventoryItem? @relation("PinnedSession", fields: [pinnedItemId], references: [id])
+  raidedToShowId          String?
+  raidedToShow            Show?             @relation("RaidedSessions", fields: [raidedToShowId], references: [id])
+  startedAt               DateTime?
+  endedAt                 DateTime?
+  createdAt               DateTime          @default(now())
+  updatedAt               DateTime          @updatedAt
+
+  // Native broadcast fields (nullable for rollout safety)
+  ingestMode              IngestMode?
+  providerName            String?
+  providerStreamId        String?
+  providerInputId         String?
+  providerPlaybackId      String?
+  publishUrl              String?
+  publishTokenExpiresAt   DateTime?
+  broadcastStartedAt      DateTime?
+  firstFrameAt            DateTime?
+  broadcastLastHeartbeatAt DateTime?
+  broadcastHealth         BroadcastHealth?
+  reconnectCount          Int               @default(0)
+  broadcastErrorCode      String?
+  broadcastEndedReason    String?
 
   chatMessages      ChatMessage[]
   claims            Claim[]
