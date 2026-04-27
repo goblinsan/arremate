@@ -400,7 +400,7 @@ export default function LiveRoomPage() {
   const minNextBid = livePrice !== null ? livePrice + 1 : null;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-12">
+    <div className={`mx-auto px-4 py-12 ${isLive ? 'max-w-7xl' : 'max-w-4xl'}`}>
       <Link to={`/shows/${show.id}`} className="text-gray-400 hover:text-gray-600 text-sm mb-6 inline-flex items-center gap-1">
         <ArrowLeft className="w-3.5 h-3.5" /> Detalhes do show
       </Link>
@@ -471,6 +471,9 @@ export default function LiveRoomPage() {
             </div>
           )}
 
+          <div className="lg:flex lg:gap-6 lg:items-start">
+            {/* Main column: video + pinned item */}
+            <div className="lg:flex-1 lg:min-w-0">
           {/* Playback area */}
           <LivePlayer playbackUrl={session?.playbackUrl} />
 
@@ -609,85 +612,87 @@ export default function LiveRoomPage() {
             </div>
           )}
 
-          {/* Chat panel */}
-          {session && (
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 mb-6 flex flex-col">
-              <div className="px-6 py-4 border-b border-gray-100">
-                <h3 className="text-base font-semibold text-gray-800 flex items-center gap-1.5"><MessageCircle className="w-4 h-4" /> Chat ao vivo</h3>
-              </div>
-
-              {/* Message list */}
-              <div ref={chatContainerRef} className="h-64 overflow-y-auto px-6 py-4 flex flex-col gap-2">
-                {messages.length === 0 ? (
-                  <p className="text-sm text-gray-400 text-center my-auto">
-                    Nenhuma mensagem ainda. Seja o primeiro a comentar!
-                  </p>
-                ) : (
-                  messages.map((msg) => {
-                    const isOwn = user?.sub === msg.userId || false;
-                    return (
-                      <div
-                        key={msg.id}
-                        className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
-                      >
-                        <span className="text-xs text-gray-400 mb-0.5">
-                          {msg.user?.name ?? 'Usuário'}
-                        </span>
-                        <div
-                          className={`text-sm px-3 py-2 rounded-2xl max-w-xs break-words ${
-                            isOwn
-                              ? 'bg-brand-500 text-white rounded-tr-sm'
-                              : 'bg-gray-100 text-gray-800 rounded-tl-sm'
-                          }`}
-                        >
-                          {msg.content}
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-                <div ref={chatBottomRef} />
-              </div>
-
-              {/* Compose */}
-              <div className="px-6 py-4 border-t border-gray-100">
-                {chatError && (
-                  <p className="text-xs text-red-600 mb-2">{chatError}</p>
-                )}
-                {isAuthenticated ? (
-                  <form onSubmit={handleSendMessage} className="flex gap-2">
-                    <input
-                      type="text"
-                      value={chatInput}
-                      onChange={(e) => setChatInput(e.target.value)}
-                      maxLength={300}
-                      placeholder="Digite uma mensagem…"
-                      className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                      disabled={isSendingMessage}
-                    />
-                    <button
-                      type="submit"
-                      disabled={isSendingMessage || !chatInput.trim()}
-                      className="bg-brand-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
-                    >
-                      {isSendingMessage ? '…' : 'Enviar'}
-                    </button>
-                  </form>
-                ) : (
-                  <p className="text-sm text-gray-500 text-center">
-                    <Link to="/login" className="text-brand-500 hover:underline font-medium">
-                      Faça login
-                    </Link>{' '}
-                    para participar do chat.
-                  </p>
-                )}
-              </div>
+              <p className="text-xs text-gray-400 text-center mt-6">
+                Esta página atualiza automaticamente a cada {POLL_INTERVAL_MS / 1000} segundos.
+              </p>
             </div>
-          )}
 
-          <p className="text-xs text-gray-400 text-center">
-            Esta página atualiza automaticamente a cada {POLL_INTERVAL_MS / 1000} segundos.
-          </p>
+            {/* Chat sidebar */}
+            {session && (
+              <div className="mt-6 lg:mt-0 lg:w-80 xl:w-96 lg:shrink-0 lg:sticky lg:top-4 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col lg:h-[calc(100vh-6rem)]">
+                <div className="px-6 py-4 border-b border-gray-100 shrink-0">
+                  <h3 className="text-base font-semibold text-gray-800 flex items-center gap-1.5"><MessageCircle className="w-4 h-4" /> Chat ao vivo</h3>
+                </div>
+
+                {/* Message list */}
+                <div ref={chatContainerRef} className="flex-1 overflow-y-auto min-h-64 px-6 py-4 flex flex-col gap-2">
+                  {messages.length === 0 ? (
+                    <p className="text-sm text-gray-400 text-center my-auto">
+                      Nenhuma mensagem ainda. Seja o primeiro a comentar!
+                    </p>
+                  ) : (
+                    messages.map((msg) => {
+                      const isOwn = user?.sub === msg.userId || false;
+                      return (
+                        <div
+                          key={msg.id}
+                          className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
+                        >
+                          <span className="text-xs text-gray-400 mb-0.5">
+                            {msg.user?.name ?? 'Usuário'}
+                          </span>
+                          <div
+                            className={`text-sm px-3 py-2 rounded-2xl max-w-xs break-words ${
+                              isOwn
+                                ? 'bg-brand-500 text-white rounded-tr-sm'
+                                : 'bg-gray-100 text-gray-800 rounded-tl-sm'
+                            }`}
+                          >
+                            {msg.content}
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                  <div ref={chatBottomRef} />
+                </div>
+
+                {/* Compose */}
+                <div className="px-6 py-4 border-t border-gray-100 shrink-0">
+                  {chatError && (
+                    <p className="text-xs text-red-600 mb-2">{chatError}</p>
+                  )}
+                  {isAuthenticated ? (
+                    <form onSubmit={handleSendMessage} className="flex gap-2">
+                      <input
+                        type="text"
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        maxLength={300}
+                        placeholder="Digite uma mensagem…"
+                        className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                        disabled={isSendingMessage}
+                      />
+                      <button
+                        type="submit"
+                        disabled={isSendingMessage || !chatInput.trim()}
+                        className="bg-brand-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
+                      >
+                        {isSendingMessage ? '…' : 'Enviar'}
+                      </button>
+                    </form>
+                  ) : (
+                    <p className="text-sm text-gray-500 text-center">
+                      <Link to="/login" className="text-brand-500 hover:underline font-medium">
+                        Faça login
+                      </Link>{' '}
+                      para participar do chat.
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>
