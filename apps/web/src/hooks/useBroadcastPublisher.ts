@@ -27,6 +27,7 @@ export interface BroadcastPublisherActions {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_DELAY_MS = 3000;
+const ICE_GATHERING_TIMEOUT_MS = 15_000;
 
 function isWebRTCSupported(): boolean {
   return (
@@ -158,10 +159,10 @@ export function useBroadcastPublisher(): BroadcastPublisherState & BroadcastPubl
 
         // Wait for ICE gathering to complete so the SDP includes all candidates.
         await new Promise<void>((resolve, reject) => {
-          const timer = setTimeout(
-            () => reject(new Error('Tempo limite ao aguardar candidatos ICE. Verifique sua conexão e tente novamente.')),
-            15_000,
-          );
+          const timer = setTimeout(() => {
+            pc.onicegatheringstatechange = null;
+            reject(new Error('Tempo limite ao aguardar candidatos ICE. Verifique sua conexão e tente novamente.'));
+          }, ICE_GATHERING_TIMEOUT_MS);
           if (pc.iceGatheringState === 'complete') {
             clearTimeout(timer);
             resolve();
@@ -170,6 +171,7 @@ export function useBroadcastPublisher(): BroadcastPublisherState & BroadcastPubl
           pc.onicegatheringstatechange = () => {
             if (pc.iceGatheringState === 'complete') {
               clearTimeout(timer);
+              pc.onicegatheringstatechange = null;
               resolve();
             }
           };
