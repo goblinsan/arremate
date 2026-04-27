@@ -349,9 +349,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             idToken: result.IdToken,
           };
           storeTokens(newTokens);
+          // Fetch profile before setting auth state so contextProfile is ready
+          // when isAuthenticated transitions to true and triggers route guards.
+          const profileData = await fetchProfile(result.AccessToken);
           setTokens(newTokens);
           setUser(userFromTokens(newTokens));
-          const profileData = await fetchProfile(result.AccessToken);
           if (profileData) {
             storePostAuthRedirect(resolvePostAuthRedirect(profileData));
           }
@@ -394,9 +396,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       idToken: result.IdToken,
     };
     storeTokens(newTokens);
+    // Fetch profile before setting auth state so contextProfile is ready when
+    // isAuthenticated transitions to true and triggers route guards / effects.
+    const profileData = await fetchProfile(result.AccessToken);
     setTokens(newTokens);
     setUser(userFromTokens(newTokens));
-    const profileData = await fetchProfile(result.AccessToken);
     if (profileData) {
       storePostAuthRedirect(resolvePostAuthRedirect(profileData));
     }
