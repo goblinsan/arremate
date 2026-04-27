@@ -27,6 +27,7 @@ export interface BroadcastPublisherActions {
 
 const MAX_RECONNECT_ATTEMPTS = 3;
 const RECONNECT_DELAY_MS = 3000;
+const ICE_GATHERING_TIMEOUT_MS = 15_000;
 
 function isWebRTCSupported(): boolean {
   return (
@@ -156,13 +157,36 @@ export function useBroadcastPublisher(): BroadcastPublisherState & BroadcastPubl
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
 
+        // Wait for ICE gathering to complete so the SDP includes all candidates.
+        await new Promise<void>((resolve, reject) => {
+          const timer = setTimeout(() => {
+            pc.onicegatheringstatechange = null;
+            reject(new Error('Tempo limite ao aguardar candidatos ICE. Verifique sua conexão e tente novamente.'));
+          }, ICE_GATHERING_TIMEOUT_MS);
+          if (pc.iceGatheringState === 'complete') {
+            clearTimeout(timer);
+            resolve();
+            return;
+          }
+          pc.onicegatheringstatechange = () => {
+            if (pc.iceGatheringState === 'complete') {
+              clearTimeout(timer);
+              pc.onicegatheringstatechange = null;
+              resolve();
+            }
+          };
+        });
+
+        if (isUnmountedRef.current) return;
+
+        const sdp = pc.localDescription!.sdp;
         const headers: HeadersInit = { 'Content-Type': 'application/sdp' };
         if (publishToken) headers['Authorization'] = `Bearer ${publishToken}`;
 
         const resp = await fetch(publishUrl, {
           method: 'POST',
           headers,
-          body: offer.sdp,
+          body: sdp,
         });
 
         if (!resp.ok) {
@@ -174,7 +198,13 @@ export function useBroadcastPublisher(): BroadcastPublisherState & BroadcastPubl
       } catch (err) {
         if (isUnmountedRef.current) return;
         cleanupPC();
-        setError(err instanceof Error ? err.message : 'Erro ao conectar ao servidor de transmissão.');
+        let msg: string;
+        if (err instanceof TypeError) {
+          msg = 'Não foi possível conectar ao servidor de transmissão. Verifique sua conexão e tente novamente.';
+        } else {
+          msg = err instanceof Error ? err.message : 'Erro ao conectar ao servidor de transmissão.';
+        }
+        setError(msg);
         setPublishState('ERROR');
       }
     },

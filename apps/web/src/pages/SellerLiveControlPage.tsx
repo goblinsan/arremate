@@ -101,6 +101,38 @@ export default function SellerLiveControlPage() {
     setStreamPlaybackUrl(session?.playbackUrl ?? '');
   }, [session?.playbackUrl]);
 
+  // Reconstruct broadcast state from session data when the page is loaded for an
+  // already-live show (e.g. after a page refresh).  publishToken is short-lived
+  // and not persisted, but the publishUrl (which embeds auth for most providers)
+  // and ingestMode are stored on the session and are enough to restore the UI.
+  // ingestMode is nullable in the schema for backwards-compat with older sessions;
+  // defaulting to 'RTMP_EXTERNAL' is safe: if publishUrl is also null the native
+  // studio section won't render regardless, and the external-encoder panel is
+  // the correct fallback for sessions that pre-date the ingestMode column.
+  // Use the functional updater form to avoid including `broadcast` in the deps
+  // and to ensure we never overwrite a broadcast already set by handleGoLive.
+  useEffect(() => {
+    if (session) {
+      setBroadcast((current) => {
+        if (current) return current;
+        return {
+          mode: session.ingestMode ?? 'RTMP_EXTERNAL',
+          provider: session.providerName ?? 'stub',
+          publishUrl: session.publishUrl ?? undefined,
+          playbackUrl: session.playbackUrl ?? undefined,
+        };
+      });
+    }
+  }, [session]);
+
+  // Auto-expand the external encoder panel when native WHIP streaming fails so
+  // the fallback path is immediately visible without an extra click.
+  useEffect(() => {
+    if (publishState === 'ERROR' && broadcast?.mode === 'NATIVE_WEBRTC') {
+      setShowFallback(true);
+    }
+  }, [publishState, broadcast?.mode]);
+
   async function handleGoLive() {
     if (!show) return;
     setError(null);
