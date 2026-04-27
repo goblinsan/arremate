@@ -53,6 +53,8 @@ export default function ProfilePage() {
       return;
     }
 
+    const controller = new AbortController();
+
     async function loadProfile() {
       setIsFetching(true);
       setError(null);
@@ -65,9 +67,11 @@ export default function ProfilePage() {
         let lastError: Error | null = null;
 
         for (let attempt = 0; attempt < 3; attempt += 1) {
+          if (controller.signal.aborted) return;
           try {
             const res = await fetch(`${API_URL}/v1/me`, {
               headers: { Authorization: `Bearer ${token}` },
+              signal: controller.signal,
             });
 
             if (res.ok) {
@@ -85,6 +89,7 @@ export default function ProfilePage() {
 
             throw new Error(message);
           } catch (err) {
+            if (controller.signal.aborted) return;
             lastError = err instanceof Error ? err : new Error('Não foi possível carregar seu perfil.');
             if (attempt < 2) {
               await new Promise((resolve) => setTimeout(resolve, 250 * (attempt + 1)));
@@ -93,6 +98,8 @@ export default function ProfilePage() {
           }
         }
 
+        if (controller.signal.aborted) return;
+
         if (!data) {
           throw (lastError ?? new Error('Não foi possível carregar seu perfil.'));
         }
@@ -100,13 +107,20 @@ export default function ProfilePage() {
         setProfile(data);
         setName(data.name ?? '');
       } catch (err) {
+        if (controller.signal.aborted) return;
         setError(err instanceof Error ? err.message : 'Não foi possível carregar seu perfil.');
       } finally {
-        setIsFetching(false);
+        if (!controller.signal.aborted) {
+          setIsFetching(false);
+        }
       }
     }
 
     loadProfile().catch(() => undefined);
+
+    return () => {
+      controller.abort();
+    };
   }, [contextProfile, getAccessToken, isAuthenticated, isLoading]);
 
   async function handleSubmit(event: FormEvent) {
