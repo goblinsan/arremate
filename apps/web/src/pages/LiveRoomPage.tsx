@@ -47,6 +47,7 @@ export default function LiveRoomPage() {
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Claim state
   const [claim, setClaim] = useState<Claim | null>(null);
@@ -154,9 +155,13 @@ export default function LiveRoomPage() {
     return () => clearInterval(interval);
   }, [sessionId, sessionStatus, fetchMessages]);
 
-  // Auto-scroll chat to bottom when new messages arrive
+  // Auto-scroll chat to bottom when new messages arrive (scoped to the chat
+  // container so the page viewport does not scroll automatically).
   useEffect(() => {
-    chatBottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const el = chatContainerRef.current;
+    if (el) {
+      el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
+    }
   }, [messages]);
 
   // ─── Claim polling ────────────────────────────────────────────────────────────
@@ -612,7 +617,7 @@ export default function LiveRoomPage() {
               </div>
 
               {/* Message list */}
-              <div className="h-64 overflow-y-auto px-6 py-4 flex flex-col gap-2">
+              <div ref={chatContainerRef} className="h-64 overflow-y-auto px-6 py-4 flex flex-col gap-2">
                 {messages.length === 0 ? (
                   <p className="text-sm text-gray-400 text-center my-auto">
                     Nenhuma mensagem ainda. Seja o primeiro a comentar!
