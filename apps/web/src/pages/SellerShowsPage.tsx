@@ -127,59 +127,51 @@ export default function SellerShowsPage() {
         </div>
       ) : (
         <div className="space-y-3">
-          {shows.map((show) => (
-            <div
-              key={show.id}
-              className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm flex items-center justify-between gap-4"
-            >
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 mb-1">
-                  <h2 className="font-semibold text-gray-900 truncate">{show.title}</h2>
-                  <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[show.status]}`}>
-                    {STATUS_LABELS[show.status]}
-                  </span>
+          {shows.map((show) => {
+            const href =
+              show.status === 'LIVE' || show.status === 'SCHEDULED'
+                ? `/seller/shows/${show.id}/live`
+                : `/seller/shows/${show.id}`;
+            return (
+              <Link
+                key={show.id}
+                to={href}
+                className="bg-white border border-gray-100 rounded-2xl p-5 shadow-sm hover:shadow-md hover:border-gray-200 transition-all flex items-center justify-between gap-4 group"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 mb-1">
+                    <h2 className="font-semibold text-gray-900 truncate group-hover:text-brand-600 transition-colors">{show.title}</h2>
+                    <span className={`inline-block text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[show.status]}`}>
+                      {STATUS_LABELS[show.status]}
+                    </span>
+                    {show.status === 'LIVE' && (
+                      <span className="inline-flex items-center gap-1 text-xs font-medium text-red-600 animate-pulse">
+                        <Radio className="w-3 h-3" /> Ao vivo
+                      </span>
+                    )}
+                  </div>
+                  {show.description && (
+                    <p className="text-sm text-gray-500 truncate">{show.description}</p>
+                  )}
+                  {show.scheduledAt && (
+                    <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
+                      <Calendar className="w-3 h-3 shrink-0" /> {new Date(show.scheduledAt).toLocaleString('pt-BR')}
+                    </p>
+                  )}
                 </div>
-                {show.description && (
-                  <p className="text-sm text-gray-500 truncate">{show.description}</p>
-                )}
-                {show.scheduledAt && (
-                  <p className="text-xs text-gray-400 mt-1 flex items-center gap-1">
-                    <Calendar className="w-3 h-3 shrink-0" /> {new Date(show.scheduledAt).toLocaleString('pt-BR')}
-                  </p>
-                )}
-                {(show.status === 'SCHEDULED' || show.status === 'LIVE') && (
-                  <p className="text-xs text-brand-600 mt-1">
-                    Abra o painel ao vivo para iniciar/gerenciar o video da transmissao.
-                  </p>
-                )}
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                <Link
-                  to={`/seller/shows/${show.id}`}
-                  className="text-sm font-medium text-brand-500 hover:underline"
-                >
-                  Editar
-                </Link>
-                {(show.status === 'SCHEDULED' || show.status === 'LIVE') && (
-                  <Link
-                    to={`/seller/shows/${show.id}/live`}
-                    className="inline-flex items-center gap-1 text-sm font-medium text-red-600 hover:text-red-700"
-                  >
-                    <Radio className="w-3.5 h-3.5" />
-                    {show.status === 'LIVE' ? 'Painel ao vivo' : 'Ir ao vivo'}
-                  </Link>
-                )}
-                {(show.status === 'DRAFT' || show.status === 'SCHEDULED') && (
-                  <button
-                    onClick={() => handleCancel(show.id)}
-                    className="text-sm font-medium text-red-500 hover:underline"
-                  >
-                    Cancelar
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
+                <div className="flex items-center gap-2 shrink-0">
+                  {(show.status === 'DRAFT' || show.status === 'SCHEDULED') && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleCancel(show.id); }}
+                      className="text-sm font-medium text-red-500 hover:underline"
+                    >
+                      Cancelar
+                    </button>
+                  )}
+                </div>
+              </Link>
+            );
+          })}
         </div>
       )}
     </div>
