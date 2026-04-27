@@ -15,11 +15,13 @@ const MIME_BY_EXT: Record<string, string> = {
 };
 
 function resolveContentType(file: File): string {
-  if (file.type) return file.type;
   const dotIndex = file.name.lastIndexOf('.');
-  if (dotIndex === -1) return '';
-  const ext = file.name.slice(dotIndex + 1).toLowerCase();
-  return MIME_BY_EXT[ext] ?? '';
+  if (dotIndex !== -1) {
+    const ext = file.name.slice(dotIndex + 1).toLowerCase();
+    const byExt = MIME_BY_EXT[ext];
+    if (byExt) return byExt;
+  }
+  return file.type ?? '';
 }
 
 const DOCUMENT_TYPES: { value: DocumentType; label: string }[] = [
@@ -351,7 +353,7 @@ export default function SellerApplicationPage() {
     );
   }
 
-  const isReadOnly = application !== null && application.status !== 'DRAFT';
+  const isReadOnly = application !== null && application.status !== 'DRAFT' && application.status !== 'SUBMITTED';
   const canSubmit = application !== null && application.status === 'DRAFT';
 
   return (

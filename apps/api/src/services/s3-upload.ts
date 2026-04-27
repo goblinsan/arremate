@@ -8,9 +8,15 @@ import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 function getS3Config() {
   const region = process.env.AWS_REGION;
   const bucket = process.env.S3_DOCUMENTS_BUCKET;
+  const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
 
   if (!region || !bucket) {
     throw new Error('Missing AWS_REGION or S3_DOCUMENTS_BUCKET environment variables');
+  }
+
+  if (!accessKeyId || !secretAccessKey) {
+    throw new Error('Missing AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY environment variables');
   }
 
   const expiresIn = Number(process.env.S3_UPLOAD_URL_EXPIRY_SECONDS ?? 300);
@@ -19,7 +25,7 @@ function getS3Config() {
     throw new Error('S3_UPLOAD_URL_EXPIRY_SECONDS must be a positive number');
   }
 
-  return { region, bucket, expiresIn };
+  return { region, bucket, accessKeyId, secretAccessKey, expiresIn };
 }
 
 /**
@@ -34,9 +40,12 @@ export async function generateUploadUrl(
   s3Key: string,
   contentType: string,
 ): Promise<{ uploadUrl: string; s3Key: string; expiresAt: string }> {
-  const { region, bucket, expiresIn } = getS3Config();
+  const { region, bucket, accessKeyId, secretAccessKey, expiresIn } = getS3Config();
 
-  const client = new S3Client({ region });
+  const client = new S3Client({
+    region,
+    credentials: { accessKeyId, secretAccessKey },
+  });
 
   const command = new PutObjectCommand({
     Bucket: bucket,
