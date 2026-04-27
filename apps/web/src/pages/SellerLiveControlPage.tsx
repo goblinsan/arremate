@@ -101,6 +101,29 @@ export default function SellerLiveControlPage() {
     setStreamPlaybackUrl(session?.playbackUrl ?? '');
   }, [session?.playbackUrl]);
 
+  // Reconstruct broadcast state from session data when the page is loaded for an
+  // already-live show (e.g. after a page refresh).  publishToken is short-lived
+  // and not persisted, but the publishUrl (which embeds auth for most providers)
+  // and ingestMode are stored on the session and are enough to restore the UI.
+  useEffect(() => {
+    if (session && !broadcast) {
+      setBroadcast({
+        mode: session.ingestMode ?? 'RTMP_EXTERNAL',
+        provider: session.providerName ?? 'stub',
+        publishUrl: session.publishUrl ?? undefined,
+        playbackUrl: session.playbackUrl ?? undefined,
+      });
+    }
+  }, [session, broadcast]);
+
+  // Auto-expand the external encoder panel when native WHIP streaming fails so
+  // the fallback path is immediately visible without an extra click.
+  useEffect(() => {
+    if (publishState === 'ERROR' && broadcast?.mode === 'NATIVE_WEBRTC') {
+      setShowFallback(true);
+    }
+  }, [publishState, broadcast?.mode]);
+
   async function handleGoLive() {
     if (!show) return;
     setError(null);
