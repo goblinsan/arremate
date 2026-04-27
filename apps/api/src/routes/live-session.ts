@@ -25,6 +25,9 @@ app.post('/v1/seller/shows/:showId/go-live', ...sellerGuard, async (c) => {
   const activeSession = await prisma.showSession.findFirst({ where: { showId, status: { in: ['STARTING', 'LIVE'] } } });
   if (activeSession) return c.json({ statusCode: 409, error: 'Conflict', message: 'An active session already exists for this show' }, 409);
   const providerName = process.env.LIVE_VIDEO_PROVIDER ?? 'stub';
+  if (providerName === 'stub' && process.env.NODE_ENV === 'production') {
+    return c.json({ statusCode: 503, error: 'Service Unavailable', message: 'Servidor de transmissão não configurado. Defina LIVE_VIDEO_PROVIDER no ambiente de produção.' }, 503);
+  }
   const provider = createLiveVideoProvider(providerName);
   const broadcast = await provider.prepareBroadcast(showId);
   const ingestMode = broadcast.publishUrl ? 'NATIVE_WEBRTC' : 'RTMP_EXTERNAL';
