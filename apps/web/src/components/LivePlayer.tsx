@@ -18,33 +18,117 @@ interface LivePlayerProps {
 export default function LivePlayer({ playbackUrl }: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
+  const pcRef = useRef<RTCPeerConnection | null>(null);
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video || !playbackUrl) return;
+    const videoEl = video;
+    let isDisposed = false;
 
-    // Clean up any previous Hls instance before attaching a new source.
+    // Clean up any previous playback state before attaching a new source.
     if (hlsRef.current) {
       hlsRef.current.destroy();
       hlsRef.current = null;
     }
+    if (pcRef.current) {
+      pcRef.current.close();
+      pcRef.current = null;
+    }
+    videoEl.pause();
+    videoEl.removeAttribute('src');
+    videoEl.srcObject = null;
+    videoEl.load();
 
-    if (video.canPlayType('application/vnd.apple.mpegurl')) {
+    async function attachWebRtcPlayback(url: string) {
+      const pc = new RTCPeerConnection({
+        iceServers: [{ urls: 'stun:stun.cloudflare.com:3478' }],
+      });
+      pcRef.current = pc;
+
+      const remoteStream = new MediaStream();
+      videoEl.srcObject = remoteStream;
+
+      pc.addTransceiver('video', { direction: 'recvonly' });
+      pc.addTransceiver('audio', { direction: 'recvonly' });
+
+      pc.ontrack = (event) => {
+        event.streams.forEach((stream) => {
+          stream.getTracks().forEach((track) => remoteStream.addTrack(track));
+        });
+        void videoEl.play().catch(() => {});
+      };
+
+      const offer = await pc.createOffer();
+      await pc.setLocalDescription(offer);
+
+      await new Promise<void>((resolve, reject) => {
+        const timeout = window.setTimeout(() => reject(new Error('Timed out waiting for ICE candidates.')), 15_000);
+        if (pc.iceGatheringState === 'complete') {
+          window.clearTimeout(timeout);
+          resolve();
+          return;
+        }
+
+        pc.onicegatheringstatechange = () => {
+          if (pc.iceGatheringState === 'complete') {
+            window.clearTimeout(timeout);
+            pc.onicegatheringstatechange = null;
+            resolve();
+          }
+        };
+      });
+
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/sdp' },
+        body: pc.localDescription?.sdp,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Playback endpoint returned ${response.status}`);
+      }
+
+      const answerSdp = await response.text();
+      if (isDisposed) return;
+      await pc.setRemoteDescription({ type: 'answer', sdp: answerSdp });
+    }
+
+    if (playbackUrl.includes('/webRTC/play')) {
+      void attachWebRtcPlayback(playbackUrl).catch(() => {
+        if (isDisposed) return;
+        videoEl.pause();
+        videoEl.srcObject = null;
+      });
+    } else if (videoEl.canPlayType('application/vnd.apple.mpegurl')) {
       // Native HLS support (Safari, some mobile browsers).
-      video.src = playbackUrl;
+      videoEl.src = playbackUrl;
+      void videoEl.play().catch(() => {});
     } else if (Hls.isSupported()) {
       // Use hls.js for browsers without native HLS support (Chrome, Firefox…).
       const hls = new Hls();
       hlsRef.current = hls;
       hls.loadSource(playbackUrl);
-      hls.attachMedia(video);
+      hls.attachMedia(videoEl);
+      hls.on(Hls.Events.MANIFEST_PARSED, () => {
+        void videoEl.play().catch(() => {});
+      });
     }
 
     return () => {
+      isDisposed = true;
       if (hlsRef.current) {
         hlsRef.current.destroy();
         hlsRef.current = null;
       }
+      if (pcRef.current) {
+        pcRef.current.close();
+        pcRef.current = null;
+      }
+      videoEl.pause();
+      videoEl.removeAttribute('src');
+      videoEl.srcObject = null;
+      videoEl.load();
     };
   }, [playbackUrl]);
 
