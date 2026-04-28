@@ -81,10 +81,31 @@ Run through these checks in order before escalating:
 
 ### Live session unable to start / video feed not playing
 
-1. Check the video provider (Mux / Cloudflare Stream) status page.
-2. Verify `VIDEO_PROVIDER_KEY` environment variables are set and valid.
-3. Check seller-facing error by reviewing `GET /v1/seller/shows/:id/go-live` logs.
-4. If provider is down: notify sellers via the admin panel and estimate recovery time.
+1. Check the configured live video provider status page. Production currently expects Cloudflare Stream Live.
+2. Verify the production Worker is configured with:
+   - `LIVE_VIDEO_PROVIDER=cloudflare_stream`
+   - `CF_ACCOUNT_ID`
+   - `CF_API_TOKEN`
+   - `CF_STREAM_WEBHOOK_SECRET`
+3. Check seller-facing errors by reviewing `POST /v1/seller/shows/:id/go-live` logs.
+4. Check webhook delivery on `POST /v1/webhooks/live-video` for signature failures or unmapped events.
+5. If the provider is degraded, keep the commerce session open and use the external encoder fallback if available.
+6. If the provider is down: notify sellers and estimate recovery time.
+
+### Cloudflare live webhook not reconciling stream state
+
+1. Confirm Cloudflare Notifications is sending to:
+   - `https://api.arrematelive.com/v1/webhooks/live-video`
+2. Confirm the webhook destination secret matches `CF_STREAM_WEBHOOK_SECRET`.
+3. Check API logs for `400 Invalid webhook signature`.
+4. Verify the payload contains:
+   - `data.input_id`
+   - `data.event_type`
+5. Confirm the `input_id` matches a stored `show_sessions.providerSessionId`.
+6. If events are arriving but state is not changing, inspect the mapped event type:
+   - `live_input.connected`
+   - `live_input.disconnected`
+   - `live_input.errored`
 
 ### Fraudulent seller / content moderation emergency
 
@@ -109,8 +130,8 @@ Run through these checks in order before escalating:
 
 ```bash
 # Check API health
-curl https://api.arremate.com.br/health
-curl -H "Authorization: Bearer $TOKEN" https://api.arremate.com.br/v1/admin/health
+curl https://api.arrematelive.com/health
+curl -H "Authorization: Bearer $TOKEN" https://api.arrematelive.com/v1/admin/health
 
 # Tail production logs (adjust for your log platform)
 # CloudWatch: aws logs tail /arremate/api --follow

@@ -56,6 +56,10 @@ cp .env.example .env
 | `PORT` | `4000` | API server port |
 | `CORS_ORIGIN` | `*` | Allowed CORS origin for the API |
 | `PIX_PROVIDER` | `stub` | Payment provider (`stub` for dev, `production` for live) |
+| `LIVE_VIDEO_PROVIDER` | `stub` | Live video backend (`cloudflare_stream` in production) |
+| `CF_ACCOUNT_ID` | — | Cloudflare account ID for Stream Live API calls |
+| `CF_API_TOKEN` | — | Cloudflare API token with Stream Live permissions |
+| `CF_STREAM_WEBHOOK_SECRET` | — | Shared secret used by the live-video webhook route |
 | `SENTRY_DSN` | — | API Sentry DSN (leave blank to disable error reporting) |
 | `VITE_SENTRY_DSN` | — | Frontend Sentry DSN |
 | `NODE_ENV` | `development` | Set to `production` for live deployments |
@@ -144,7 +148,57 @@ pnpm dev         # starts all apps in parallel (web :3000, admin :3001, api :400
 
 ---
 
-## 6. Build and validate
+## 6. Cloudflare Stream Live setup
+
+Only required if `LIVE_VIDEO_PROVIDER=cloudflare_stream`.
+
+### Worker configuration
+
+Production API deploys read `LIVE_VIDEO_PROVIDER` from [apps/api/wrangler.toml](../../apps/api/wrangler.toml) and Cloudflare secrets from the Worker environment.
+
+Set these Worker secrets in Cloudflare:
+
+- `CF_ACCOUNT_ID`
+- `CF_API_TOKEN`
+- `CF_STREAM_WEBHOOK_SECRET`
+
+`CF_API_TOKEN` should have the minimum Stream permissions needed to create and delete live inputs.
+
+### Webhook destination
+
+The API now exposes a live-video webhook endpoint at:
+
+`https://api.arrematelive.com/v1/webhooks/live-video`
+
+Configure Cloudflare Notifications:
+
+1. Go to `Notifications` -> `Destinations`.
+2. Create a webhook destination.
+3. Set the URL to the live-video webhook route above.
+4. Set the destination secret to the same value used for `CF_STREAM_WEBHOOK_SECRET`.
+5. Save and test the destination.
+
+### Stream notification policy
+
+After the destination exists:
+
+1. Go to `Notifications` -> `All Notifications`.
+2. Add a new `Stream` notification.
+3. Attach the webhook destination.
+4. Leave it account-wide or filter to specific live input IDs.
+5. Enable the Stream Live events needed by the control plane.
+
+The current API route reconciles these Cloudflare live input events:
+
+- `live_input.connected`
+- `live_input.disconnected`
+- `live_input.errored`
+
+Do not point Cloudflare Stream notifications at the Pix webhook route.
+
+---
+
+## 7. Build and validate
 
 ```bash
 pnpm build       # compile all packages and apps
@@ -155,7 +209,7 @@ pnpm test        # Vitest unit tests
 
 ---
 
-## 7. Enable Sentry error monitoring (optional)
+## 8. Enable Sentry error monitoring (optional)
 
 1. Create a Sentry project for each surface (api, web, admin).
 2. Set the DSN env vars:

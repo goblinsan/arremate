@@ -15,7 +15,7 @@ name = "arremate-api-prod"
 [env.production.vars]
 NODE_ENV = "production"
 PORT = "4000"
-LIVE_VIDEO_PROVIDER = "stub"
+LIVE_VIDEO_PROVIDER = "cloudflare_stream"
 PIX_PROVIDER = "stub"
 CORS_ORIGINS = "https://arrematelive.com,https://www.arrematelive.com,https://admin.arrematelive.com"
 COGNITO_REGION = "sa-east-1"
@@ -60,5 +60,8 @@ S3_UPLOAD_URL_EXPIRY_SECONDS = "300"
 #   wrangler secret put AWS_SECRET_ACCESS_KEY
 #   wrangler secret put S3_DOCUMENTS_BUCKET
 #   wrangler secret put CORS_ORIGIN
+#   wrangler secret put CF_ACCOUNT_ID
+#   wrangler secret put CF_API_TOKEN
+#   wrangler secret put CF_STREAM_WEBHOOK_SECRET
 
 # ── Non-secret vars (safe to commit) are under [env.production.vars] ───────

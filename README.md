@@ -14,7 +14,7 @@ arremate/
 ├── apps/
 │   ├── web/          (@arremate/web)    Buyer-facing storefront  – React + Vite + Tailwind  :3000
 │   ├── admin/        (@arremate/admin)  Internal ops panel       – React + Vite + Tailwind  :3001
-│   └── api/          (@arremate/api)    Backend REST API          – Fastify + TypeScript     :4000
+│   └── api/          (@arremate/api)    Backend REST API          – Hono + TypeScript        :4000
 ├── packages/
 │   ├── ui/           (@arremate/ui)           Shared React components (Button, Badge, …)
 │   ├── types/        (@arremate/types)         Core domain TypeScript interfaces
@@ -108,7 +108,7 @@ pnpm --filter @arremate/database db:migrate
 |---------|------|
 | `@arremate/web` | Buyer storefront: browse auctions, watch live, bid |
 | `@arremate/admin` | Ops panel: auction moderation, user & payment management |
-| `@arremate/api` | REST API with Fastify; all business logic |
+| `@arremate/api` | REST API with Hono; deploys to Cloudflare Workers in staging/production |
 | `@arremate/ui` | Reusable design-system components |
 | `@arremate/types` | Shared TypeScript types (`User`, `Auction`, `Bid`, `Product`) |
 | `@arremate/config` | `getEnv` / `requireEnv` helpers |
@@ -166,6 +166,29 @@ Cloudflare Worker runtime secrets (set directly in Cloudflare, not in GitHub):
 
 - `AWS_ACCESS_KEY_ID`
 - `AWS_SECRET_ACCESS_KEY`
+- `CF_ACCOUNT_ID` when `LIVE_VIDEO_PROVIDER=cloudflare_stream`
+- `CF_API_TOKEN` when `LIVE_VIDEO_PROVIDER=cloudflare_stream`
+- `CF_STREAM_WEBHOOK_SECRET` for `POST /v1/webhooks/live-video`
+
+## Live Streaming Configuration
+
+Production live streaming is now expected to use `cloudflare_stream`.
+
+- Seller go-live requests hit the API control plane.
+- The API creates Cloudflare Stream Live inputs when `LIVE_VIDEO_PROVIDER=cloudflare_stream`.
+- Cloudflare live notifications should be delivered to:
+  - `https://api.arrematelive.com/v1/webhooks/live-video`
+
+Cloudflare setup summary:
+
+1. Set `LIVE_VIDEO_PROVIDER=cloudflare_stream` for the production Worker.
+2. Set Worker secrets:
+   - `CF_ACCOUNT_ID`
+   - `CF_API_TOKEN`
+   - `CF_STREAM_WEBHOOK_SECRET`
+3. In Cloudflare Notifications, create a webhook destination pointing at the live-video webhook route.
+4. Use the same secret value in Cloudflare Notifications and `CF_STREAM_WEBHOOK_SECRET`.
+5. Attach a Stream notification policy for live input events.
 
 API Worker environments are configured in [apps/api/wrangler.toml](apps/api/wrangler.toml).
 
