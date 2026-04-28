@@ -109,7 +109,7 @@ describe('CloudflareStreamLiveProvider', () => {
 
       expect(result.providerSessionId).toBe('cf-live-uid-123');
       expect(result.publishUrl).toContain('webRTC/publish');
-      expect(result.playbackUrl).toBe('https://customer-abc.cloudflarestream.com/cf-live-uid-123/manifest/video.m3u8');
+      expect(result.playbackUrl).toBe('https://customer-abc.cloudflarestream.com/cf-live-uid-123/webRTC/play');
       expect(result.fallbackRtmp?.ingestUrl).toBe('rtmps://live.cloudflare.com/live/');
       expect(result.fallbackRtmp?.streamKey).toBe('rtmp-key-123');
     });

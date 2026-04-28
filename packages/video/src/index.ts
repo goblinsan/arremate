@@ -17,16 +17,6 @@ export interface StreamConfig {
   region: string;
 }
 
-function getCloudflareManifestUrl(baseUrl: string | undefined, inputId: string): string | undefined {
-  if (!baseUrl) return undefined;
-  try {
-    const parsed = new URL(baseUrl);
-    return `${parsed.origin}/${inputId}/manifest/video.m3u8`;
-  } catch {
-    return undefined;
-  }
-}
-
 /**
  * Returns a thumbnail URL from a playback ID (Mux-style).
  * Replace with actual provider logic in Phase 3.
@@ -197,15 +187,11 @@ export class CloudflareStreamLiveProvider implements LiveVideoProvider {
     }
 
     const input = data.result;
-    const playbackUrl = getCloudflareManifestUrl(
-      input.webRTCPlayback?.url ?? input.webRTC?.url,
-      input.uid,
-    ) ?? input.webRTCPlayback?.url;
 
     return {
       providerSessionId: input.uid,
       publishUrl: input.webRTC?.url,
-      playbackUrl,
+      playbackUrl: input.webRTCPlayback?.url,
       fallbackRtmp: input.rtmps
         ? { ingestUrl: input.rtmps.url, streamKey: input.rtmps.streamKey }
         : undefined,
