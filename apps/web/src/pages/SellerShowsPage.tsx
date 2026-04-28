@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Calendar, Radio } from 'lucide-react';
+import { Calendar, Radio, Trash2 } from 'lucide-react';
 import type { Show, ShowStatus } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -28,6 +28,7 @@ export default function SellerShowsPage() {
   const [shows, setShows] = useState<Show[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [deletingShowId, setDeletingShowId] = useState<string | null>(null);
 
   useEffect(() => {
     if (authLoading || !isAuthenticated) return;
@@ -69,6 +70,29 @@ export default function SellerShowsPage() {
       await fetchShows();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao cancelar show.');
+    }
+  }
+
+  async function handleDelete(id: string) {
+    if (!confirm('Excluir este show permanentemente? Isso removerá a programação e o histórico da transmissão que ainda puder ser apagado.')) return;
+    setDeletingShowId(id);
+    setError(null);
+    try {
+      const token = getAccessToken();
+      if (!token) return;
+      const res = await fetch(`${API_URL}/v1/seller/shows/${id}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.message ?? 'Erro ao excluir show.');
+      }
+      setShows((current) => current.filter((show) => show.id !== id));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao excluir show.');
+    } finally {
+      setDeletingShowId(null);
     }
   }
 
@@ -132,6 +156,7 @@ export default function SellerShowsPage() {
               show.status === 'LIVE' || show.status === 'SCHEDULED'
                 ? `/seller/shows/${show.id}/live`
                 : `/seller/shows/${show.id}`;
+            const canDelete = show.status === 'DRAFT' || show.status === 'CANCELLED' || show.status === 'ENDED';
             return (
               <Link
                 key={show.id}
@@ -166,6 +191,16 @@ export default function SellerShowsPage() {
                       className="text-sm font-medium text-red-500 hover:underline"
                     >
                       Cancelar
+                    </button>
+                  )}
+                  {canDelete && (
+                    <button
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); void handleDelete(show.id); }}
+                      disabled={deletingShowId === show.id}
+                      className="inline-flex items-center gap-1 text-sm font-medium text-gray-500 hover:text-red-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      {deletingShowId === show.id ? 'Excluindo…' : 'Excluir'}
                     </button>
                   )}
                 </div>

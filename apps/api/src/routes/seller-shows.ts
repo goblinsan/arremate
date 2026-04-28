@@ -83,4 +83,48 @@ app.post('/v1/seller/shows/:id/cancel', ...sellerGuard, async (c) => {
   return c.json(updated);
 });
 
+app.delete('/v1/seller/shows/:id', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const id = c.req.param('id');
+  const show = await prisma.show.findUnique({
+    where: { id },
+    include: {
+      sessions: {
+        select: {
+          id: true,
+          status: true,
+          claims: { select: { id: true } },
+        },
+      },
+    },
+  });
+  if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  if (show.status === 'LIVE' || show.status === 'SCHEDULED') {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'Only draft, cancelled, or ended shows can be deleted' }, 409);
+  }
+
+  const hasProtectedCommerceHistory = show.sessions.some((session) => session.claims.length > 0);
+  if (hasProtectedCommerceHistory) {
+    return c.json({
+      statusCode: 409,
+      error: 'Conflict',
+      message: 'This show cannot be deleted because it has buyer claims or order history attached.',
+    }, 409);
+  }
+
+  const sessionIds = show.sessions.map((session) => session.id);
+
+  await prisma.$transaction(async (tx) => {
+    if (sessionIds.length > 0) {
+      await tx.chatMessage.deleteMany({ where: { sessionId: { in: sessionIds } } });
+      await tx.liveBid.deleteMany({ where: { sessionId: { in: sessionIds } } });
+      await tx.showSession.deleteMany({ where: { id: { in: sessionIds } } });
+    }
+
+    await tx.show.delete({ where: { id: show.id } });
+  });
+
+  return c.body(null, 204);
+});
+
 export { app as sellerShowRoutes };
