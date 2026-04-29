@@ -53,7 +53,7 @@ export default function AuthCallbackScreen() {
     }
 
     void handleCallback();
-  }, []);
+  }, [code, state, error, error_description, signInWithTokens, exchangeCode, router]);
 
   return (
     <View style={styles.container}>

@@ -152,6 +152,11 @@ export function useHostedAuth(): UseHostedAuthResult {
    * clients without PKCE (i.e. the app client has "Don't use PKCE" checked).
    * For maximum security it is preferable to keep the app in the foreground
    * during the hosted UI flow so the code_verifier is available.
+   *
+   * @param code   Authorization code received in the callback URL.
+   * @param _state State parameter from the callback URL.  Reserved for future
+   *               CSRF validation; Cognito does not require it to be echoed
+   *               back during the token exchange.
    */
   const exchangeCode = useCallback(
     async (code: string, _state?: string): Promise<AuthTokens> => {

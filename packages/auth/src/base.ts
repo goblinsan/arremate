@@ -65,11 +65,18 @@ export function decodeJwtPayload(token: string): JwtPayload | null {
     const padded = base64 + '=='.slice(0, (4 - (base64.length % 4)) % 4);
     // Use atob when available (browsers, React Native/Hermes, Node ≥ 16),
     // fall back to Buffer for older Node.js runtimes.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const bufferGlobal = (globalThis as Record<string, any>)['Buffer'] as
+      | { from(s: string, enc: string): { toString(enc: string): string } }
+      | undefined;
+    if (typeof atob !== 'function' && !bufferGlobal) {
+      throw new Error('No base64 decoder available: need atob (Node ≥ 16 / browsers / React Native) or Buffer (Node < 16)');
+    }
     const json =
       typeof atob === 'function'
         ? atob(padded)
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        : (globalThis as Record<string, any>)['Buffer'].from(padded, 'base64').toString('utf8') as string;
+        // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+        : bufferGlobal!.from(padded, 'base64').toString('utf8');
     return JSON.parse(json) as JwtPayload;
   } catch {
     return null;
