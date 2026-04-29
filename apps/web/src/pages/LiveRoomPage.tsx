@@ -779,7 +779,7 @@ export default function LiveRoomPage() {
                               value={bidAmount}
                               onChange={(e) => setBidAmount(e.target.value)}
                               placeholder={minNextBid ? `Lance mínimo: ${minNextBid.toFixed(2)}` : 'Valor do lance'}
-                              className="flex-1 rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-white/30"
+                              className="flex-1 rounded-2xl border border-white/20 bg-white/5 px-4 py-3 text-sm text-white placeholder:text-white/55 focus:outline-none focus:ring-2 focus:ring-white/30"
                             />
                             <button
                               onClick={handlePlaceBid}
