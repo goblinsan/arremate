@@ -29,6 +29,7 @@ export default function RootLayout() {
               name="live/[id]"
               options={{ animation: 'slide_from_bottom', gestureEnabled: true }}
             />
+            <Stack.Screen name="order/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="login" options={{ presentation: 'modal' }} />
             <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
           </Stack>

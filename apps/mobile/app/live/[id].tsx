@@ -15,6 +15,7 @@ import {
   ActivityIndicator,
   Alert,
   Share,
+  Image,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -94,14 +95,17 @@ interface LiveClaim {
 interface LiveOrder {
   id: string;
   status: string;
-  totalAmount: number;
+  totalCents: number;
+  buyerTotalCents: number | null;
 }
 
 interface LivePayment {
   id: string;
-  pixKey: string | null;
-  pixQrCode: string | null;
-  amount: number;
+  status: string;
+  pixCode: string | null;
+  pixQrCodeBase64: string | null;
+  pixExpiresAt: string | null;
+  amountCents: number;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -283,8 +287,11 @@ interface CheckoutPanelProps {
   payment: LivePayment | null;
   isLoading: boolean;
   error: string | null;
+  paymentConfirmed: boolean;
   onCreateOrder: () => void;
   onCreatePayment: () => void;
+  onRetry: () => void;
+  onGoToOrders: () => void;
   onClose: () => void;
 }
 
@@ -294,17 +301,30 @@ function CheckoutPanel({
   payment,
   isLoading,
   error,
+  paymentConfirmed,
   onCreateOrder,
   onCreatePayment,
+  onRetry,
+  onGoToOrders,
   onClose,
 }: CheckoutPanelProps) {
   if (!claim) return null;
+
+  const chargeAmountCents = order
+    ? (order.buyerTotalCents ?? order.totalCents)
+    : null;
 
   return (
     <View style={checkoutStyles.panel}>
       <View style={checkoutStyles.header}>
         <Text style={checkoutStyles.title}>
-          {payment ? 'Pagamento Pix' : order ? 'Pedido criado' : 'Item reservado'}
+          {paymentConfirmed
+            ? 'Pagamento confirmado'
+            : payment
+            ? 'Pagamento Pix'
+            : order
+            ? 'Pedido criado'
+            : 'Item reservado'}
         </Text>
         <Pressable onPress={onClose} hitSlop={10}>
           <Ionicons name="close" size={20} color="#9ca3af" />
@@ -312,38 +332,86 @@ function CheckoutPanel({
       </View>
 
       {error ? (
-        <Text style={checkoutStyles.error}>{error}</Text>
+        <View style={checkoutStyles.errorRow}>
+          <Text style={checkoutStyles.error}>{error}</Text>
+          <Pressable onPress={onRetry} style={checkoutStyles.retryBtn}>
+            <Ionicons name="refresh-outline" size={14} color="#f97316" />
+            <Text style={checkoutStyles.retryBtnText}>Tentar novamente</Text>
+          </Pressable>
+        </View>
       ) : null}
 
-      {payment ? (
-        // PIX key display
-        <View style={checkoutStyles.pixBlock}>
-          <Text style={checkoutStyles.pixLabel}>Chave Pix</Text>
-          <Text style={checkoutStyles.pixKey} selectable>{payment.pixKey ?? '—'}</Text>
-          <Text style={checkoutStyles.pixAmount}>
-            Valor: {formatBrl(Number(payment.amount))}
+      {paymentConfirmed ? (
+        // Payment confirmed state
+        <View style={checkoutStyles.confirmedBlock}>
+          <Ionicons name="checkmark-circle" size={48} color="#22c55e" />
+          <Text style={checkoutStyles.confirmedTitle}>Pagamento recebido!</Text>
+          <Text style={checkoutStyles.confirmedSub}>
+            Seu pedido foi confirmado e será processado em breve.
           </Text>
+          <Pressable style={checkoutStyles.goOrdersBtn} onPress={onGoToOrders}>
+            <Text style={checkoutStyles.goOrdersBtnText}>Ver meus pedidos</Text>
+            <Ionicons name="chevron-forward" size={16} color="#f97316" />
+          </Pressable>
+        </View>
+      ) : payment ? (
+        // PIX payment display
+        <View style={checkoutStyles.pixBlock}>
+          {payment.pixQrCodeBase64 ? (
+            <View style={checkoutStyles.qrWrapper}>
+              <Image
+                source={{ uri: `data:image/png;base64,${payment.pixQrCodeBase64}` }}
+                style={checkoutStyles.qrImage}
+                resizeMode="contain"
+                accessibilityLabel="QR Code Pix"
+              />
+            </View>
+          ) : null}
+
+          <Text style={checkoutStyles.pixLabel}>Pix copia e cola</Text>
+          <Text style={checkoutStyles.pixKey} selectable>
+            {payment.pixCode ?? '—'}
+          </Text>
+          <Text style={checkoutStyles.pixAmount}>
+            Valor: {formatBrl(payment.amountCents / 100)}
+          </Text>
+
+          {payment.pixExpiresAt ? (
+            <Text style={checkoutStyles.pixExpiry}>
+              Expira em: {formatTime(payment.pixExpiresAt)}
+            </Text>
+          ) : null}
+
           <Pressable
             style={checkoutStyles.shareBtn}
-            accessibilityLabel="Copiar chave Pix"
+            accessibilityLabel="Copiar código Pix"
             onPress={() => {
-              if (!payment.pixKey) return;
-              Share.share({ message: payment.pixKey, title: 'Chave Pix Arremate' }).catch(
-                () => {
-                  /* silenced: share cancellation is not an error */
-                },
-              );
+              if (!payment.pixCode) return;
+              Share.share({ message: payment.pixCode, title: 'Pix Arremate' }).catch(() => {
+                /* silenced: share cancellation is not an error */
+              });
             }}
           >
             <Ionicons name="copy-outline" size={16} color="#f97316" />
-            <Text style={checkoutStyles.shareBtnText}>Copiar chave Pix</Text>
+            <Text style={checkoutStyles.shareBtnText}>Copiar código Pix</Text>
+          </Pressable>
+
+          <View style={checkoutStyles.pendingRow}>
+            <ActivityIndicator size="small" color="#9ca3af" />
+            <Text style={checkoutStyles.pendingText}>Aguardando confirmação de pagamento…</Text>
+          </View>
+
+          <Pressable style={checkoutStyles.goOrdersBtn} onPress={onGoToOrders}>
+            <Text style={checkoutStyles.goOrdersBtnText}>Ver meus pedidos</Text>
+            <Ionicons name="chevron-forward" size={16} color="#f97316" />
           </Pressable>
         </View>
       ) : order ? (
         // Order created — trigger payment
         <View style={checkoutStyles.orderBlock}>
           <Text style={checkoutStyles.orderInfo}>
-            Pedido criado. Total: {formatBrl(Number(order.totalAmount))}
+            Pedido criado. Total:{' '}
+            {formatBrl(chargeAmountCents! / 100)}
           </Text>
           <Pressable
             style={[checkoutStyles.actionBtn, isLoading && checkoutStyles.actionBtnDisabled]}
@@ -400,24 +468,44 @@ const checkoutStyles = StyleSheet.create({
     marginBottom: 16,
   },
   title: { fontSize: 17, fontWeight: '700', color: '#111' },
-  error: { color: '#ef4444', fontSize: 13, marginBottom: 12 },
+  errorRow: { gap: 6, marginBottom: 12 },
+  error: { color: '#ef4444', fontSize: 13 },
+  retryBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+  },
+  retryBtnText: { color: '#f97316', fontSize: 13, fontWeight: '600' },
   claimBlock: { gap: 12 },
   claimInfo: { fontSize: 14, color: '#555' },
   orderBlock: { gap: 12 },
   orderInfo: { fontSize: 14, color: '#555' },
   pixBlock: { gap: 10 },
+  qrWrapper: {
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  qrImage: {
+    width: 180,
+    height: 180,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#e5e7eb',
+  },
   pixLabel: { fontSize: 13, color: '#9ca3af' },
   pixKey: {
-    fontSize: 15,
+    fontSize: 13,
     fontWeight: '600',
     color: '#111',
     backgroundColor: '#f9fafb',
     borderRadius: 8,
-    padding: 12,
+    padding: 10,
     borderWidth: 1,
     borderColor: '#e5e7eb',
   },
   pixAmount: { fontSize: 14, color: '#555' },
+  pixExpiry: { fontSize: 12, color: '#9ca3af' },
   shareBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -425,6 +513,28 @@ const checkoutStyles = StyleSheet.create({
     alignSelf: 'flex-start',
   },
   shareBtnText: { color: '#f97316', fontWeight: '600', fontSize: 14 },
+  pendingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginTop: 4,
+  },
+  pendingText: { fontSize: 12, color: '#9ca3af', flex: 1 },
+  confirmedBlock: {
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 8,
+  },
+  confirmedTitle: { fontSize: 17, fontWeight: '700', color: '#22c55e' },
+  confirmedSub: { fontSize: 13, color: '#6b7280', textAlign: 'center' },
+  goOrdersBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    alignSelf: 'flex-start',
+    marginTop: 4,
+  },
+  goOrdersBtnText: { color: '#f97316', fontWeight: '600', fontSize: 14 },
   actionBtn: {
     backgroundColor: '#f97316',
     borderRadius: 12,
@@ -584,6 +694,7 @@ export default function LiveRoomScreen() {
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const [checkoutError, setCheckoutError] = useState<string | null>(null);
   const [showCheckoutPanel, setShowCheckoutPanel] = useState(false);
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   // ─── Video player ────────────────────────────────────────────────────────────
   // Initialize with null so the hook call is stable; the source is replaced
@@ -860,6 +971,45 @@ export default function LiveRoomScreen() {
     }
   }
 
+  // ─── Payment status polling ──────────────────────────────────────────────────
+  // Poll the order status every 5 s while a Pix payment is pending.
+  const orderId = order?.id;
+  useEffect(() => {
+    if (!payment || !orderId || paymentConfirmed) return;
+    const token = getAccessToken();
+    if (!token) return;
+
+    const interval = setInterval(async () => {
+      try {
+        const res = await fetch(`${API_URL}/v1/orders/${orderId}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { status: string };
+        if (data.status === 'PAID') {
+          setPaymentConfirmed(true);
+          clearInterval(interval);
+        }
+      } catch {
+        // Best-effort polling; errors are silenced.
+      }
+    }, 5_000);
+
+    return () => clearInterval(interval);
+  }, [payment, orderId, paymentConfirmed, getAccessToken]);
+
+  // ─── Retry checkout ──────────────────────────────────────────────────────────
+  function handleRetryCheckout() {
+    setCheckoutError(null);
+    if (!order) {
+      // Retry order creation
+      void handleCreateOrder();
+    } else if (!payment) {
+      // Retry Pix generation
+      void handleCreatePayment();
+    }
+  }
+
   // ─── Derived values ──────────────────────────────────────────────────────────
   const pinnedItem = session?.pinnedItem;
   const livePrice =
@@ -994,8 +1144,11 @@ export default function LiveRoomScreen() {
                 payment={payment}
                 isLoading={isCreatingOrder || isCreatingPayment}
                 error={checkoutError}
+                paymentConfirmed={paymentConfirmed}
                 onCreateOrder={handleCreateOrder}
                 onCreatePayment={handleCreatePayment}
+                onRetry={handleRetryCheckout}
+                onGoToOrders={() => router.push('/(tabs)/orders')}
                 onClose={() => setShowCheckoutPanel(false)}
               />
             ) : showBidPanel && minNextBid !== null ? (
