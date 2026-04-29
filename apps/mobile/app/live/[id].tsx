@@ -22,6 +22,8 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useVideoPlayer, VideoView } from 'expo-video';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../src/contexts/AuthContext';
+import { trackEvent } from '../../src/lib/analytics';
+import { captureError } from '../../src/lib/crashReporting';
 import type { ItemCondition } from '@arremate/types';
 
 // ─── Constants ────────────────────────────────────────────────────────────────
@@ -750,12 +752,13 @@ export default function LiveRoomScreen() {
       })
       .then((data) => {
         setShow(data);
+        trackEvent('live_room_entered', { showId, showStatus: data.status });
         if (data.status === 'LIVE') {
           void fetchSession();
         }
       })
-      .catch(() => {
-        // handled via null state
+      .catch((err) => {
+        captureError(err, { screen: 'LiveRoom', showId });
       })
       .finally(() => setIsLoadingShow(false));
   }, [showId, fetchSession]);
@@ -880,6 +883,7 @@ export default function LiveRoomScreen() {
       setSession((prev) =>
         prev ? { ...prev, pinnedItem: data.queueItem } : prev,
       );
+      trackEvent('bid_success', { showId, sessionId: session.id, amount });
       setBidAmount('');
       setShowBidPanel(false);
     } catch {
@@ -911,6 +915,7 @@ export default function LiveRoomScreen() {
       }
       const newClaim = (await res.json()) as LiveClaim;
       setClaim(newClaim);
+      trackEvent('claim_confirmed', { showId, sessionId: session.id, claimId: newClaim.id });
       setShowCheckoutPanel(true);
     } catch {
       setClaimError('Erro ao reservar item.');
@@ -964,6 +969,7 @@ export default function LiveRoomScreen() {
       }
       const newPayment = (await res.json()) as LivePayment;
       setPayment(newPayment);
+      trackEvent('checkout_started', { orderId: order.id });
     } catch {
       setCheckoutError('Erro ao gerar Pix.');
     } finally {
@@ -988,6 +994,7 @@ export default function LiveRoomScreen() {
         const data = (await res.json()) as { status: string };
         if (data.status === 'PAID') {
           setPaymentConfirmed(true);
+          trackEvent('payment_confirmed', { orderId });
           clearInterval(interval);
         }
       } catch {
