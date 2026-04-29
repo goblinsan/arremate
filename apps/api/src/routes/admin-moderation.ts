@@ -30,10 +30,11 @@ app.post('/v1/admin/users/:id/suspend', ...adminGuard, async (c) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return c.json({ statusCode: 404, error: 'Not Found', message: 'User not found' }, 404);
   if (user.isSuspended) return c.json({ statusCode: 409, error: 'Conflict', message: 'User is already suspended' }, 409);
-  const [updatedUser, moderationCase] = await prisma.$transaction([
-    prisma.user.update({ where: { id }, data: { isSuspended: true, suspendedAt: new Date() } }),
-    prisma.moderationCase.create({ data: { userId: id, actionType: 'USER_SUSPENSION', reason: reason ?? null, actorId: admin.id } }),
-  ]);
+  const { updatedUser, moderationCase } = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({ where: { id }, data: { isSuspended: true, suspendedAt: new Date() } });
+    const modCase = await tx.moderationCase.create({ data: { userId: id, actionType: 'USER_SUSPENSION', reason: reason ?? null, actorId: admin.id } });
+    return { updatedUser: user, moderationCase: modCase };
+  });
   await createAuditEvent({ action: 'USER_SUSPENDED', actorId: admin.id, metadata: { targetUserId: id, reason: reason ?? null, moderationCaseId: moderationCase.id } });
   return c.json({ user: updatedUser, moderationCase });
 });
@@ -45,10 +46,11 @@ app.post('/v1/admin/users/:id/unsuspend', ...adminGuard, async (c) => {
   const user = await prisma.user.findUnique({ where: { id } });
   if (!user) return c.json({ statusCode: 404, error: 'Not Found', message: 'User not found' }, 404);
   if (!user.isSuspended) return c.json({ statusCode: 409, error: 'Conflict', message: 'User is not currently suspended' }, 409);
-  const [updatedUser, moderationCase] = await prisma.$transaction([
-    prisma.user.update({ where: { id }, data: { isSuspended: false, suspendedAt: null } }),
-    prisma.moderationCase.create({ data: { userId: id, actionType: 'USER_UNSUSPENSION', reason: reason ?? null, actorId: admin.id } }),
-  ]);
+  const { updatedUser, moderationCase } = await prisma.$transaction(async (tx) => {
+    const user = await tx.user.update({ where: { id }, data: { isSuspended: false, suspendedAt: null } });
+    const modCase = await tx.moderationCase.create({ data: { userId: id, actionType: 'USER_UNSUSPENSION', reason: reason ?? null, actorId: admin.id } });
+    return { updatedUser: user, moderationCase: modCase };
+  });
   await createAuditEvent({ action: 'USER_UNSUSPENDED', actorId: admin.id, metadata: { targetUserId: id, reason: reason ?? null, moderationCaseId: moderationCase.id } });
   return c.json({ user: updatedUser, moderationCase });
 });

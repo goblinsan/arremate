@@ -51,10 +51,10 @@ app.post('/v1/admin/orders/:orderId/refund', ...adminGuard, async (c) => {
     await paymentAdapter.refundCharge(paidPayment.providerId);
   }
 
-  const [updatedPayment, updatedOrder, orderRefund] = await prisma.$transaction([
-    prisma.payment.update({ where: { id: paidPayment.id }, data: { status: 'REFUNDED' } }),
-    prisma.order.update({ where: { id: orderId }, data: { status: isFullRefund ? 'REFUNDED' : 'PAID' } }),
-    prisma.orderRefund.create({
+  const { updatedPayment, updatedOrder, orderRefund } = await prisma.$transaction(async (tx) => {
+    const nextPayment = await tx.payment.update({ where: { id: paidPayment.id }, data: { status: 'REFUNDED' } });
+    const nextOrder = await tx.order.update({ where: { id: orderId }, data: { status: isFullRefund ? 'REFUNDED' : 'PAID' } });
+    const createdRefund = await tx.orderRefund.create({
       data: {
         orderId,
         issuedById: admin.id,
@@ -66,8 +66,10 @@ app.post('/v1/admin/orders/:orderId/refund', ...adminGuard, async (c) => {
         payoutOffsetCents: refundBreakdown.payoutOffsetCents,
         reason: body.reason ?? null,
       },
-    }),
-  ]);
+    });
+
+    return { updatedPayment: nextPayment, updatedOrder: nextOrder, orderRefund: createdRefund };
+  });
 
   await createAuditEvent({
     action: isFullRefund ? 'ORDER_REFUNDED' : 'ORDER_PARTIAL_REFUND',

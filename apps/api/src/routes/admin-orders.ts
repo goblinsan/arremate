@@ -33,9 +33,9 @@ app.get('/v1/admin/orders', ...adminGuard, async (c) => {
     where.sellerOverrideApplied = true;
   }
 
-  const [total, orders] = await prisma.$transaction([
-    prisma.order.count({ where }),
-    prisma.order.findMany({
+  const { total, orders } = await prisma.$transaction(async (tx) => {
+    const count = await tx.order.count({ where });
+    const data = await tx.order.findMany({
       where,
       skip,
       take,
@@ -46,8 +46,10 @@ app.get('/v1/admin/orders', ...adminGuard, async (c) => {
         lines: { take: 1, orderBy: { createdAt: 'asc' } },
         refunds: true,
       },
-    }),
-  ]);
+    });
+
+    return { total: count, orders: data };
+  });
 
   return c.json({ data: orders, total, page: pageNum, perPage: take });
 });

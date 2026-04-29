@@ -43,11 +43,12 @@ app.post('/v1/admin/seller-applications/:id/approve', ...adminGuard, async (c) =
   if (!['SUBMITTED', 'UNDER_REVIEW'].includes(application.status)) {
     return c.json({ statusCode: 409, error: 'Conflict', message: `Cannot approve application with status: ${application.status}` }, 409);
   }
-  const [updatedApplication] = await prisma.$transaction([
-    prisma.sellerApplication.update({ where: { id }, data: { status: 'APPROVED', reviewedById: admin.id, reviewedAt: new Date() } }),
-    prisma.sellerAccount.upsert({ where: { userId: application.userId }, update: { isActive: true, applicationId: id }, create: { userId: application.userId, applicationId: id, isActive: true } }),
-    prisma.user.update({ where: { id: application.userId }, data: { role: 'SELLER' } }),
-  ]);
+  const updatedApplication = await prisma.$transaction(async (tx) => {
+    const approvedApplication = await tx.sellerApplication.update({ where: { id }, data: { status: 'APPROVED', reviewedById: admin.id, reviewedAt: new Date() } });
+    await tx.sellerAccount.upsert({ where: { userId: application.userId }, update: { isActive: true, applicationId: id }, create: { userId: application.userId, applicationId: id, isActive: true } });
+    await tx.user.update({ where: { id: application.userId }, data: { role: 'SELLER' } });
+    return approvedApplication;
+  });
   await createAuditEvent({ action: 'SELLER_APPLICATION_APPROVED', actorId: admin.id, applicationId: id, metadata: { applicationUserId: application.userId } });
   return c.json(updatedApplication);
 });

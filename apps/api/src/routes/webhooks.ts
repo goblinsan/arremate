@@ -59,10 +59,10 @@ app.post('/v1/webhooks/pix', async (c) => {
   })();
   const dbOrderStatus = event.status === 'PAID' ? 'PAID' : 'CANCELLED';
 
-  await prisma.$transaction([
-    prisma.payment.update({ where: { id: payment.id }, data: { status: dbPaymentStatus, webhookPayload: JSON.parse(rawBody) } }),
-    prisma.order.update({ where: { id: payment.orderId }, data: { status: dbOrderStatus } }),
-  ]);
+  await prisma.$transaction(async (tx) => {
+    await tx.payment.update({ where: { id: payment.id }, data: { status: dbPaymentStatus, webhookPayload: JSON.parse(rawBody) } });
+    await tx.order.update({ where: { id: payment.orderId }, data: { status: dbOrderStatus } });
+  });
 
   return c.json({ received: true });
 });
@@ -174,13 +174,13 @@ app.post('/v1/webhooks/live-video', async (c) => {
   } else if (eventType === 'stream.ended' || eventType === 'ended') {
     if (session.status !== 'ENDED') {
       const reason = typeof payload.reason === 'string' ? payload.reason : 'provider_ended';
-      await prisma.$transaction([
-        prisma.showSession.update({
+      await prisma.$transaction(async (tx) => {
+        await tx.showSession.update({
           where: { id: session.id },
           data: { status: 'ENDED', endedAt: new Date(), broadcastEndedReason: reason, pinnedItemId: null },
-        }),
-        prisma.show.update({ where: { id: session.showId }, data: { status: 'ENDED' } }),
-      ]);
+        });
+        await tx.show.update({ where: { id: session.showId }, data: { status: 'ENDED' } });
+      });
     }
   }
 

@@ -70,17 +70,20 @@ app.post('/v1/claims/:claimId/order', authenticate, async (c) => {
     logger.warn('Fee evaluation failed; order created without fee snapshot', { claimId, err: err instanceof Error ? err.message : String(err) });
   }
 
-  const [order] = await prisma.$transaction([
-    prisma.order.create({
+  const order = await prisma.$transaction(async (tx) => {
+    const createdOrder = await tx.order.create({
       data: {
         claimId: claim.id, buyerId: user.id, sellerId, totalCents: priceCents, status: 'PENDING_PAYMENT',
         ...(feeData ?? {}),
         lines: { create: { inventoryItemId: claim.queueItem.inventoryItemId, title: claim.queueItem.inventoryItem.title, priceCents, quantity: 1 } },
       },
       include: { lines: { include: { inventoryItem: true } }, payments: true },
-    }),
-    prisma.claim.update({ where: { id: claimId }, data: { status: 'CONFIRMED' } }),
-  ]);
+    });
+
+    await tx.claim.update({ where: { id: claimId }, data: { status: 'CONFIRMED' } });
+
+    return createdOrder;
+  });
   return c.json(order, 201);
 });
 
