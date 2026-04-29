@@ -181,7 +181,7 @@ export default function PayoutBatchesPage() {
           <form onSubmit={handleCreate} className="space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Periodo inicio</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Período início</label>
                 <input
                   type="date"
                   value={form.periodStart}
@@ -191,7 +191,7 @@ export default function PayoutBatchesPage() {
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Periodo fim</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">Período fim</label>
                 <input
                   type="date"
                   value={form.periodEnd}
@@ -363,7 +363,7 @@ export default function PayoutBatchesPage() {
                     <thead className="sticky top-0 bg-white">
                       <tr className="border-b border-gray-100">
                         <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Vendedor</th>
-                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Descricao</th>
+                        <th className="text-left px-4 py-2 text-xs font-semibold text-gray-500">Descrição</th>
                         <th className="text-right px-4 py-2 text-xs font-semibold text-gray-500">Valor</th>
                       </tr>
                     </thead>

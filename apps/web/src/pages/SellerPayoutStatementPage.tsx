@@ -55,7 +55,7 @@ export default function SellerPayoutStatementPage() {
   if (!isAuthenticated) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
-        <p className="text-gray-600 mb-4">Voce precisa estar logado para ver seus repasses.</p>
+        <p className="text-gray-600 mb-4">Você precisa estar logado para ver seus repasses.</p>
         <Link to="/login" className="text-brand-500 font-medium hover:underline">Fazer login</Link>
       </div>
     );
@@ -66,7 +66,7 @@ export default function SellerPayoutStatementPage() {
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-gray-900 mb-1">Extrato de repasses</h1>
         <p className="text-sm text-gray-500">
-          Resumo dos seus valores a receber, em processamento e ja recebidos.
+          Resumo dos seus valores a receber, em processamento e já recebidos.
         </p>
       </div>
 
@@ -164,7 +164,7 @@ export default function SellerPayoutStatementPage() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="bg-gray-50 border-b border-gray-100">
-                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Descricao</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Descrição</th>
                       <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
                       <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
                     </tr>
@@ -190,14 +190,14 @@ export default function SellerPayoutStatementPage() {
           {statement.payables.length === 0 && statement.settledLedgerEntries.length === 0 && (
             <div className="text-center py-16 text-gray-400">
               <p>Nenhum repasse registrado ainda.</p>
-              <p className="text-xs mt-2">Os repasses aparecem aqui apos o pagamento dos pedidos ser confirmado.</p>
+              <p className="text-xs mt-2">Os repasses aparecem aqui após o pagamento dos pedidos ser confirmado.</p>
             </div>
           )}
 
           <div className="flex items-start gap-2 text-xs text-gray-400 mt-4">
             <Info className="w-3.5 h-3.5 shrink-0 mt-0.5" />
             <span>
-              Valores estimados correspondem a pedidos pagos ainda nao formalizados como payable.
+              Valores estimados correspondem a pedidos pagos ainda não formalizados como payable.
               Valores a receber e liquidados sao baseados nos registros financeiros oficiais da plataforma.
             </span>
           </div>
