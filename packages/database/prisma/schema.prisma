@@ -50,6 +50,8 @@ model User {
   showPresences         ShowPresence[]
   payables              SellerPayable[]         @relation("SellerPayables")
   payoutEntries         PayoutEntry[]           @relation("SellerPayoutEntries")
+  deviceTokens          DeviceToken[]           @relation("UserDeviceTokens")
+  notificationPreference NotificationPreference?
 
   @@map("users")
 }
@@ -837,4 +839,41 @@ model PayoutEntry {
   createdAt      DateTime    @default(now())
 
   @@map("payout_entries")
+}
+
+// ─── Mobile Device Tokens ─────────────────────────────────────────────────────
+
+enum DevicePlatform {
+  IOS
+  ANDROID
+}
+
+model DeviceToken {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation("UserDeviceTokens", fields: [userId], references: [id], onDelete: Cascade)
+  token     String         @unique
+  platform  DevicePlatform
+  createdAt DateTime       @default(now())
+  updatedAt DateTime       @updatedAt
+
+  @@index([userId])
+  @@map("device_tokens")
+}
+
+// ─── Notification Preferences ─────────────────────────────────────────────────
+
+model NotificationPreference {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  user             User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  showStartingSoon Boolean  @default(true)
+  sellerLive       Boolean  @default(true)
+  claimExpiring    Boolean  @default(true)
+  paymentConfirmed Boolean  @default(true)
+  orderShipped     Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("notification_preferences")
 }

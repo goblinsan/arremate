@@ -17,3 +17,6 @@ ios/
 
 # TypeScript
 *.tsbuildinfo
+
+# EAS / Release
+google-service-account-key.json

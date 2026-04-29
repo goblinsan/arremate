@@ -746,3 +746,28 @@ export interface PaginationParams {
   page?: number;
   perPage?: number;
 }
+
+// ─── Mobile – Device Tokens & Notification Preferences ───────────────────────
+
+export type DevicePlatform = 'IOS' | 'ANDROID';
+
+export interface DeviceToken {
+  id: string;
+  userId: string;
+  token: string;
+  platform: DevicePlatform;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface NotificationPreference {
+  id: string;
+  userId: string;
+  showStartingSoon: boolean;
+  sellerLive: boolean;
+  claimExpiring: boolean;
+  paymentConfirmed: boolean;
+  orderShipped: boolean;
+  createdAt: Date;
+  updatedAt: Date;
+}
