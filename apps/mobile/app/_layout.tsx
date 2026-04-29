@@ -25,6 +25,10 @@ export default function RootLayout() {
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
             <Stack.Screen name="show/[id]" />
+            <Stack.Screen
+              name="live/[id]"
+              options={{ animation: 'slide_from_bottom', gestureEnabled: true }}
+            />
             <Stack.Screen name="login" options={{ presentation: 'modal' }} />
             <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
           </Stack>

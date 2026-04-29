@@ -184,6 +184,9 @@ importers:
       expo-status-bar:
         specifier: ~55.0.5
         version: 55.0.5(react-native@0.79.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.0.0))(react@19.0.0)
+      expo-video:
+        specifier: ^55.0.15
+        version: 55.0.15(expo@55.0.18)(react-native@0.79.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.0.0))(react@19.0.0)
       expo-web-browser:
         specifier: ~55.0.14
         version: 55.0.14(expo@55.0.18)(react-native@0.79.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.0.0))
@@ -3709,6 +3712,13 @@ packages:
     peerDependencies:
       expo: '*'
       expo-font: '*'
+      react: '*'
+      react-native: '*'
+
+  expo-video@55.0.15:
+    resolution: {integrity: sha512-4GEEiTH5hGsyEt7Chsiv8IS4ioYuEJ4Wc+tjbf8NiGvAw0bQquN41zWmYLnwgzPoU3tCr8SaACgEvJRc3+FcWw==}
+    peerDependencies:
+      expo: '*'
       react: '*'
       react-native: '*'
 
@@ -9601,6 +9611,12 @@ snapshots:
       react: 19.0.0
       react-native: 0.79.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.0.0)
       sf-symbols-typescript: 2.2.0
+
+  expo-video@55.0.15(expo@55.0.18)(react-native@0.79.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.0.0))(react@19.0.0):
+    dependencies:
+      expo: 55.0.18(@babel/core@7.29.0)(@expo/dom-webview@55.0.5)(@expo/metro-runtime@55.0.10)(expo-router@55.0.13)(react-dom@19.0.0(react@19.0.0))(react-native@0.79.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.0.0))(react@19.0.0)(typescript@5.9.3)
+      react: 19.0.0
+      react-native: 0.79.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.0.0)
 
   expo-web-browser@55.0.14(expo@55.0.18)(react-native@0.79.2(@babel/core@7.29.0)(@types/react@19.2.14)(react@19.0.0)):
     dependencies:
