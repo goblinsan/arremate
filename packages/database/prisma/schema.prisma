@@ -395,21 +395,38 @@ model OrderLine {
 }
 
 model Payment {
-  id              String        @id @default(cuid())
+  id              String           @id @default(cuid())
   orderId         String
-  order           Order         @relation(fields: [orderId], references: [id])
-  status          PaymentStatus @default(PENDING)
-  provider        String        @default("pix")
+  order           Order            @relation(fields: [orderId], references: [id])
+  status          PaymentStatus    @default(PENDING)
+  provider        String           @default("pix")
   amountCents     Int
   providerId      String?
   pixCode         String?
   pixQrCodeBase64 String?
   pixExpiresAt    DateTime?
   webhookPayload  Json?
-  createdAt       DateTime      @default(now())
-  updatedAt       DateTime      @updatedAt
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  webhookLogs     PixWebhookLog[]
 
   @@map("payments")
+}
+
+// ─── Pix Webhook Audit Log ────────────────────────────────────────────────────
+
+model PixWebhookLog {
+  id             String   @id @default(cuid())
+  paymentId      String?
+  payment        Payment? @relation(fields: [paymentId], references: [id])
+  providerId     String
+  eventStatus    String
+  idempotencyKey String   @unique
+  rawPayload     Json
+  processedAt    DateTime @default(now())
+
+  @@index([providerId])
+  @@map("pix_webhook_logs")
 }
 
 // ─── Live Sessions ────────────────────────────────────────────────────────────

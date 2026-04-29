@@ -1,8 +1,8 @@
 import { Hono } from 'hono';
-import { prisma } from '@arremate/database';
+import { prisma, Prisma } from '@arremate/database';
 import { createPixAdapter } from '@arremate/payments';
 import { createLiveVideoProvider } from '@arremate/video';
-import { timingSafeEqual } from 'node:crypto';
+import { createHash, timingSafeEqual } from 'node:crypto';
 import type { AppEnv } from '../types.js';
 
 const app = new Hono<AppEnv>();
@@ -48,7 +48,32 @@ app.post('/v1/webhooks/pix', async (c) => {
     return c.json({ statusCode: 400, error: 'Bad Request', message: 'Invalid webhook signature' }, 400);
   }
 
+  // Derive an idempotency key from the signature; fall back to a hash of the body.
+  const idempotencyKey = signature
+    ? createHash('sha256').update(signature).digest('hex')
+    : createHash('sha256').update(rawBody).digest('hex');
+
+  // Deduplicate: if we have already processed this exact delivery, ack and return.
+  const existingLog = await prisma.pixWebhookLog.findUnique({ where: { idempotencyKey } });
+  if (existingLog) {
+    return c.json({ received: true });
+  }
+
   const payment = await prisma.payment.findFirst({ where: { providerId: event.providerId }, include: { order: true } });
+
+  // Persist the raw event for audit purposes regardless of whether a matching
+  // payment exists or has already been transitioned.
+  const parsedPayload = JSON.parse(rawBody) as Prisma.InputJsonValue;
+  await prisma.pixWebhookLog.create({
+    data: {
+      paymentId: payment?.id ?? null,
+      providerId: event.providerId,
+      eventStatus: event.status,
+      idempotencyKey,
+      rawPayload: parsedPayload,
+    },
+  });
+
   if (!payment) return c.json({ received: true });
   if (payment.status !== 'PENDING') return c.json({ received: true });
 
@@ -60,7 +85,7 @@ app.post('/v1/webhooks/pix', async (c) => {
   const dbOrderStatus = event.status === 'PAID' ? 'PAID' : 'CANCELLED';
 
   await prisma.$transaction(async (tx) => {
-    await tx.payment.update({ where: { id: payment.id }, data: { status: dbPaymentStatus, webhookPayload: JSON.parse(rawBody) } });
+    await tx.payment.update({ where: { id: payment.id }, data: { status: dbPaymentStatus, webhookPayload: parsedPayload } });
     await tx.order.update({ where: { id: payment.orderId }, data: { status: dbOrderStatus } });
   });
 
