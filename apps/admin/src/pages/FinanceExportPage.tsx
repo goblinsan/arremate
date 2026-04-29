@@ -53,14 +53,17 @@ const DATASETS: Record<Dataset, DatasetConfig> = {
 
 function toCsv(rows: Record<string, string>[]): string {
   if (rows.length === 0) return '';
-  const headers = Object.keys(rows[0]).join(';');
+  const headers = Object.keys(rows[0]).map((h) => `"${h.replace(/"/g, '""')}"`).join(';');
   const body = rows.map((r) => Object.values(r).map((v) => `"${v.replace(/"/g, '""')}"`).join(';'));
   return [headers, ...body].join('\n');
 }
 
 function downloadCsv(filename: string, rows: Record<string, string>[]) {
   const csv = toCsv(rows);
-  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  // Prepend UTF-8 BOM as explicit bytes so Excel opens the file correctly.
+  const bom = new Uint8Array([0xef, 0xbb, 0xbf]);
+  const csvBytes = new TextEncoder().encode(csv);
+  const blob = new Blob([bom, csvBytes], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
