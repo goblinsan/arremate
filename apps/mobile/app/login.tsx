@@ -7,13 +7,16 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../src/contexts/AuthContext';
+import { useHostedAuth } from '../src/hooks/useHostedAuth';
 
 export default function LoginScreen() {
-  const { signIn } = useAuth();
+  const { signIn, signInWithTokens } = useAuth();
+  const { isAvailable, signInWithHostedUI } = useHostedAuth();
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -31,6 +34,22 @@ export default function LoginScreen() {
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro ao fazer login';
       Alert.alert('Erro ao entrar', msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleHostedSignIn() {
+    setLoading(true);
+    try {
+      const tokens = await signInWithHostedUI();
+      await signInWithTokens(tokens);
+      router.replace('/(tabs)');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao fazer login social';
+      if (msg !== 'Login cancelado') {
+        Alert.alert('Erro ao entrar', msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -64,6 +83,18 @@ export default function LoginScreen() {
         <Pressable style={styles.button} onPress={handleSignIn} disabled={loading}>
           <Text style={styles.buttonText}>{loading ? 'Entrando...' : 'Entrar'}</Text>
         </Pressable>
+        {isAvailable && (
+          <>
+            <View style={styles.divider}>
+              <View style={styles.dividerLine} />
+              <Text style={styles.dividerText}>ou</Text>
+              <View style={styles.dividerLine} />
+            </View>
+            <Pressable style={styles.socialButton} onPress={handleHostedSignIn} disabled={loading}>
+              <Text style={styles.socialButtonText}>Entrar com conta social</Text>
+            </Pressable>
+          </>
+        )}
         <Pressable onPress={() => router.back()}>
           <Text style={styles.cancel}>Cancelar</Text>
         </Pressable>
@@ -93,5 +124,16 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   buttonText: { color: '#fff', fontWeight: '700', fontSize: 16 },
+  divider: { flexDirection: 'row', alignItems: 'center', gap: 8, marginVertical: 4 },
+  dividerLine: { flex: 1, height: 1, backgroundColor: '#e5e7eb' },
+  dividerText: { fontSize: 13, color: '#9ca3af' },
+  socialButton: {
+    borderWidth: 1.5,
+    borderColor: '#f97316',
+    borderRadius: 10,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  socialButtonText: { color: '#f97316', fontWeight: '600', fontSize: 16 },
   cancel: { textAlign: 'center', color: '#888', fontSize: 14, paddingVertical: 8 },
 });

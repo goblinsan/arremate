@@ -29,6 +29,11 @@ function getCachedJWKS(jwksUri: URL): ReturnType<typeof createRemoteJWKSet> {
 /**
  * Verifies a Cognito JWT (ID or access token) using the user pool's JWKS.
  *
+ * **API-server only** – this function uses `jose` with a remote JWKS fetch
+ * and the Node.js crypto layer.  Do not import it in mobile or browser
+ * bundles; use `decodeJwtPayload` / `isTokenExpired` for client-side
+ * checks and rely on the API to perform authoritative verification.
+ *
  * Throws a `JWTInvalid`, `JWTExpired`, or `JWTClaimValidationFailed` error
  * from `jose` when the token is invalid or expired.
  *
