@@ -160,7 +160,7 @@ function AppShell() {
     }`;
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="flex min-h-screen flex-col bg-white">
       <header className="bg-white border-b border-gray-100 sticky top-0 z-50 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
@@ -295,7 +295,7 @@ function AppShell() {
         )}
       </header>
 
-      <main>
+      <main className="flex-1">
         <Routes>
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
@@ -323,7 +323,7 @@ function AppShell() {
         </Routes>
       </main>
 
-      <footer className="bg-gray-900 text-gray-400 text-sm py-10 mt-20">
+      <footer className="mt-20 bg-gray-900 py-10 text-sm text-gray-400">
         <div className="max-w-7xl mx-auto px-4 text-center">
           <p className="font-semibold text-white mb-1">Arremate</p>
           <p>© {new Date().getFullYear()} Arremate Tecnologia Ltda. Todos os direitos reservados.</p>
