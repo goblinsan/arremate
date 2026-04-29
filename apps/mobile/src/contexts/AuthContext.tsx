@@ -6,8 +6,8 @@ import {
   useCallback,
   type ReactNode,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { decodeJwtPayload, isTokenExpired, type AuthTokens } from '@arremate/auth';
+import * as secureStorage from '../lib/secureStorage';
 
 // ─── Storage keys ─────────────────────────────────────────────────────────────
 
@@ -44,6 +44,8 @@ export interface AuthContextValue {
   currentRole: 'BUYER' | 'SELLER' | 'ADMIN' | null;
   isSeller: boolean;
   signIn(email: string, password: string): Promise<void>;
+  /** Accepts tokens returned from an external OAuth/hosted-UI flow and completes sign-in. */
+  signInWithTokens(tokens: AuthTokens): Promise<void>;
   signOut(): void;
   getAccessToken(): string | null;
   reloadProfile(): Promise<void>;
@@ -93,29 +95,29 @@ async function cognitoSignIn(email: string, password: string): Promise<CognitoAu
 
 async function loadStoredTokens(): Promise<AuthTokens | null> {
   const [accessToken, refreshToken, idToken] = await Promise.all([
-    AsyncStorage.getItem(ACCESS_TOKEN_KEY),
-    AsyncStorage.getItem(REFRESH_TOKEN_KEY),
-    AsyncStorage.getItem(ID_TOKEN_KEY),
+    secureStorage.getItem(ACCESS_TOKEN_KEY),
+    secureStorage.getItem(REFRESH_TOKEN_KEY),
+    secureStorage.getItem(ID_TOKEN_KEY),
   ]);
   if (!accessToken) return null;
   return { accessToken, refreshToken: refreshToken ?? '', idToken: idToken ?? undefined };
 }
 
 async function storeTokens(tokens: AuthTokens): Promise<void> {
-  await AsyncStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
+  await secureStorage.setItem(ACCESS_TOKEN_KEY, tokens.accessToken);
   if (tokens.refreshToken) {
-    await AsyncStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
+    await secureStorage.setItem(REFRESH_TOKEN_KEY, tokens.refreshToken);
   }
   if (tokens.idToken) {
-    await AsyncStorage.setItem(ID_TOKEN_KEY, tokens.idToken);
+    await secureStorage.setItem(ID_TOKEN_KEY, tokens.idToken);
   }
 }
 
 async function clearTokens(): Promise<void> {
   await Promise.all([
-    AsyncStorage.removeItem(ACCESS_TOKEN_KEY),
-    AsyncStorage.removeItem(REFRESH_TOKEN_KEY),
-    AsyncStorage.removeItem(ID_TOKEN_KEY),
+    secureStorage.removeItem(ACCESS_TOKEN_KEY),
+    secureStorage.removeItem(REFRESH_TOKEN_KEY),
+    secureStorage.removeItem(ID_TOKEN_KEY),
   ]);
 }
 
@@ -160,7 +162,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return null;
   }, []);
 
-  // Restore session from AsyncStorage on mount.
+  // Restore session from SecureStore on mount.
   useEffect(() => {
     async function restoreSession() {
       try {
@@ -192,6 +194,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       };
       await storeTokens(newTokens);
       await fetchProfile(result.AccessToken);
+      setTokens(newTokens);
+      setUser(userFromTokens(newTokens));
+    },
+    [fetchProfile],
+  );
+
+  /**
+   * Accepts tokens already obtained externally (e.g. from the hosted UI
+   * OAuth/PKCE flow via useHostedAuth) and completes the sign-in sequence.
+   */
+  const signInWithTokens = useCallback(
+    async (newTokens: AuthTokens): Promise<void> => {
+      await storeTokens(newTokens);
+      await fetchProfile(newTokens.accessToken);
       setTokens(newTokens);
       setUser(userFromTokens(newTokens));
     },
@@ -237,6 +253,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         currentRole,
         isSeller: profile?.isSeller ?? false,
         signIn,
+        signInWithTokens,
         signOut,
         getAccessToken,
         reloadProfile,

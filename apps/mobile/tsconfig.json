@@ -9,7 +9,7 @@
     "strict": true,
     "paths": {
       "@arremate/types": ["../../packages/types/src/index.ts"],
-      "@arremate/auth": ["../../packages/auth/src/index.ts"],
+      "@arremate/auth": ["../../packages/auth/src/mobile.ts"],
       "@arremate/shared-utils": ["../../packages/shared-utils/src/index.ts"]
     }
   },
