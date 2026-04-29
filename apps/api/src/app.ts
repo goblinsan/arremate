@@ -29,6 +29,7 @@ import { sellerPayoutRoutes } from './routes/seller-payouts.js';
 import { adminPayoutRoutes } from './routes/admin-payouts.js';
 import { adminFiscalDocRoutes } from './routes/admin-fiscal-docs.js';
 import { adminTaxConfigRoutes } from './routes/admin-tax-configs.js';
+import { adminFinanceExportRoutes } from './routes/admin-finance-exports.js';
 import { deviceRoutes } from './routes/devices.js';
 import type { AppEnv } from './types.js';
 
@@ -156,4 +157,5 @@ app.route('/', sellerPayoutRoutes);
 app.route('/', adminPayoutRoutes);
 app.route('/', adminFiscalDocRoutes);
 app.route('/', adminTaxConfigRoutes);
+app.route('/', adminFinanceExportRoutes);
 app.route('/', deviceRoutes);
