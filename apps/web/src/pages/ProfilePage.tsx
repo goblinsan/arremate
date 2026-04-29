@@ -12,6 +12,10 @@ interface MeResponse {
   role: 'BUYER' | 'SELLER' | 'ADMIN';
   activeRole: 'BUYER' | 'SELLER' | null;
   isSeller: boolean;
+  sellerProfile?: {
+    businessName: string | null;
+    brandLogoUrl: string | null;
+  } | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,6 +27,8 @@ export default function ProfilePage() {
 
   const [profile, setProfile] = useState<MeResponse | null>(null);
   const [name, setName] = useState(contextProfile?.name ?? '');
+  const [businessName, setBusinessName] = useState(contextProfile?.sellerProfile?.businessName ?? '');
+  const [brandLogoUrl, setBrandLogoUrl] = useState(contextProfile?.sellerProfile?.brandLogoUrl ?? '');
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   // If auth context already has profile data (loaded during login), skip initial loading state
@@ -48,6 +54,8 @@ export default function ProfilePage() {
         ...contextProfile,
       }));
       setName(contextProfile.name ?? '');
+      setBusinessName(contextProfile.sellerProfile?.businessName ?? '');
+      setBrandLogoUrl(contextProfile.sellerProfile?.brandLogoUrl ?? '');
       setIsFetching(false);
       setError(null);
       return;
@@ -106,6 +114,8 @@ export default function ProfilePage() {
 
         setProfile(data);
         setName(data.name ?? '');
+        setBusinessName(data.sellerProfile?.businessName ?? '');
+        setBrandLogoUrl(data.sellerProfile?.brandLogoUrl ?? '');
       } catch (err) {
         if (controller.signal.aborted) return;
         setError(err instanceof Error ? err.message : 'Não foi possível carregar seu perfil.');
@@ -139,7 +149,7 @@ export default function ProfilePage() {
           Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name }),
+        body: JSON.stringify({ name, businessName, brandLogoUrl }),
       });
 
       if (!res.ok) {
@@ -150,6 +160,8 @@ export default function ProfilePage() {
       const updated = await res.json() as MeResponse;
       setProfile(updated);
       setName(updated.name ?? '');
+      setBusinessName(updated.sellerProfile?.businessName ?? '');
+      setBrandLogoUrl(updated.sellerProfile?.brandLogoUrl ?? '');
       setSuccess('Perfil atualizado com sucesso.');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Não foi possível atualizar seu perfil.');
@@ -300,6 +312,45 @@ export default function ProfilePage() {
             readOnly
           />
         </div>
+
+        {isSeller && (
+          <>
+            <div>
+              <label htmlFor="businessName" className="block text-sm font-medium text-gray-700 mb-1">
+                Nome da loja
+              </label>
+              <input
+                id="businessName"
+                type="text"
+                value={businessName}
+                onChange={(event) => setBusinessName(event.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                placeholder="Como sua marca deve aparecer nas lives"
+                maxLength={160}
+                disabled={isFetching || isSaving}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="brandLogoUrl" className="block text-sm font-medium text-gray-700 mb-1">
+                URL do logo da loja
+              </label>
+              <input
+                id="brandLogoUrl"
+                type="url"
+                value={brandLogoUrl}
+                onChange={(event) => setBrandLogoUrl(event.target.value)}
+                className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
+                placeholder="https://..."
+                maxLength={500}
+                disabled={isFetching || isSaving}
+              />
+              <p className="mt-2 text-xs text-gray-400">
+                Esse logo será usado nos overlays públicos das suas transmissões ao vivo.
+              </p>
+            </div>
+          </>
+        )}
 
         <div className="flex justify-end">
           <button

@@ -1,7 +1,24 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Radio, Mic, Pin, Package, ShoppingCart, Check, MessageCircle, TriangleAlert, ArrowLeft, ArrowRight, QrCode } from 'lucide-react';
+import {
+  Radio,
+  Mic,
+  Pin,
+  Package,
+  ShoppingCart,
+  Check,
+  TriangleAlert,
+  ArrowLeft,
+  ArrowRight,
+  QrCode,
+  Eye,
+  Share2,
+  Wallet,
+  Store,
+  Star,
+  Truck,
+} from 'lucide-react';
 import type { Show, ShowSession, ItemCondition, ChatMessage, Claim, Order, Payment } from '@arremate/types';
 import LivePlayer from '../components/LivePlayer';
 
@@ -10,6 +27,7 @@ const POLL_INTERVAL_MS = 5000;
 const CHAT_POLL_INTERVAL_MS = 3000;
 const CLAIM_EXPIRY_POLL_MS = 10000;
 const BASTAO_REDIRECT_COUNTDOWN_SECONDS = 5;
+const PRESENCE_HEARTBEAT_MS = 15000;
 
 const CONDITION_LABELS: Record<ItemCondition, string> = {
   NEW: 'Novo',
@@ -18,13 +36,54 @@ const CONDITION_LABELS: Record<ItemCondition, string> = {
 };
 
 interface PublicShow extends Omit<Show, 'seller'> {
-  seller: { id: string; name: string | null };
+  seller: {
+    id: string;
+    name: string | null;
+    brandName: string | null;
+    brandLogoUrl: string | null;
+    metrics: {
+      ratingAverage: number | null;
+      ratingCount: number;
+      averageShippingDays: number | null;
+      completedSalesCount: number;
+    };
+  };
 }
 
 function formatExpiresAt(date: Date | string): string {
   const d = new Date(date);
   if (isNaN(d.getTime())) return '—';
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+}
+
+function formatCurrency(value: number): string {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(value);
+}
+
+function getSellerBadgeText(show: PublicShow): string {
+  const rating = show.seller.metrics.ratingAverage;
+  if (rating !== null) {
+    return show.seller.metrics.ratingCount > 0
+      ? `${rating.toFixed(1)} · ${show.seller.metrics.ratingCount}`
+      : rating.toFixed(1);
+  }
+  return show.seller.metrics.completedSalesCount > 0 ? 'Confiável' : 'Novo';
+}
+
+function getShippingSpeedText(show: PublicShow): string {
+  const averageDays = show.seller.metrics.averageShippingDays;
+  if (averageDays === null) return 'Sem histórico';
+  if (averageDays < 1) return 'Mesmo dia';
+  return `${Math.round(averageDays)}d envio`;
+}
+
+function getSellerInitials(show: PublicShow): string {
+  const source = show.seller.brandName ?? show.seller.name ?? 'AR';
+  const parts = source.trim().split(/\s+/).filter(Boolean);
+  return parts.slice(0, 2).map((part) => part[0]?.toUpperCase() ?? '').join('') || 'AR';
 }
 
 export default function LiveRoomPage() {
@@ -46,7 +105,6 @@ export default function LiveRoomPage() {
   const [chatInput, setChatInput] = useState('');
   const [isSendingMessage, setIsSendingMessage] = useState(false);
   const [chatError, setChatError] = useState<string | null>(null);
-  const chatBottomRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
 
   // Claim state
@@ -63,6 +121,8 @@ export default function LiveRoomPage() {
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
   const [isCreatingPayment, setIsCreatingPayment] = useState(false);
   const [orderError, setOrderError] = useState<string | null>(null);
+  const [shareFeedback, setShareFeedback] = useState<string | null>(null);
+  const viewerKeyRef = useRef<string | null>(null);
 
   const fetchSession = useCallback(async () => {
     if (!showId) return;
@@ -117,6 +177,44 @@ export default function LiveRoomPage() {
     const interval = setInterval(fetchSession, POLL_INTERVAL_MS);
     return () => clearInterval(interval);
   }, [showStatus, fetchSession]);
+
+  useEffect(() => {
+    if (!showId || showStatus !== 'LIVE') return;
+
+    if (!viewerKeyRef.current) {
+      const storageKey = `arremate.viewerKey:${showId}`;
+      const existing = window.localStorage.getItem(storageKey);
+      if (existing) {
+        viewerKeyRef.current = existing;
+      } else {
+        const next = typeof crypto !== 'undefined' && 'randomUUID' in crypto
+          ? crypto.randomUUID()
+          : `viewer-${Math.random().toString(36).slice(2)}`;
+        viewerKeyRef.current = next;
+        window.localStorage.setItem(storageKey, next);
+      }
+    }
+
+    async function sendPresence() {
+      if (!viewerKeyRef.current) return;
+      try {
+        const res = await fetch(`${API_URL}/v1/shows/${showId}/presence`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ viewerKey: viewerKeyRef.current }),
+        });
+        if (!res.ok) return;
+        const data = await res.json() as { viewerCount: number };
+        setSession((current) => current ? { ...current, viewerCount: data.viewerCount } : current);
+      } catch {
+        // Presence is best-effort; ignore failures.
+      }
+    }
+
+    void sendPresence();
+    const interval = window.setInterval(sendPresence, PRESENCE_HEARTBEAT_MS);
+    return () => window.clearInterval(interval);
+  }, [showId, showStatus]);
 
   // ─── Bastão (raid) countdown & auto-redirect ─────────────────────────────────
 
@@ -380,6 +478,27 @@ export default function LiveRoomPage() {
     }
   }
 
+  async function handleShare() {
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : `${API_URL}/shows/${showId}/live`;
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: show?.title ?? 'Arremate Live',
+          text: `Assista ao vivo: ${show?.title ?? 'show no Arremate'}`,
+          url: shareUrl,
+        });
+        return;
+      }
+
+      await navigator.clipboard.writeText(shareUrl);
+      setShareFeedback('Link copiado');
+      window.setTimeout(() => setShareFeedback(null), 1800);
+    } catch {
+      setShareFeedback('Não foi possível compartilhar');
+      window.setTimeout(() => setShareFeedback(null), 1800);
+    }
+  }
+
   if (isLoadingShow) {
     return <div className="max-w-4xl mx-auto px-4 py-16 text-center text-gray-400">Carregando…</div>;
   }
@@ -398,34 +517,36 @@ export default function LiveRoomPage() {
   const pinnedItem = session?.pinnedItem;
   const livePrice = pinnedItem ? Number(pinnedItem.currentBid ?? pinnedItem.inventoryItem.startingPrice) : null;
   const minNextBid = livePrice !== null ? livePrice + 1 : null;
+  const sellerBrandName = show.seller.brandName ?? show.seller.name ?? 'Arremate Seller';
+  const viewerCount = session?.viewerCount ?? Math.max(1, new Set(messages.map((msg) => msg.userId)).size + (pinnedItem?.bidCount ?? 0));
 
   return (
-    <div className={`mx-auto px-4 py-12 ${isLive ? 'max-w-7xl' : 'max-w-4xl'}`}>
+    <div className={`mx-auto px-4 py-8 sm:py-10 ${isLive ? 'max-w-[1200px]' : 'max-w-4xl'}`}>
       <Link to={`/shows/${show.id}`} className="text-gray-400 hover:text-gray-600 text-sm mb-6 inline-flex items-center gap-1">
         <ArrowLeft className="w-3.5 h-3.5" /> Detalhes do show
       </Link>
 
       {/* Show header */}
-      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+      <div className={`mb-6 ${isLive ? '' : 'bg-white rounded-2xl p-6 shadow-sm border border-gray-100'}`}>
         <div className="flex items-center gap-3 mb-2">
           {isLive && (
-            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-full bg-red-100 text-red-700 animate-pulse">
+            <span className="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700 animate-pulse">
               <Radio className="w-3 h-3" /> Ao vivo agora
             </span>
           )}
           {isEnded && (
-            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-500">
+            <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-500">
               Encerrado
             </span>
           )}
         </div>
-        <h1 className="text-2xl font-bold text-gray-900 mb-1">{show.title}</h1>
+        <h1 className={`font-bold mb-2 ${isLive ? 'text-3xl text-gray-950' : 'text-2xl text-gray-900'}`}>{show.title}</h1>
         {show.description && (
-          <p className="text-gray-600 text-sm mb-2">{show.description}</p>
+          <p className="text-gray-600 text-sm mb-2 max-w-3xl">{show.description}</p>
         )}
         <p className="text-sm text-gray-500">
           Vendedor:{' '}
-          <span className="font-medium text-gray-700">{show.seller?.name ?? 'Vendedor'}</span>
+          <span className="font-medium text-gray-700">{sellerBrandName}</span>
         </p>
       </div>
 
@@ -471,228 +592,277 @@ export default function LiveRoomPage() {
             </div>
           )}
 
-          <div className="lg:flex lg:gap-6 lg:items-start">
-            {/* Main column: video + pinned item */}
-            <div className="lg:flex-1 lg:min-w-0">
-          {/* Playback area */}
-          <LivePlayer playbackUrl={session?.playbackUrl} />
+          <div className="relative overflow-hidden rounded-[32px] bg-neutral-950 min-h-[78vh] border border-gray-950/80 shadow-[0_32px_80px_rgba(15,23,42,0.28)]">
+            <LivePlayer
+              playbackUrl={session?.playbackUrl}
+              controls={false}
+              containerClassName="absolute inset-0 h-full w-full mb-0 rounded-none bg-black"
+              videoClassName="h-full w-full object-cover"
+              placeholderClassName="absolute inset-0 h-full w-full rounded-none bg-gray-950 flex items-center justify-center text-gray-300 text-sm"
+            />
+            <div className="absolute inset-0 bg-gradient-to-b from-black/55 via-black/10 to-black/80" />
+            <div className="absolute inset-x-0 top-0 h-40 bg-gradient-to-b from-black/45 to-transparent" />
 
-          {/* Pinned item */}
-          {pinnedItem ? (
-            <div className="bg-white rounded-2xl p-6 shadow-sm border border-red-100 mb-6">
-              <p className="text-xs font-semibold text-red-600 uppercase tracking-wide mb-3 flex items-center gap-1.5">
-                <Pin className="w-3.5 h-3.5" /> Item em destaque
-              </p>
-              <div className="flex items-start gap-4">
-                <div className="h-20 w-20 bg-gray-100 rounded-xl flex items-center justify-center shrink-0">
-                  <Package className="w-8 h-8 text-gray-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">
-                    {pinnedItem.inventoryItem.title}
-                  </h2>
-                  {pinnedItem.inventoryItem.description && (
-                    <p className="text-sm text-gray-600 mb-2">{pinnedItem.inventoryItem.description}</p>
-                  )}
-                  <p className="text-xs text-gray-400 mb-2">
-                    {CONDITION_LABELS[pinnedItem.inventoryItem.condition]}
-                  </p>
-                  <p className="text-2xl font-extrabold text-brand-500">
-                    R$ {Number(livePrice ?? 0).toFixed(2)}
-                  </p>
-                  <p className="text-xs text-gray-400 mb-4">
-                    {pinnedItem.bidCount > 0
-                      ? `${pinnedItem.bidCount} lance${pinnedItem.bidCount === 1 ? '' : 's'} registrado${pinnedItem.bidCount === 1 ? '' : 's'}`
-                      : 'Sem lances ainda'}
-                  </p>
+            <div className="absolute left-4 top-4 right-24 sm:left-6 sm:top-6 sm:right-32">
+              <div className="inline-flex max-w-full items-center gap-3 rounded-2xl border border-white/15 bg-black/35 px-3 py-3 text-white shadow-lg backdrop-blur-xl">
+                {show.seller.brandLogoUrl ? (
+                  <img
+                    src={show.seller.brandLogoUrl}
+                    alt={sellerBrandName}
+                    className="h-14 w-14 shrink-0 rounded-full bg-white object-cover shadow-[0_10px_24px_rgba(0,0,0,0.35)]"
+                  />
+                ) : (
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-sm font-black uppercase text-brand-500 shadow-[0_10px_24px_rgba(0,0,0,0.35)]">
+                    {getSellerInitials(show)}
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <p className="truncate text-base font-semibold">{sellerBrandName}</p>
+                  <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-white/85">
+                    <span className="inline-flex items-center gap-1">
+                      <Star className="h-3.5 w-3.5 fill-current text-amber-300" />
+                      {getSellerBadgeText(show)}
+                    </span>
+                    <span className="inline-flex items-center gap-1">
+                      <Truck className="h-3.5 w-3.5 text-white/75" />
+                      {getShippingSpeedText(show)}
+                    </span>
+                  </div>
                 </div>
               </div>
+            </div>
 
-              {/* Claim / payment CTA */}
-              <div className="mt-5 border-t border-gray-100 pt-4">
-                {!isAuthenticated ? (
-                  <p className="text-sm text-gray-500">
-                    <Link to="/login" className="text-brand-500 font-medium hover:underline">Faça login</Link>{' '}
-                    para comprar este item.
-                  </p>
-                ) : claim === null ? (
-                  <>
-                    <div className="mb-3 bg-gray-50 border border-gray-200 rounded-xl p-3">
-                      <p className="text-xs text-gray-500 mb-2">Dar lance</p>
-                      <div className="flex gap-2">
+            <div className="absolute right-4 top-4 sm:right-6 sm:top-6">
+              <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-black/35 px-4 py-2 text-sm font-semibold text-white shadow-lg backdrop-blur-xl">
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-red-500/90">
+                  <Eye className="h-4 w-4" />
+                </span>
+                {viewerCount}
+              </div>
+            </div>
+
+            <div className="absolute right-4 top-1/2 z-10 flex -translate-y-1/2 flex-col gap-3 sm:right-6">
+              <button
+                type="button"
+                onClick={() => void handleShare()}
+                className="flex h-16 w-16 flex-col items-center justify-center rounded-3xl border border-white/10 bg-black/28 text-white shadow-lg backdrop-blur-xl transition hover:bg-black/40"
+              >
+                <Share2 className="h-5 w-5" />
+                <span className="mt-1 text-[11px] font-medium">Share</span>
+              </button>
+              <Link
+                to={isAuthenticated ? '/orders' : '/login'}
+                className="flex h-16 w-16 flex-col items-center justify-center rounded-3xl border border-white/10 bg-black/28 text-white shadow-lg backdrop-blur-xl transition hover:bg-black/40"
+              >
+                <Wallet className="h-5 w-5" />
+                <span className="mt-1 text-[11px] font-medium">Wallet</span>
+              </Link>
+              <Link
+                to={`/shows/${show.id}`}
+                className="flex h-16 w-16 flex-col items-center justify-center rounded-3xl border border-white/10 bg-black/28 text-white shadow-lg backdrop-blur-xl transition hover:bg-black/40"
+              >
+                <Store className="h-5 w-5" />
+                <span className="mt-1 text-[11px] font-medium">Shop</span>
+              </Link>
+            </div>
+
+            {session && (
+              <div className="absolute bottom-[10.5rem] left-4 right-24 sm:left-6 sm:right-32 lg:bottom-[12.5rem] lg:left-6 lg:w-[22rem]">
+                <div className="rounded-[28px] border border-white/10 bg-black/26 text-white shadow-xl backdrop-blur-xl">
+                  <div ref={chatContainerRef} className="max-h-72 overflow-y-auto px-4 py-4">
+                    {messages.length === 0 ? (
+                      <p className="py-12 text-center text-sm text-white/70">
+                        Nenhuma mensagem ainda. Seja o primeiro a comentar.
+                      </p>
+                    ) : (
+                      <div className="space-y-3">
+                        {messages.map((msg) => {
+                          const isOwn = user?.sub === msg.userId || false;
+                          return (
+                            <div key={msg.id} className={`flex ${isOwn ? 'justify-end' : 'justify-start'}`}>
+                              <div className="max-w-[85%]">
+                                <p className="mb-1 text-xs font-medium text-white/60">{msg.user?.name ?? 'Usuário'}</p>
+                                <div className={`rounded-2xl px-3 py-2 text-sm leading-relaxed ${
+                                  isOwn ? 'bg-brand-500 text-white' : 'bg-white/12 text-white'
+                                }`}>
+                                  {msg.content}
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <div className="border-t border-white/10 px-3 py-3">
+                    {chatError && (
+                      <p className="mb-2 text-xs text-red-200">{chatError}</p>
+                    )}
+                    {isAuthenticated ? (
+                      <form onSubmit={handleSendMessage} className="flex gap-2">
                         <input
-                          type="number"
-                          min={minNextBid ?? 1}
-                          step="1"
-                          value={bidAmount}
-                          onChange={(e) => setBidAmount(e.target.value)}
-                          placeholder={minNextBid ? `Mínimo: ${minNextBid.toFixed(2)}` : 'Valor do lance'}
-                          className="flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                          type="text"
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          maxLength={300}
+                          placeholder="Say something…"
+                          className="flex-1 rounded-full border border-white/10 bg-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-white/30"
+                          disabled={isSendingMessage}
                         />
                         <button
-                          onClick={handlePlaceBid}
-                          disabled={isBidding || pinnedItem.soldOut}
-                          className="bg-gray-800 hover:bg-gray-900 disabled:opacity-60 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+                          type="submit"
+                          disabled={isSendingMessage || !chatInput.trim()}
+                          className="rounded-full bg-white px-4 py-2.5 text-sm font-semibold text-gray-900 transition hover:bg-white/90 disabled:opacity-50"
                         >
-                          {isBidding ? 'Enviando…' : 'Dar lance'}
+                          {isSendingMessage ? '…' : 'Enviar'}
                         </button>
+                      </form>
+                    ) : (
+                      <p className="text-sm text-white/75">
+                        <Link to="/login" className="font-medium text-white underline underline-offset-2">
+                          Faça login
+                        </Link>{' '}
+                        para participar do chat.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="absolute inset-x-4 bottom-4 sm:inset-x-6 sm:bottom-6">
+              <div className="rounded-[30px] border border-white/10 bg-black/52 p-4 text-white shadow-2xl backdrop-blur-2xl sm:p-5">
+                {pinnedItem ? (
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+                    <div className="flex min-w-0 items-start gap-4">
+                      <div className="flex h-24 w-24 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/6">
+                        <Package className="h-9 w-9 text-white/55" />
                       </div>
-                      {bidError && <p className="text-xs text-red-600 mt-2">{bidError}</p>}
+                      <div className="min-w-0">
+                        <p className="mb-2 inline-flex items-center gap-1 rounded-full bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-white/80">
+                          <Pin className="h-3.5 w-3.5" /> Item ao vivo
+                        </p>
+                        <h2 className="truncate text-2xl font-bold">{pinnedItem.inventoryItem.title}</h2>
+                        <p className="mt-1 text-sm text-white/70">{CONDITION_LABELS[pinnedItem.inventoryItem.condition]}</p>
+                        <div className="mt-3 flex flex-wrap gap-3 text-sm text-white/72">
+                          <span>{getShippingSpeedText(show)}</span>
+                          <span>{pinnedItem.bidCount > 0 ? `${pinnedItem.bidCount} lances` : 'Sem lances'}</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {claimError && (
-                      <p className="text-sm text-red-600 mb-2">{claimError}</p>
-                    )}
-                    <button
-                      onClick={handleClaim}
-                      disabled={isClaiming || pinnedItem.soldOut}
-                      className="w-full bg-brand-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-3 rounded-xl text-base transition-colors"
-                    >
-                      {pinnedItem.soldOut
-                        ? 'Esgotado'
-                        : isClaiming
-                        ? 'Reservando…'
-                        : <><ShoppingCart className="w-4 h-4 mr-1.5 inline" />Quero este item!</>}
-                    </button>
-                  </>
-                ) : isClaimExpired(claim) ? (
-                  <div className="bg-gray-50 border border-gray-200 text-gray-600 text-sm rounded-lg px-4 py-3">
-                    <p className="font-semibold">Sua reserva expirou.</p>
-                    <p className="text-xs mt-1">O prazo de pagamento não foi cumprido.</p>
-                  </div>
-                ) : claim.status === 'CONFIRMED' && order?.status === 'PAID' ? (
-                  <div className="bg-green-50 border border-green-200 text-green-700 text-sm rounded-lg px-4 py-3">
-                    <p className="font-semibold flex items-center gap-1.5"><Check className="w-4 h-4" /> Compra confirmada!</p>
-                    <p className="text-xs mt-1">Seu pedido foi registrado com sucesso.</p>
+                    <div className="grid gap-3 lg:min-w-[360px]">
+                      <div className="flex flex-wrap items-end justify-between gap-3">
+                        <div>
+                          <p className="text-xs uppercase tracking-[0.22em] text-white/55">Preço atual</p>
+                          <p className="text-3xl font-black text-white">{formatCurrency(Number(livePrice ?? 0))}</p>
+                        </div>
+                        {pinnedItem.soldOut && (
+                          <span className="rounded-full bg-red-500/20 px-3 py-1 text-sm font-semibold text-red-200">Sold</span>
+                        )}
+                      </div>
+
+                      {!isAuthenticated ? (
+                        <Link
+                          to="/login"
+                          className="inline-flex items-center justify-center rounded-2xl bg-white px-5 py-3 text-sm font-bold text-gray-950 transition hover:bg-white/90"
+                        >
+                          Faça login para comprar
+                        </Link>
+                      ) : claim === null ? (
+                        <>
+                          <div className="flex flex-col gap-2 sm:flex-row">
+                            <input
+                              type="number"
+                              min={minNextBid ?? 1}
+                              step="1"
+                              value={bidAmount}
+                              onChange={(e) => setBidAmount(e.target.value)}
+                              placeholder={minNextBid ? `Lance mínimo: ${minNextBid.toFixed(2)}` : 'Valor do lance'}
+                              className="flex-1 rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-white/30"
+                            />
+                            <button
+                              onClick={handlePlaceBid}
+                              disabled={isBidding || pinnedItem.soldOut}
+                              className="rounded-2xl border border-white/15 bg-white/10 px-5 py-3 text-sm font-semibold text-white transition hover:bg-white/18 disabled:opacity-60"
+                            >
+                              {isBidding ? 'Enviando…' : 'Dar lance'}
+                            </button>
+                          </div>
+                          {bidError && <p className="text-xs text-red-200">{bidError}</p>}
+                          {claimError && <p className="text-xs text-red-200">{claimError}</p>}
+                          <button
+                            onClick={handleClaim}
+                            disabled={isClaiming || pinnedItem.soldOut}
+                            className="inline-flex items-center justify-center rounded-2xl bg-brand-500 px-5 py-3 text-sm font-bold text-white transition hover:bg-orange-600 disabled:opacity-60"
+                          >
+                            {pinnedItem.soldOut
+                              ? 'Esgotado'
+                              : isClaiming
+                              ? 'Reservando…'
+                              : <><ShoppingCart className="mr-1.5 h-4 w-4" />Quero este item!</>}
+                          </button>
+                        </>
+                      ) : isClaimExpired(claim) ? (
+                        <div className="rounded-2xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-white/82">
+                          Sua reserva expirou.
+                        </div>
+                      ) : claim.status === 'CONFIRMED' && order?.status === 'PAID' ? (
+                        <div className="rounded-2xl border border-emerald-300/25 bg-emerald-400/12 px-4 py-3 text-sm text-emerald-100">
+                          <span className="inline-flex items-center gap-1.5 font-semibold"><Check className="h-4 w-4" /> Compra confirmada</span>
+                        </div>
+                      ) : (
+                        <div className="rounded-2xl border border-amber-300/20 bg-amber-400/12 px-4 py-3 text-sm text-amber-50">
+                          <p className="font-semibold">Item reservado até {formatExpiresAt(claim.expiresAt)}</p>
+                          {orderError && <p className="mt-2 text-red-200">{orderError}</p>}
+                          {!order && (
+                            <button
+                              onClick={handleCreateOrder}
+                              disabled={isCreatingOrder}
+                              className="mt-3 w-full rounded-xl bg-white px-4 py-2.5 font-semibold text-gray-950 transition hover:bg-white/90 disabled:opacity-60"
+                            >
+                              {isCreatingOrder ? 'Criando pedido…' : 'Confirmar pedido'}
+                            </button>
+                          )}
+                          {order && !payment && (
+                            <button
+                              onClick={handleCreatePixPayment}
+                              disabled={isCreatingPayment}
+                              className="mt-3 w-full rounded-xl bg-emerald-500 px-4 py-2.5 font-semibold text-white transition hover:bg-emerald-600 disabled:opacity-60"
+                            >
+                              {isCreatingPayment ? 'Gerando Pix…' : 'Gerar cobrança Pix'}
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
                   </div>
                 ) : (
-                  <div className="bg-orange-50 border border-orange-200 text-orange-700 text-sm rounded-lg px-4 py-3">
-                    <p className="font-semibold flex items-center gap-1.5"><ShoppingCart className="w-4 h-4" /> Item reservado!</p>
-                    <p className="text-xs mt-1">
-                      Finalize o pagamento até {formatExpiresAt(claim.expiresAt)} para garantir sua compra.
-                    </p>
-
-                    {orderError && (
-                      <p className="text-sm text-red-600 mt-2">{orderError}</p>
-                    )}
-
-                    {/* Step 1: create the order */}
-                    {!order && (
-                      <button
-                        onClick={handleCreateOrder}
-                        disabled={isCreatingOrder}
-                        className="mt-3 w-full bg-orange-500 hover:bg-orange-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg text-sm transition-colors"
-                      >
-                        {isCreatingOrder ? 'Criando pedido…' : 'Confirmar pedido'}
-                      </button>
-                    )}
-
-                    {/* Step 2: generate Pix */}
-                    {order && !payment && (
-                      <button
-                        onClick={handleCreatePixPayment}
-                        disabled={isCreatingPayment}
-                        className="mt-3 w-full bg-green-500 hover:bg-green-600 disabled:opacity-60 text-white font-bold py-2.5 rounded-lg text-sm transition-colors"
-                      >
-                        {isCreatingPayment ? 'Gerando Pix…' : 'Gerar cobrança Pix'}
-                      </button>
-                    )}
-
-                    {/* Step 3: show Pix details */}
-                    {payment && payment.pixCode && (
-                      <PixPaymentPanel payment={payment} />
-                    )}
+                  <div className="flex items-center justify-between gap-4 rounded-[24px] bg-white/6 px-4 py-4">
+                    <div>
+                      <p className="text-lg font-semibold text-white">Awaiting Next Item</p>
+                      <p className="text-sm text-white/65">O vendedor ainda não fixou o próximo lote do leilão.</p>
+                    </div>
+                    <Mic className="h-7 w-7 text-white/55" />
                   </div>
                 )}
               </div>
             </div>
-          ) : (
-            <div className="bg-gray-50 rounded-2xl p-6 text-center text-gray-400 mb-6">
-              Nenhum item em destaque no momento.
+          </div>
+
+          {shareFeedback && (
+            <p className="mt-4 text-center text-sm text-gray-500">{shareFeedback}</p>
+          )}
+
+          {payment && payment.pixCode && (
+            <div className="mt-6 max-w-xl">
+              <PixPaymentPanel payment={payment} />
             </div>
           )}
 
-              <p className="text-xs text-gray-400 text-center mt-6">
-                Esta página atualiza automaticamente a cada {POLL_INTERVAL_MS / 1000} segundos.
-              </p>
-            </div>
-
-            {/* Chat sidebar */}
-            {session && (
-              <div className="mt-6 lg:mt-0 lg:w-80 xl:w-96 lg:shrink-0 lg:sticky lg:top-4 bg-white rounded-2xl shadow-sm border border-gray-100 flex flex-col lg:h-[calc(100vh-6rem)]">
-                <div className="px-6 py-4 border-b border-gray-100 shrink-0">
-                  <h3 className="text-base font-semibold text-gray-800 flex items-center gap-1.5"><MessageCircle className="w-4 h-4" /> Chat ao vivo</h3>
-                </div>
-
-                {/* Message list */}
-                <div ref={chatContainerRef} className="flex-1 overflow-y-auto min-h-64 px-6 py-4 flex flex-col gap-2">
-                  {messages.length === 0 ? (
-                    <p className="text-sm text-gray-400 text-center my-auto">
-                      Nenhuma mensagem ainda. Seja o primeiro a comentar!
-                    </p>
-                  ) : (
-                    messages.map((msg) => {
-                      const isOwn = user?.sub === msg.userId || false;
-                      return (
-                        <div
-                          key={msg.id}
-                          className={`flex flex-col ${isOwn ? 'items-end' : 'items-start'}`}
-                        >
-                          <span className="text-xs text-gray-400 mb-0.5">
-                            {msg.user?.name ?? 'Usuário'}
-                          </span>
-                          <div
-                            className={`text-sm px-3 py-2 rounded-2xl max-w-xs break-words ${
-                              isOwn
-                                ? 'bg-brand-500 text-white rounded-tr-sm'
-                                : 'bg-gray-100 text-gray-800 rounded-tl-sm'
-                            }`}
-                          >
-                            {msg.content}
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                  <div ref={chatBottomRef} />
-                </div>
-
-                {/* Compose */}
-                <div className="px-6 py-4 border-t border-gray-100 shrink-0">
-                  {chatError && (
-                    <p className="text-xs text-red-600 mb-2">{chatError}</p>
-                  )}
-                  {isAuthenticated ? (
-                    <form onSubmit={handleSendMessage} className="flex gap-2">
-                      <input
-                        type="text"
-                        value={chatInput}
-                        onChange={(e) => setChatInput(e.target.value)}
-                        maxLength={300}
-                        placeholder="Digite uma mensagem…"
-                        className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent"
-                        disabled={isSendingMessage}
-                      />
-                      <button
-                        type="submit"
-                        disabled={isSendingMessage || !chatInput.trim()}
-                        className="bg-brand-500 hover:bg-orange-600 disabled:opacity-50 text-white font-semibold px-4 py-2 rounded-xl text-sm transition-colors"
-                      >
-                        {isSendingMessage ? '…' : 'Enviar'}
-                      </button>
-                    </form>
-                  ) : (
-                    <p className="text-sm text-gray-500 text-center">
-                      <Link to="/login" className="text-brand-500 hover:underline font-medium">
-                        Faça login
-                      </Link>{' '}
-                      para participar do chat.
-                    </p>
-                  )}
-                </div>
-              </div>
-            )}
-          </div>
+          <p className="mt-6 text-center text-xs text-gray-400">
+            Esta página atualiza automaticamente a cada {POLL_INTERVAL_MS / 1000} segundos.
+          </p>
         </>
       )}
     </div>

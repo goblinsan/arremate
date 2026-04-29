@@ -85,6 +85,7 @@ export interface SellerApplication {
   city: string | null;
   state: string | null;
   postalCode: string | null;
+  brandLogoUrl: string | null;
   reviewedById: string | null;
   reviewNotes: string | null;
   reviewedAt: Date | null;
@@ -193,6 +194,7 @@ export interface ShowSession {
   status: SessionStatus;
   providerSessionId: string | null;
   playbackUrl: string | null;
+  viewerCount?: number;
   pinnedItemId: string | null;
   pinnedItem?: ShowInventoryItem & { inventoryItem: InventoryItem };
   raidedToShowId: string | null;
@@ -265,6 +267,17 @@ export interface LiveBid {
   bidderId: string;
   amount: number;
   createdAt: Date;
+}
+
+export interface SellerReview {
+  id: string;
+  orderId: string;
+  sellerId: string;
+  buyerId: string;
+  rating: number;
+  comment: string | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ─── Audit ────────────────────────────────────────────────────────────────────

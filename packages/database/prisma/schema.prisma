@@ -29,6 +29,8 @@ model User {
   highestBidItems       ShowInventoryItem[]  @relation("ShowItemHighestBidder")
   sellerApplication     SellerApplication?
   sellerAccount         SellerAccount?
+  sellerReviewsReceived SellerReview[]       @relation("SellerReviewsReceived")
+  sellerReviewsWritten  SellerReview[]       @relation("SellerReviewsWritten")
   auditEvents           AuditEvent[]
   shows                 Show[]              @relation("SellerShows")
   inventoryItems        InventoryItem[]     @relation("SellerInventory")
@@ -45,6 +47,7 @@ model User {
   feePromotions         FeePromotion[]      @relation("SellerFeePromotions")
   issuedRefunds         OrderRefund[]       @relation("IssuedRefunds")
   settlementEntries     SettlementLedgerEntry[] @relation("SellerLedgerEntries")
+  showPresences         ShowPresence[]
 
   @@map("users")
 }
@@ -126,6 +129,7 @@ model SellerApplication {
   city            String?
   state           String?
   postalCode      String?
+  brandLogoUrl    String?
 
   // Review metadata
   reviewedById    String?
@@ -194,6 +198,7 @@ model Show {
   queueItems     ShowInventoryItem[]
   sessions       ShowSession[]
   raidedSessions ShowSession[]       @relation("RaidedSessions")
+  presences      ShowPresence[]
 
   @@map("shows")
 }
@@ -345,6 +350,7 @@ model Order {
   disputes       Dispute[]
   refunds        OrderRefund[]
   ledgerEntries  SettlementLedgerEntry[]
+  review         SellerReview?
 
   @@map("orders")
 }
@@ -462,6 +468,38 @@ model ShowSession {
   bids              LiveBid[]
 
   @@map("show_sessions")
+}
+
+model ShowPresence {
+  id         String   @id @default(cuid())
+  showId     String
+  show       Show     @relation(fields: [showId], references: [id], onDelete: Cascade)
+  viewerKey  String
+  userId     String?
+  user       User?    @relation(fields: [userId], references: [id])
+  lastSeenAt DateTime @default(now())
+  createdAt  DateTime @default(now())
+
+  @@unique([showId, viewerKey])
+  @@index([showId, lastSeenAt])
+  @@map("show_presences")
+}
+
+model SellerReview {
+  id        String   @id @default(cuid())
+  orderId    String   @unique
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  sellerId   String
+  seller     User     @relation("SellerReviewsReceived", fields: [sellerId], references: [id])
+  buyerId    String
+  buyer      User     @relation("SellerReviewsWritten", fields: [buyerId], references: [id])
+  rating     Int
+  comment    String?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([sellerId, createdAt])
+  @@map("seller_reviews")
 }
 
 model LiveBid {

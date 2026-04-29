@@ -3,6 +3,22 @@ import { withPrisma } from '@arremate/database';
 import type { AppEnv } from '../types.js';
 
 const app = new Hono<AppEnv>();
+const PRESENCE_STALE_MS = 60_000;
+
+function calculateAverageShippingDays(
+  orders: Array<{ createdAt: Date; shipment: { shippedAt: Date | null } | null }>,
+): number | null {
+  const shipped = orders
+    .map((order) => {
+      if (!order.shipment?.shippedAt) return null;
+      const diffMs = order.shipment.shippedAt.getTime() - order.createdAt.getTime();
+      return Math.max(0.25, diffMs / (1000 * 60 * 60 * 24));
+    })
+    .filter((value): value is number => value !== null);
+
+  if (shipped.length === 0) return null;
+  return shipped.reduce((sum, value) => sum + value, 0) / shipped.length;
+}
 
 /**
  * Public show endpoints (no authentication required).
@@ -52,7 +68,13 @@ app.get('/v1/shows/:id', async (c) => {
       status: true,
       scheduledAt: true,
       createdAt: true,
-      seller: { select: { id: true, name: true } },
+      seller: {
+        select: {
+          id: true,
+          name: true,
+          sellerApplication: { select: { businessName: true, brandLogoUrl: true } },
+        },
+      },
       queueItems: {
         orderBy: { position: 'asc' },
         select: {
@@ -80,8 +102,80 @@ app.get('/v1/shows/:id', async (c) => {
     return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
   }
 
-  return c.json(show);
+  const [sellerOrders, sellerReviewAggregate] = await withPrisma((prisma) => Promise.all([
+    prisma.order.findMany({
+      where: {
+        sellerId: show.seller.id,
+        status: { in: ['PAID', 'REFUNDED'] },
+      },
+      select: {
+        createdAt: true,
+        shipment: { select: { shippedAt: true } },
+      },
+    }),
+    prisma.sellerReview.aggregate({
+      where: { sellerId: show.seller.id },
+      _avg: { rating: true },
+      _count: { rating: true },
+    }),
+  ]));
+
+  const averageShippingDays = calculateAverageShippingDays(sellerOrders);
+
+  return c.json({
+    ...show,
+    seller: {
+      id: show.seller.id,
+      name: show.seller.name,
+      brandName: show.seller.sellerApplication?.businessName ?? show.seller.name,
+      brandLogoUrl: show.seller.sellerApplication?.brandLogoUrl ?? null,
+      metrics: {
+        ratingAverage: sellerReviewAggregate._avg.rating ?? null,
+        ratingCount: sellerReviewAggregate._count.rating,
+        averageShippingDays,
+        completedSalesCount: sellerOrders.length,
+      },
+    },
+  });
+});
+
+app.post('/v1/shows/:id/presence', async (c) => {
+  const showId = c.req.param('id');
+  const body = await c.req.json<{ viewerKey?: string }>().catch(() => null);
+  const viewerKey = body?.viewerKey?.trim();
+
+  if (!viewerKey || viewerKey.length > 120) {
+    return c.json({ statusCode: 400, error: 'Bad Request', message: 'viewerKey is required' }, 400);
+  }
+
+  const show = await withPrisma((prisma) => prisma.show.findUnique({
+    where: { id: showId },
+    select: { id: true, status: true },
+  }));
+  if (!show || show.status !== 'LIVE') {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Live show not found' }, 404);
+  }
+
+  const staleBefore = new Date(Date.now() - PRESENCE_STALE_MS);
+  const result = await withPrisma(async (prisma) => {
+    await prisma.showPresence.upsert({
+      where: { showId_viewerKey: { showId, viewerKey } },
+      create: { showId, viewerKey, lastSeenAt: new Date() },
+      update: { lastSeenAt: new Date() },
+    });
+
+    await prisma.showPresence.deleteMany({
+      where: { showId, lastSeenAt: { lt: staleBefore } },
+    });
+
+    const viewerCount = await prisma.showPresence.count({
+      where: { showId, lastSeenAt: { gte: staleBefore } },
+    });
+
+    return { viewerCount };
+  });
+
+  return c.json(result);
 });
 
 export { app as publicShowRoutes };
-

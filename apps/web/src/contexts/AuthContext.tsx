@@ -28,6 +28,10 @@ export interface UserProfile {
   role: 'BUYER' | 'SELLER' | 'ADMIN';
   activeRole: 'BUYER' | 'SELLER' | null;
   isSeller: boolean;
+  sellerProfile?: {
+    businessName: string | null;
+    brandLogoUrl: string | null;
+  } | null;
 }
 
 export interface AuthState {

@@ -3,6 +3,10 @@ import Hls from 'hls.js';
 
 interface LivePlayerProps {
   playbackUrl?: string | null;
+  controls?: boolean;
+  containerClassName?: string;
+  videoClassName?: string;
+  placeholderClassName?: string;
 }
 
 /**
@@ -15,7 +19,13 @@ interface LivePlayerProps {
  * - When `playbackUrl` is absent the component renders the "transmissão em
  *   breve" placeholder so the caller does not need to branch on its own.
  */
-export default function LivePlayer({ playbackUrl }: LivePlayerProps) {
+export default function LivePlayer({
+  playbackUrl,
+  controls = true,
+  containerClassName = 'bg-black rounded-2xl overflow-hidden mb-6 aspect-video flex items-center justify-center',
+  videoClassName = 'w-full h-full object-contain',
+  placeholderClassName = 'bg-gray-900 rounded-2xl mb-6 aspect-video flex items-center justify-center text-gray-400 text-sm',
+}: LivePlayerProps) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const hlsRef = useRef<Hls | null>(null);
   const pcRef = useRef<RTCPeerConnection | null>(null);
@@ -134,20 +144,20 @@ export default function LivePlayer({ playbackUrl }: LivePlayerProps) {
 
   if (!playbackUrl) {
     return (
-      <div className="bg-gray-900 rounded-2xl mb-6 aspect-video flex items-center justify-center text-gray-400 text-sm">
+      <div className={placeholderClassName}>
         Transmissão ao vivo em breve…
       </div>
     );
   }
 
   return (
-    <div className="bg-black rounded-2xl overflow-hidden mb-6 aspect-video flex items-center justify-center">
+    <div className={containerClassName}>
       <video
         ref={videoRef}
-        controls
+        controls={controls}
         autoPlay
         playsInline
-        className="w-full h-full object-contain"
+        className={videoClassName}
       />
     </div>
   );

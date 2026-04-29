@@ -9,6 +9,7 @@ import type { AppEnv } from '../types.js';
 const app = new Hono<AppEnv>();
 const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')] as const;
 const MIN_BID_INCREMENT = 1;
+const PRESENCE_STALE_MS = 60_000;
 
 function asNumber(value: unknown): number | null {
   if (value === null || value === undefined) return null;
@@ -220,7 +221,13 @@ app.get('/v1/shows/:showId/session', async (c) => {
     orderBy: { createdAt: 'desc' },
     include: { pinnedItem: { include: { inventoryItem: { include: { images: { orderBy: { position: 'asc' } } } } } } },
   });
-  if (session) return c.json(session);
+  if (session) {
+    const staleBefore = new Date(Date.now() - PRESENCE_STALE_MS);
+    const viewerCount = await prisma.showPresence.count({
+      where: { showId, lastSeenAt: { gte: staleBefore } },
+    });
+    return c.json({ ...session, viewerCount });
+  }
 
   // If no active session, check for a recently ended session with a bastão pass so viewers can be redirected
   // Limit to sessions ended within the last 5 minutes to avoid returning stale redirect data
