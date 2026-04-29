@@ -13,6 +13,7 @@ import {
   TrendingUp,
   Tag,
   Wallet,
+  FileText,
 } from 'lucide-react';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
@@ -26,6 +27,7 @@ import FeeReconciliationPage from './pages/FeeReconciliationPage';
 import MonetizationReportPage from './pages/MonetizationReportPage';
 import IncentiveReportPage from './pages/IncentiveReportPage';
 import PayoutBatchesPage from './pages/PayoutBatchesPage';
+import FiscalDocumentsPage from './pages/FiscalDocumentsPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 
@@ -41,7 +43,8 @@ const navItems = [
   { to: '/analytics/monetization', label: 'Monetização', icon: TrendingUp },
   { to: '/analytics/incentives', label: 'Incentivos', icon: Tag },
   { to: '/payouts', label: 'Repasses', icon: Wallet },
-  { to: '/health', label: 'Saúde', icon: HeartPulse },
+  { to: '/fiscal-documents', label: 'Documentos Fiscais', icon: FileText },
+  { to: '/health', label: 'Saude', icon: HeartPulse },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 
@@ -124,6 +127,7 @@ function AdminShell() {
             <Route path="/analytics/monetization" element={<MonetizationReportPage />} />
             <Route path="/analytics/incentives" element={<IncentiveReportPage />} />
             <Route path="/payouts" element={<PayoutBatchesPage />} />
+            <Route path="/fiscal-documents" element={<FiscalDocumentsPage />} />
             <Route path="/health" element={<SystemHealthPage />} />
             <Route
               path="/settings"
