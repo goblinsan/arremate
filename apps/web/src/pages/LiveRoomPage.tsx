@@ -667,8 +667,8 @@ export default function LiveRoomPage() {
             </div>
 
             {session && (
-              <div className="absolute bottom-[10.5rem] left-4 right-24 sm:left-6 sm:right-32 lg:bottom-[12.5rem] lg:left-6 lg:w-[22rem]">
-                <div className="rounded-[28px] border border-white/10 bg-black/26 text-white shadow-xl backdrop-blur-xl">
+              <div className="absolute bottom-[10.5rem] left-4 right-24 sm:left-6 sm:right-32 lg:bottom-[12.5rem] lg:left-6 lg:w-[19rem]">
+                <div className="rounded-[24px] border border-white/8 bg-black/72 text-white shadow-xl">
                   <div ref={chatContainerRef} className="max-h-72 overflow-y-auto px-4 py-4">
                     {messages.length === 0 ? (
                       <p className="py-12 text-center text-sm text-white/70">
@@ -706,7 +706,7 @@ export default function LiveRoomPage() {
                           onChange={(e) => setChatInput(e.target.value)}
                           maxLength={300}
                           placeholder="Say something…"
-                          className="flex-1 rounded-full border border-white/10 bg-white/10 px-4 py-2.5 text-sm text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-white/30"
+                          className="flex-1 rounded-full border border-white/10 bg-white/8 px-4 py-2.5 text-sm text-white placeholder:text-white/45 focus:outline-none focus:ring-2 focus:ring-white/30"
                           disabled={isSendingMessage}
                         />
                         <button

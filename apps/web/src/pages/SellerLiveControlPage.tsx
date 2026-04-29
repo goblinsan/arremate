@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Radio, Pin, Mic, ArrowLeft, Info, Camera, CameraOff, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, MonitorPlay, Wifi, WifiOff } from 'lucide-react';
-import type { Show, ShowSession, ShowInventoryItem, InventoryItem, GoLiveResponse, BroadcastPayload } from '@arremate/types';
+import { Radio, Pin, Mic, ArrowLeft, Info, Camera, CameraOff, AlertTriangle, RefreshCw, ChevronDown, ChevronUp, MonitorPlay, Wifi, WifiOff, MessageSquare, Send } from 'lucide-react';
+import type { Show, ShowSession, ShowInventoryItem, InventoryItem, GoLiveResponse, BroadcastPayload, ChatMessage } from '@arremate/types';
 import { useBroadcastPublisher } from '../hooks/useBroadcastPublisher';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
+const CHAT_POLL_INTERVAL_MS = 3000;
 
 interface QueueEntry extends ShowInventoryItem {
   inventoryItem: InventoryItem;
@@ -33,8 +34,13 @@ export default function SellerLiveControlPage() {
   const [error, setError] = useState<string | null>(null);
   const [broadcast, setBroadcast] = useState<BroadcastPayload | null>(null);
   const [showFallback, setShowFallback] = useState(false);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatError, setChatError] = useState<string | null>(null);
+  const [isSendingMessage, setIsSendingMessage] = useState(false);
 
   const localVideoRef = useRef<HTMLVideoElement | null>(null);
+  const chatContainerRef = useRef<HTMLDivElement | null>(null);
 
   const {
     publishState,
@@ -101,6 +107,17 @@ export default function SellerLiveControlPage() {
     setStreamPlaybackUrl(session?.playbackUrl ?? '');
   }, [session?.playbackUrl]);
 
+  const fetchMessages = useCallback(async (sessionId: string) => {
+    try {
+      const res = await fetch(`${API_URL}/v1/sessions/${sessionId}/chat`);
+      if (!res.ok) return;
+      const data = await res.json() as ChatMessage[];
+      setMessages(data);
+    } catch {
+      // Best-effort for studio chat polling.
+    }
+  }, []);
+
   // Reconstruct broadcast state from session data when the page is loaded for an
   // already-live show (e.g. after a page refresh).  publishToken is short-lived
   // and not persisted, but the publishUrl (which embeds auth for most providers)
@@ -132,6 +149,21 @@ export default function SellerLiveControlPage() {
       setShowFallback(true);
     }
   }, [publishState, broadcast?.mode]);
+
+  useEffect(() => {
+    if (!session || show?.status !== 'LIVE') return;
+    void fetchMessages(session.id);
+    const interval = window.setInterval(() => {
+      void fetchMessages(session.id);
+    }, CHAT_POLL_INTERVAL_MS);
+    return () => window.clearInterval(interval);
+  }, [fetchMessages, session, show?.status]);
+
+  useEffect(() => {
+    const container = chatContainerRef.current;
+    if (!container) return;
+    container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+  }, [messages]);
 
   async function handleGoLive() {
     if (!show) return;
@@ -308,6 +340,38 @@ export default function SellerLiveControlPage() {
       setError(err instanceof Error ? err.message : 'Erro ao encerrar sessão.');
     } finally {
       setIsEnding(false);
+    }
+  }
+
+  async function handleSendMessage(event: React.FormEvent) {
+    event.preventDefault();
+    if (!session || !chatInput.trim()) return;
+
+    setChatError(null);
+    setIsSendingMessage(true);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API_URL}/v1/sessions/${session.id}/chat`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ content: chatInput.trim() }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null) as { message?: string } | null;
+        throw new Error(body?.message ?? 'Não foi possível responder ao chat.');
+      }
+
+      const message = await res.json() as ChatMessage;
+      setMessages((current) => [...current, message]);
+      setChatInput('');
+    } catch (err) {
+      setChatError(err instanceof Error ? err.message : 'Não foi possível responder ao chat.');
+    } finally {
+      setIsSendingMessage(false);
     }
   }
 
@@ -732,6 +796,66 @@ export default function SellerLiveControlPage() {
                 })}
               </ol>
             )}
+          </div>
+
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+            <div className="flex items-center justify-between gap-3 mb-4">
+              <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-brand-500" />
+                Chat da transmissão
+              </h2>
+              <span className="text-xs text-gray-400">
+                {messages.length} mensagem(ns)
+              </span>
+            </div>
+
+            <div
+              ref={chatContainerRef}
+              className="max-h-80 overflow-y-auto rounded-xl border border-gray-100 bg-gray-50 px-4 py-4"
+            >
+              {messages.length === 0 ? (
+                <p className="py-10 text-center text-sm text-gray-400">
+                  As mensagens do público aparecerão aqui enquanto o show estiver ao vivo.
+                </p>
+              ) : (
+                <div className="space-y-3">
+                  {messages.map((message) => (
+                    <div key={message.id} className="rounded-xl bg-white px-3 py-2 shadow-sm">
+                      <p className="text-xs font-semibold text-gray-500">
+                        {message.user?.name ?? 'Usuário'}
+                      </p>
+                      <p className="mt-1 text-sm text-gray-800 whitespace-pre-wrap break-words">
+                        {message.content}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <form onSubmit={handleSendMessage} className="mt-4">
+              {chatError && (
+                <p className="mb-2 text-xs text-red-600">{chatError}</p>
+              )}
+              <div className="flex gap-3">
+                <input
+                  type="text"
+                  value={chatInput}
+                  onChange={(event) => setChatInput(event.target.value)}
+                  maxLength={300}
+                  placeholder="Responder no chat ao vivo…"
+                  className="flex-1 rounded-xl border border-gray-300 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+                />
+                <button
+                  type="submit"
+                  disabled={isSendingMessage || !chatInput.trim()}
+                  className="inline-flex items-center gap-2 rounded-xl bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-60"
+                >
+                  <Send className="w-4 h-4" />
+                  {isSendingMessage ? 'Enviando…' : 'Responder'}
+                </button>
+              </div>
+            </form>
           </div>
 
           {/* End session */}

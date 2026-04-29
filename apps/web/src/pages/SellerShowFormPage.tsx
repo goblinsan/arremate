@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Radio, ArrowLeft } from 'lucide-react';
+import { Radio, ArrowLeft, Upload, FileSpreadsheet } from 'lucide-react';
 import type { Show, ShowInventoryItem, InventoryItem } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -32,6 +32,8 @@ export default function SellerShowFormPage() {
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [addItemId, setAddItemId] = useState('');
+  const [bulkRowsText, setBulkRowsText] = useState('');
+  const [isBulkImporting, setIsBulkImporting] = useState(false);
   // Tracks whether the current show was just created via POST (skip the redundant GET).
   const skipNextLoadRef = useRef(false);
 
@@ -180,6 +182,54 @@ export default function SellerShowFormPage() {
       setAddItemId('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao adicionar item.');
+    }
+  }
+
+  async function handleBulkFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      setBulkRowsText(text);
+      setError(null);
+    } catch {
+      setError('Não foi possível ler o arquivo selecionado.');
+    } finally {
+      event.target.value = '';
+    }
+  }
+
+  async function handleBulkImport() {
+    if (!show || !bulkRowsText.trim()) return;
+    setError(null);
+    setSuccessMessage(null);
+    setIsBulkImporting(true);
+
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API_URL}/v1/seller/shows/${show.id}/queue/bulk-import`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ rowsText: bulkRowsText }),
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => null) as { message?: string } | null;
+        throw new Error(body?.message ?? 'Erro ao importar itens.');
+      }
+
+      const body = await res.json() as { createdCount: number; entries: QueueEntry[] };
+      setQueue((prev) => [...prev, ...body.entries]);
+      setInventory((prev) => [...prev, ...body.entries.map((entry) => entry.inventoryItem)]);
+      setBulkRowsText('');
+      setSuccessMessage(`${body.createdCount} item(ns) importado(s) para a fila do show.`);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao importar itens.');
+    } finally {
+      setIsBulkImporting(false);
     }
   }
 
@@ -422,6 +472,57 @@ export default function SellerShowFormPage() {
               >
                 Adicionar
               </button>
+            </div>
+          )}
+
+          {!isReadOnly && (
+            <div className="mt-6 rounded-2xl border border-dashed border-gray-200 bg-gray-50/70 p-4">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                    <FileSpreadsheet className="w-4 h-4 text-brand-500" />
+                    Importar vários itens para este show
+                  </h3>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Cole CSV ou TSV com colunas <code>title</code>, <code>startingPrice</code>, <code>condition</code>, <code>description</code>.
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Exemplo: <code>Título,19.90,NEW,Descrição opcional</code>
+                  </p>
+                </div>
+                <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-2 text-xs font-medium text-gray-600 hover:border-brand-200 hover:text-brand-600">
+                  <Upload className="w-3.5 h-3.5" />
+                  Carregar arquivo
+                  <input
+                    type="file"
+                    accept=".csv,.tsv,text/csv,text/tab-separated-values,text/plain"
+                    className="hidden"
+                    onChange={handleBulkFileChange}
+                  />
+                </label>
+              </div>
+
+              <textarea
+                value={bulkRowsText}
+                onChange={(e) => setBulkRowsText(e.target.value)}
+                rows={8}
+                placeholder={`title,startingPrice,condition,description\nAnel de prata,49.90,USED,aro 19\nCamisa vintage,79.00,USED,algodão`}
+                className="mt-4 w-full rounded-xl border border-gray-200 bg-white px-3 py-3 font-mono text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+
+              <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                <p className="text-xs text-gray-400">
+                  Até 200 linhas por importação. Itens importados entram direto na fila.
+                </p>
+                <button
+                  type="button"
+                  onClick={handleBulkImport}
+                  disabled={isBulkImporting || !bulkRowsText.trim()}
+                  className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-orange-600 disabled:opacity-60"
+                >
+                  {isBulkImporting ? 'Importando…' : 'Importar para a fila'}
+                </button>
+              </div>
             </div>
           )}
 
