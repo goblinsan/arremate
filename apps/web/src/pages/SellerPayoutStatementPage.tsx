@@ -117,7 +117,7 @@ export default function SellerPayoutStatementPage() {
                   Estornos pendentes: {brl(Math.abs(statement.pendingOffsetCents))}
                 </p>
                 <p className="text-xs text-orange-700 mt-1">
-                  Esses valores serao descontados do seu proximo repasse.
+                  Esses valores serão descontados do seu proximo repasse.
                 </p>
               </div>
             </div>
