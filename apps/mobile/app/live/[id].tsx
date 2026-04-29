@@ -373,7 +373,7 @@ function CheckoutPanel({
             {payment.pixCode ?? '—'}
           </Text>
           <Text style={checkoutStyles.pixAmount}>
-            Valor: {(payment.amountCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            Valor: {formatBrl(payment.amountCents / 100)}
           </Text>
 
           {payment.pixExpiresAt ? (
@@ -411,7 +411,7 @@ function CheckoutPanel({
         <View style={checkoutStyles.orderBlock}>
           <Text style={checkoutStyles.orderInfo}>
             Pedido criado. Total:{' '}
-            {(chargeAmountCents! / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+            {formatBrl(chargeAmountCents! / 100)}
           </Text>
           <Pressable
             style={[checkoutStyles.actionBtn, isLoading && checkoutStyles.actionBtnDisabled]}

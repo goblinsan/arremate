@@ -545,17 +545,23 @@ export default function OrderDetailScreen() {
                 <Text style={styles.feeValue}>{formatBrl(order.shippingCents!)}</Text>
               </View>
             ) : null}
-            {order.promotionCode ? (
-              <View style={styles.feeRow}>
-                <Text style={styles.feeLabel}>
-                  Desconto{' '}
-                  <Text style={styles.promotionCode}>({order.promotionCode})</Text>
-                </Text>
-                <Text style={[styles.feeValue, styles.discountValue]}>
-                  -{formatBrl(Math.round((order.subtotalCents! * (order.promotionDiscountBps ?? 0)) / 10000))}
-                </Text>
-              </View>
-            ) : null}
+            {order.promotionCode ? (() => {
+              // BPS = basis points (1/100 of a percent); divide by 10000 to get cents
+              const discountCents = Math.round(
+                (order.subtotalCents! * (order.promotionDiscountBps ?? 0)) / 10000,
+              );
+              return (
+                <View style={styles.feeRow}>
+                  <Text style={styles.feeLabel}>
+                    Desconto{' '}
+                    <Text style={styles.promotionCode}>({order.promotionCode})</Text>
+                  </Text>
+                  <Text style={[styles.feeValue, styles.discountValue]}>
+                    -{formatBrl(discountCents)}
+                  </Text>
+                </View>
+              );
+            })() : null}
             <View style={[styles.feeRow, styles.feeTotalRow]}>
               <Text style={styles.feeTotalLabel}>Total cobrado</Text>
               <Text style={styles.feeTotalValue}>{formatBrl(order.buyerTotalCents!)}</Text>
