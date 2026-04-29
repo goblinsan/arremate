@@ -58,18 +58,25 @@ app.post('/v1/seller/inventory/bulk-import', ...sellerGuard, async (c) => {
     }, 422);
   }
 
-  const items = await prisma.$transaction(
-    rows.map((row) => prisma.inventoryItem.create({
-      data: {
-        sellerId: user.id,
-        title: row.title,
-        description: row.description,
-        condition: row.condition,
-        startingPrice: row.startingPrice,
-      },
-      include: { images: { orderBy: { position: 'asc' } } },
-    })),
-  );
+  const items = await prisma.$transaction(async (tx) => {
+    const createdItems = [];
+
+    for (const row of rows) {
+      const item = await tx.inventoryItem.create({
+        data: {
+          sellerId: user.id,
+          title: row.title,
+          description: row.description,
+          condition: row.condition,
+          startingPrice: row.startingPrice,
+        },
+        include: { images: { orderBy: { position: 'asc' } } },
+      });
+      createdItems.push(item);
+    }
+
+    return createdItems;
+  });
 
   return c.json({ createdCount: items.length, items }, 201);
 });

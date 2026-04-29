@@ -143,7 +143,14 @@ app.patch('/v1/seller/shows/:showId/queue/reorder', ...sellerGuard, async (c) =>
   if (!Array.isArray(order)) return c.json({ statusCode: 400, error: 'Bad Request', message: 'order must be an array of queue entry IDs' }, 400);
   const show = await prisma.show.findUnique({ where: { id: showId } });
   if (!show || show.sellerId !== user.id) return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
-  await prisma.$transaction(order.map((entryId, index) => prisma.showInventoryItem.updateMany({ where: { id: entryId, showId }, data: { position: index } })));
+  await prisma.$transaction(async (tx) => {
+    for (const [index, entryId] of order.entries()) {
+      await tx.showInventoryItem.updateMany({
+        where: { id: entryId, showId },
+        data: { position: index },
+      });
+    }
+  });
   const updated = await prisma.showInventoryItem.findMany({
     where: { showId },
     orderBy: { position: 'asc' },
