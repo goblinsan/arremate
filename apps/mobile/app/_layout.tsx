@@ -24,6 +24,7 @@ export default function RootLayout() {
         <AuthProvider>
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="(tabs)" />
+            <Stack.Screen name="show/[id]" />
             <Stack.Screen name="login" options={{ presentation: 'modal' }} />
             <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
           </Stack>

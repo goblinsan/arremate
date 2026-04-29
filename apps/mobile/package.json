@@ -17,6 +17,7 @@
     "@arremate/auth": "workspace:*",
     "@arremate/shared-utils": "workspace:*",
     "@arremate/types": "workspace:*",
+    "@expo/vector-icons": "^15.1.1",
     "@react-native-async-storage/async-storage": "^3.0.2",
     "@tanstack/react-query": "^5.100.6",
     "expo": "~55.0.0",
