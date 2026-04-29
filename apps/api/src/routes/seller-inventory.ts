@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { prisma } from '@arremate/database';
 import { authenticate } from '../plugins/authenticate.js';
 import { requireRole } from '../plugins/authorize.js';
+import { parseBulkInventoryRows } from '../services/bulk-import.js';
 import { generateUploadUrl } from '../services/s3-upload.js';
 import { randomUUID } from 'crypto';
 import type { AppEnv } from '../types.js';
@@ -36,6 +37,41 @@ app.post('/v1/seller/inventory', ...sellerGuard, async (c) => {
     include: { images: true },
   });
   return c.json(item, 201);
+});
+
+app.post('/v1/seller/inventory/bulk-import', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const { rowsText } = await c.req.json<{ rowsText?: string }>();
+
+  if (typeof rowsText !== 'string' || rowsText.trim() === '') {
+    return c.json({ statusCode: 400, error: 'Bad Request', message: 'rowsText is required' }, 400);
+  }
+
+  let rows;
+  try {
+    rows = parseBulkInventoryRows(rowsText);
+  } catch (err) {
+    return c.json({
+      statusCode: 422,
+      error: 'Unprocessable Entity',
+      message: err instanceof Error ? err.message : 'Não foi possível interpretar o arquivo.',
+    }, 422);
+  }
+
+  const items = await prisma.$transaction(
+    rows.map((row) => prisma.inventoryItem.create({
+      data: {
+        sellerId: user.id,
+        title: row.title,
+        description: row.description,
+        condition: row.condition,
+        startingPrice: row.startingPrice,
+      },
+      include: { images: { orderBy: { position: 'asc' } } },
+    })),
+  );
+
+  return c.json({ createdCount: items.length, items }, 201);
 });
 
 app.get('/v1/seller/inventory/:id', ...sellerGuard, async (c) => {
