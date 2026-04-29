@@ -62,7 +62,7 @@ app.get('/v1/admin/payout-batches/:batchId', ...adminGuard, async (c) => {
           seller: { select: { id: true, name: true, email: true } },
           payable: { select: { id: true, orderId: true, status: true } },
           ledgerEntry: {
-            select: { id: true, feeType: true, description: true, orderId: true },
+            select: { id: true, feeType: true, description: true, orderId: true, orderRefundId: true },
           },
         },
       },

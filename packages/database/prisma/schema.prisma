@@ -379,6 +379,7 @@ model OrderRefund {
   payoutOffsetCents         Int
   reason                    String?
   createdAt                 DateTime   @default(now())
+  ledgerEntries             SettlementLedgerEntry[] @relation("RefundLedgerEntries")
 
   @@map("order_refunds")
 }
@@ -688,6 +689,7 @@ enum FeeType {
   PREMIUM_SERVICE
   PAYOUT_ACCELERATION
   LOGISTICS_MARGIN
+  REFUND_OFFSET
 }
 
 model FeeConfig {
@@ -750,18 +752,20 @@ model FeePromotion {
 // Order-adjacent entries (e.g. logistics margin) may optionally reference an order.
 
 model SettlementLedgerEntry {
-  id          String   @id @default(cuid())
-  sellerId    String
-  seller      User     @relation("SellerLedgerEntries", fields: [sellerId], references: [id])
-  feeType     FeeType
-  amountCents Int
-  description String?
-  orderId     String?
-  order       Order?   @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  metadata    Json?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  payoutEntry PayoutEntry?
+  id             String      @id @default(cuid())
+  sellerId       String
+  seller         User        @relation("SellerLedgerEntries", fields: [sellerId], references: [id])
+  feeType        FeeType
+  amountCents    Int
+  description    String?
+  orderId        String?
+  order          Order?      @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  orderRefundId  String?
+  orderRefund    OrderRefund? @relation("RefundLedgerEntries", fields: [orderRefundId], references: [id], onDelete: SetNull)
+  metadata       Json?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+  payoutEntry    PayoutEntry?
 
   @@map("settlement_ledger_entries")
 }

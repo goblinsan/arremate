@@ -485,7 +485,8 @@ export type FeeType =
   | 'PROMOTED_LISTING'
   | 'PREMIUM_SERVICE'
   | 'PAYOUT_ACCELERATION'
-  | 'LOGISTICS_MARGIN';
+  | 'LOGISTICS_MARGIN'
+  | 'REFUND_OFFSET';
 
 export interface FeeLineItem {
   type: FeeType;
@@ -558,7 +559,8 @@ export interface FeeBreakdown {
 
 /** Adjacent ledger entry for fee products that are not tied to a single order.
  *  Examples: subscription charges, promoted-listing fees, payout-acceleration fees.
- *  Order-adjacent entries (e.g. logistics margin) may optionally reference an order. */
+ *  Order-adjacent entries (e.g. logistics margin) may optionally reference an order.
+ *  Refund offset entries (REFUND_OFFSET) are always negative and link to an OrderRefund. */
 export interface SettlementLedgerEntry {
   id: string;
   sellerId: string;
@@ -567,6 +569,7 @@ export interface SettlementLedgerEntry {
   amountCents: number;
   description: string | null;
   orderId: string | null;
+  orderRefundId: string | null;
   metadata: Record<string, unknown> | null;
   createdAt: Date;
   updatedAt: Date;
@@ -617,7 +620,17 @@ export interface PayoutEntry {
   payableId: string | null;
   payable?: Pick<SellerPayable, 'id' | 'orderId' | 'status'> | null;
   ledgerEntryId: string | null;
-  ledgerEntry?: Pick<SettlementLedgerEntry, 'id' | 'feeType' | 'description' | 'orderId'> | null;
+  ledgerEntry?: Pick<SettlementLedgerEntry, 'id' | 'feeType' | 'description' | 'orderId' | 'orderRefundId'> | null;
+  createdAt: Date;
+}
+
+/** A pending settlement offset not yet absorbed into a payout batch. */
+export interface PendingOffsetEntry {
+  id: string;
+  amountCents: number;
+  description: string | null;
+  orderId: string | null;
+  orderRefundId: string | null;
   createdAt: Date;
 }
 
@@ -631,6 +644,8 @@ export interface SellerPayoutStatement {
   inBatchCents: number;
   /** Total amounts from PAID payables and settled ledger entries. */
   settledCents: number;
+  /** Sum of pending refund offset entries not yet absorbed into a batch (negative value). */
+  pendingOffsetCents: number;
   totals: {
     pendingPayables: number;
     batchedPayables: number;
@@ -639,6 +654,8 @@ export interface SellerPayoutStatement {
   };
   payables: SellerPayable[];
   settledLedgerEntries: Pick<PayoutEntry, 'id' | 'amountCents' | 'description' | 'createdAt'>[];
+  /** Pending refund offset entries waiting to be absorbed into the next payout batch. */
+  pendingOffsets: PendingOffsetEntry[];
 }
 
 // ─── Monetization Analytics ──────────────────────────────────────────────────
