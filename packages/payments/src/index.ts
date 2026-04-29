@@ -291,7 +291,12 @@ export class EfiPayPixAdapter implements PaymentProviderAdapter {
   }): Promise<PixChargeResult> {
     const accessToken = await this.getAccessToken();
     const expiresInMinutes = params.expiresInMinutes ?? 30;
-    const txid = params.orderId.replace(/[^a-zA-Z0-9]/g, '').slice(0, 35);
+    // Use a SHA-256 prefix to guarantee a collision-free, alphanumeric EfiPay txid.
+    // EfiPay requires txid to be 26-35 alphanumeric characters (no hyphens).
+    const txid = createHash('sha256')
+      .update(params.orderId)
+      .digest('hex')
+      .slice(0, 35);
     const amountFormatted = (params.amountCents / 100).toFixed(2);
 
     const chargeResult = await this.apiFetch(`/v2/cob/${txid}`, {
@@ -410,7 +415,7 @@ export class EfiPayPixAdapter implements PaymentProviderAdapter {
       throw new Error(`EfiPay refund: no endToEndId found for txid ${providerId}`);
     }
 
-    const refundId = createHash('md5').update(`refund-${providerId}`).digest('hex').slice(0, 35);
+    const refundId = createHash('sha256').update(`refund-${providerId}`).digest('hex').slice(0, 35);
     const refundResult = await this.apiFetch(`/v2/pix/${e2eid}/devolucao/${refundId}`, {
       method: 'PUT',
       headers: {

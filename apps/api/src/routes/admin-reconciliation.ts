@@ -9,6 +9,21 @@ import type { AppEnv } from '../types.js';
 const app = new Hono<AppEnv>();
 const adminGuard = [authenticate, requireRole('ADMIN')] as const;
 
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function mapPspStatusToDb(pspStatus: 'PAID' | 'EXPIRED' | 'REFUNDED'): {
+  dbPaymentStatus: 'PAID' | 'FAILED' | 'REFUNDED';
+  dbOrderStatus: 'PAID' | 'CANCELLED';
+} {
+  const dbPaymentStatus = pspStatus === 'PAID'
+    ? 'PAID'
+    : pspStatus === 'REFUNDED'
+      ? 'REFUNDED'
+      : 'FAILED';
+  const dbOrderStatus = pspStatus === 'PAID' ? 'PAID' : 'CANCELLED';
+  return { dbPaymentStatus, dbOrderStatus };
+}
+
 // ─── Payment Reconciliation ───────────────────────────────────────────────────
 
 /**
@@ -74,13 +89,7 @@ app.post('/v1/admin/payments/reconcile', ...adminGuard, async (c) => {
         continue;
       }
 
-      const dbPaymentStatus = pspStatus === 'PAID'
-        ? 'PAID'
-        : pspStatus === 'REFUNDED'
-          ? 'REFUNDED'
-          : 'FAILED';
-
-      const dbOrderStatus = pspStatus === 'PAID' ? 'PAID' : 'CANCELLED';
+      const { dbPaymentStatus, dbOrderStatus } = mapPspStatusToDb(pspStatus);
 
       await prisma.$transaction(async (tx) => {
         await tx.payment.update({
@@ -160,7 +169,7 @@ app.post('/v1/admin/payments/:paymentId/reconcile', ...adminGuard, async (c) => 
   const pixAdapter = createPixAdapter();
   const pspStatus = await pixAdapter.getChargeStatus(payment.providerId);
 
-  if (pspStatus === 'PENDING' || payment.status === pspStatus) {
+  if (pspStatus === 'PENDING') {
     return c.json({
       paymentId: payment.id,
       orderId: payment.orderId,
@@ -171,13 +180,18 @@ app.post('/v1/admin/payments/:paymentId/reconcile', ...adminGuard, async (c) => 
     });
   }
 
-  const dbPaymentStatus = pspStatus === 'PAID'
-    ? 'PAID'
-    : pspStatus === 'REFUNDED'
-      ? 'REFUNDED'
-      : 'FAILED';
-
-  const dbOrderStatus = pspStatus === 'PAID' ? 'PAID' : 'CANCELLED';
+  // Short-circuit if the local record already reflects the PSP state.
+  const { dbPaymentStatus, dbOrderStatus } = mapPspStatusToDb(pspStatus);
+  if (payment.status === dbPaymentStatus) {
+    return c.json({
+      paymentId: payment.id,
+      orderId: payment.orderId,
+      providerId: payment.providerId,
+      oldStatus: payment.status,
+      newStatus: payment.status,
+      changed: false,
+    });
+  }
 
   await prisma.$transaction(async (tx) => {
     await tx.payment.update({
