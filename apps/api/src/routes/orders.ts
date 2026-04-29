@@ -87,6 +87,16 @@ app.post('/v1/claims/:claimId/order', authenticate, async (c) => {
   return c.json(order, 201);
 });
 
+/**
+ * Returns the canonical charge amount for an order.
+ * Prefers the stored buyerTotalCents snapshot (subtotal + shipping) over the
+ * legacy totalCents field so that the PSP charge always matches the intended
+ * buyer-collected amount.
+ */
+export function resolveChargeAmount(order: { totalCents: number; buyerTotalCents: number | null }): number {
+  return order.buyerTotalCents ?? order.totalCents;
+}
+
 app.post('/v1/orders/:orderId/pix-payment', authenticate, async (c) => {
   const user = c.get('currentUser');
   const orderId = c.req.param('orderId');
@@ -95,14 +105,15 @@ app.post('/v1/orders/:orderId/pix-payment', authenticate, async (c) => {
   if (order.status !== 'PENDING_PAYMENT') return c.json({ statusCode: 409, error: 'Conflict', message: `Order is already ${order.status}` }, 409);
   const existingPayment = order.payments.find((p) => p.status === 'PENDING' && p.pixCode);
   if (existingPayment) return c.json(existingPayment);
+  const chargeAmountCents = resolveChargeAmount(order);
   const pixAdapter = createPixAdapter();
   const charge = await pixAdapter.createPixCharge({
-    amountCents: order.totalCents, orderId: order.id,
+    amountCents: chargeAmountCents, orderId: order.id,
     description: `Pedido Arremate #${order.id.slice(-8).toUpperCase()}`,
     expiresInMinutes: 30,
   });
   const payment = await prisma.payment.create({
-    data: { orderId: order.id, status: 'PENDING', provider: 'pix', amountCents: order.totalCents, providerId: charge.providerId, pixCode: charge.pixCode, pixQrCodeBase64: charge.pixQrCodeBase64, pixExpiresAt: charge.expiresAt },
+    data: { orderId: order.id, status: 'PENDING', provider: 'pix', amountCents: chargeAmountCents, providerId: charge.providerId, pixCode: charge.pixCode, pixQrCodeBase64: charge.pixQrCodeBase64, pixExpiresAt: charge.expiresAt },
   });
   return c.json(payment, 201);
 });

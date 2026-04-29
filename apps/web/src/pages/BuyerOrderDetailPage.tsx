@@ -145,7 +145,8 @@ export default function BuyerOrderDetailPage() {
     );
   }
 
-  const totalBRL = (order.totalCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  const chargeAmountCents = order.buyerTotalCents ?? order.totalCents;
+  const totalBRL = (chargeAmountCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 
   const hasFeeSnapshot = order.subtotalCents != null && order.buyerTotalCents != null;
 
