@@ -125,8 +125,8 @@ function formatTime(isoDate: string | null): string {
 
 /** Parses a bid string that may use comma or period as the decimal separator. */
 function parseBidAmount(raw: string): number {
-  // Remove spaces and currency symbols, normalize decimal separator
-  const cleaned = raw.replace(/\s/g, '').replace(/[R$]/g, '').replace(',', '.');
+  // Remove spaces and the 'R$' currency symbol as a unit, then normalize decimal separator
+  const cleaned = raw.replace(/\s/g, '').replace(/R\$/g, '').replace('$', '').replace(',', '.');
   const value = Number(cleaned);
   return Number.isFinite(value) ? value : NaN;
 }
@@ -325,6 +325,7 @@ function CheckoutPanel({
           </Text>
           <Pressable
             style={checkoutStyles.shareBtn}
+            accessibilityLabel="Copiar chave Pix"
             onPress={() => {
               if (!payment.pixKey) return;
               Share.share({ message: payment.pixKey, title: 'Chave Pix Arremate' }).catch(
@@ -760,7 +761,8 @@ export default function LiveRoomScreen() {
       });
       if (!res.ok) {
         const body = await safeJsonParse<{ message?: string; minimumBid?: number }>(res);
-        setBidError(body.message ?? 'Não foi possível registrar seu lance.');
+        const minLabel = body.minimumBid != null ? ` Lance mínimo: ${formatBrl(body.minimumBid)}.` : '';
+        setBidError((body.message ?? 'Não foi possível registrar seu lance.') + minLabel);
         return;
       }
       const data = (await res.json()) as { queueItem: PinnedItem };
