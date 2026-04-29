@@ -103,7 +103,7 @@ export default function OrdersScreen() {
         </View>
         <View style={styles.centerContent}>
           <Ionicons name="bag-outline" size={48} color="#d1d5db" />
-          <Text style={styles.emptyTitle}>Faca login para ver suas compras</Text>
+          <Text style={styles.emptyTitle}>Faça login para ver suas compras</Text>
           <Pressable style={styles.primaryBtn} onPress={() => router.push('/login')}>
             <Text style={styles.primaryBtnText}>Entrar</Text>
           </Pressable>

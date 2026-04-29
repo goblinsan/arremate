@@ -173,7 +173,7 @@ function PixSection({ order, onPaymentCreated, onPaymentConfirmed }: PixSectionP
       const payment = (await res.json()) as Payment;
       onPaymentCreated(payment);
     } catch {
-      setError('Erro ao gerar Pix. Verifique sua conexao e tente novamente.');
+      setError('Erro ao gerar Pix. Verifique sua conexão e tente novamente.');
     } finally {
       setIsCreating(false);
     }
@@ -236,7 +236,7 @@ function PixSection({ order, onPaymentCreated, onPaymentConfirmed }: PixSectionP
 
           <Pressable
             style={pixStyles.copyBtn}
-            accessibilityLabel="Copiar codigo Pix"
+            accessibilityLabel="Copiar código Pix"
             onPress={() => {
               if (!pendingPix.pixCode) return;
               Share.share({ message: pendingPix.pixCode, title: 'Pix Arremate' }).catch(() => {
@@ -245,18 +245,18 @@ function PixSection({ order, onPaymentCreated, onPaymentConfirmed }: PixSectionP
             }}
           >
             <Ionicons name="copy-outline" size={16} color="#f97316" />
-            <Text style={pixStyles.copyBtnText}>Copiar codigo Pix</Text>
+            <Text style={pixStyles.copyBtnText}>Copiar código Pix</Text>
           </Pressable>
 
           <View style={pixStyles.pendingRow}>
             <ActivityIndicator size="small" color="#9ca3af" />
-            <Text style={pixStyles.pendingText}>Aguardando confirmacao de pagamento…</Text>
+            <Text style={pixStyles.pendingText}>Aguardando confirmação de pagamento…</Text>
           </View>
         </View>
       ) : (
         <View style={pixStyles.block}>
           <Text style={pixStyles.hint}>
-            Gere o codigo Pix para concluir o pagamento deste pedido.
+            Gere o código Pix para concluir o pagamento deste pedido.
           </Text>
           <Pressable
             style={[pixStyles.generateBtn, isCreating && pixStyles.generateBtnDisabled]}
@@ -357,11 +357,11 @@ export default function OrderDetailScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.status === 404) {
-        setError('Pedido nao encontrado.');
+        setError('Pedido não encontrado.');
         return;
       }
       if (res.status === 403) {
-        setError('Voce nao tem permissao para ver este pedido.');
+        setError('Você não tem permissão para ver este pedido.');
         return;
       }
       if (!res.ok) throw new Error();
@@ -369,7 +369,7 @@ export default function OrderDetailScreen() {
       setOrder(data);
       if (data.status === 'PAID') setPaymentConfirmed(true);
     } catch {
-      setError('Erro ao carregar pedido. Verifique sua conexao e tente novamente.');
+      setError('Erro ao carregar pedido. Verifique sua conexão e tente novamente.');
     } finally {
       setIsLoading(false);
     }
@@ -405,7 +405,7 @@ export default function OrderDetailScreen() {
           <View style={styles.topBarSpacer} />
         </View>
         <View style={styles.centerContent}>
-          <Text style={styles.errorMsg}>Faca login para ver seus pedidos.</Text>
+          <Text style={styles.errorMsg}>Faça login para ver seus pedidos.</Text>
           <Pressable style={styles.primaryBtn} onPress={() => router.push('/login')}>
             <Text style={styles.primaryBtnText}>Entrar</Text>
           </Pressable>
@@ -443,7 +443,7 @@ export default function OrderDetailScreen() {
         </View>
         <View style={styles.centerContent}>
           <Ionicons name="alert-circle-outline" size={48} color="#ef4444" />
-          <Text style={styles.errorMsg}>{error ?? 'Pedido nao encontrado.'}</Text>
+          <Text style={styles.errorMsg}>{error ?? 'Pedido não encontrado.'}</Text>
           <Pressable style={styles.primaryBtn} onPress={() => void fetchOrder()}>
             <Ionicons name="refresh-outline" size={16} color="#fff" />
             <Text style={styles.primaryBtnText}>Tentar novamente</Text>
@@ -605,7 +605,7 @@ export default function OrderDetailScreen() {
               ) : null}
             </View>
           ) : (
-            <Text style={styles.emptyNote}>Informacoes de envio ainda nao disponíveis.</Text>
+            <Text style={styles.emptyNote}>Informações de envio ainda não disponíveis.</Text>
           )}
         </SectionCard>
 

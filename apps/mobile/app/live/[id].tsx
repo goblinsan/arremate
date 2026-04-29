@@ -347,7 +347,7 @@ function CheckoutPanel({
           <Ionicons name="checkmark-circle" size={48} color="#22c55e" />
           <Text style={checkoutStyles.confirmedTitle}>Pagamento recebido!</Text>
           <Text style={checkoutStyles.confirmedSub}>
-            Seu pedido foi confirmado e sera processado em breve.
+            Seu pedido foi confirmado e será processado em breve.
           </Text>
           <Pressable style={checkoutStyles.goOrdersBtn} onPress={onGoToOrders}>
             <Text style={checkoutStyles.goOrdersBtnText}>Ver meus pedidos</Text>
@@ -384,7 +384,7 @@ function CheckoutPanel({
 
           <Pressable
             style={checkoutStyles.shareBtn}
-            accessibilityLabel="Copiar codigo Pix"
+            accessibilityLabel="Copiar código Pix"
             onPress={() => {
               if (!payment.pixCode) return;
               Share.share({ message: payment.pixCode, title: 'Pix Arremate' }).catch(() => {
@@ -393,12 +393,12 @@ function CheckoutPanel({
             }}
           >
             <Ionicons name="copy-outline" size={16} color="#f97316" />
-            <Text style={checkoutStyles.shareBtnText}>Copiar codigo Pix</Text>
+            <Text style={checkoutStyles.shareBtnText}>Copiar código Pix</Text>
           </Pressable>
 
           <View style={checkoutStyles.pendingRow}>
             <ActivityIndicator size="small" color="#9ca3af" />
-            <Text style={checkoutStyles.pendingText}>Aguardando confirmacao de pagamento…</Text>
+            <Text style={checkoutStyles.pendingText}>Aguardando confirmação de pagamento…</Text>
           </View>
 
           <Pressable style={checkoutStyles.goOrdersBtn} onPress={onGoToOrders}>
