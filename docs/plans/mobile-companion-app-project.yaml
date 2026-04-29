@@ -1,0 +1,321 @@
+project: "Arremate Mobile Companion App"
+repository: "goblinsan/arremate"
+
+milestones:
+  - title: "Phase 0: Mobile Foundation"
+    description: "Create the mobile app workspace, establish shared architecture, and lock the auth, API, and delivery foundations."
+  - title: "Phase 1: Buyer Discovery and Show Browsing"
+    description: "Ship the buyer-facing discovery flows for authentication, home feed, show browsing, and show detail."
+  - title: "Phase 2: Live Room and Commerce"
+    description: "Deliver the native buyer live-room experience with playback, chat, bidding, claims, and checkout progression."
+  - title: "Phase 3: Orders, Notifications, and Mobile Operations"
+    description: "Add order lifecycle, push notifications, deep-link handling, analytics, and release readiness for the mobile product."
+
+epics:
+  - title: "Establish the Expo mobile app foundation in the monorepo"
+    body: |
+      ## Context
+      Arremate does not yet have a mobile app project in the monorepo. The buyer
+      app should become the primary customer surface, so the first step is a clean,
+      durable app foundation that fits the current workspace and shared packages.
+
+      ## Required outcome
+      Create `apps/mobile` as a buyer-first Expo React Native app with routing,
+      environment handling, shared package integration, and CI-compatible build
+      validation.
+
+      ## Architecture notes
+      - Use Expo + React Native + TypeScript.
+      - Reuse `packages/types`, `packages/auth`, and `packages/shared-utils` where appropriate.
+      - Do not try to directly reuse `apps/web` UI components.
+
+      ## Acceptance criteria
+      - `apps/mobile` exists in the workspace and builds locally.
+      - Navigation, app config, env handling, and query providers are in place.
+      - Shared packages can be imported without unstable alias hacks.
+    milestone: "Phase 0: Mobile Foundation"
+    status: "Todo"
+    labels: ["mobile", "foundation", "expo"]
+    children:
+      - title: "Scaffold apps/mobile with Expo Router and TypeScript"
+        body: |
+          ## Instructions
+          Create the new mobile workspace app with Expo Router, TypeScript, and a
+          folder structure suited to feature-based delivery.
+
+          ## Acceptance criteria
+          - `apps/mobile` is present and runnable.
+          - Routing bootstraps through Expo Router.
+          - Basic workspace scripts and package metadata are configured.
+        labels: ["mobile", "foundation", "expo"]
+      - title: "Wire shared packages into the mobile app safely"
+        body: |
+          ## Instructions
+          Ensure `packages/types`, `packages/auth`, and `packages/shared-utils`
+          can be consumed by the mobile app without platform-specific breakage.
+
+          ## Acceptance criteria
+          - Shared types and helpers import cleanly in `apps/mobile`.
+          - Platform-incompatible assumptions are identified and isolated.
+        labels: ["mobile", "architecture", "shared-packages"]
+      - title: "Add mobile build validation to the monorepo workflow"
+        body: |
+          ## Instructions
+          Add the mobile app to the workspace validation flow so typecheck and build
+          failures are caught early.
+
+          ## Acceptance criteria
+          - Mobile validation runs in CI or in a dedicated mobile workflow.
+          - The repo documents how to build and validate `apps/mobile`.
+        labels: ["mobile", "ci", "foundation"]
+
+  - title: "Design a mobile-safe authentication and session model"
+    body: |
+      ## Context
+      The current auth flow is web-oriented and relies on browser redirect and
+      token-storage assumptions. The mobile app needs deep-link callbacks, secure
+      token persistence, and reliable session restore semantics.
+
+      ## Required outcome
+      Define and implement a mobile-safe Cognito authentication model that works
+      with hosted login, social sign-in, secure storage, and app relaunches.
+
+      ## Acceptance criteria
+      - Hosted auth can return to the app through deep links.
+      - Tokens are stored securely on-device.
+      - Session restore works predictably on relaunch.
+    milestone: "Phase 0: Mobile Foundation"
+    status: "Todo"
+    labels: ["mobile", "auth", "cognito"]
+    children:
+      - title: "Define Cognito mobile redirect URIs and deep-link callback flow"
+        body: |
+          ## Instructions
+          Establish the redirect URI strategy and callback handling needed for Expo
+          and native mobile app auth flows.
+
+          ## Acceptance criteria
+          - Mobile callback URIs are defined for the app.
+          - Deep-link entry points are documented and testable.
+        labels: ["mobile", "auth", "deep-linking"]
+      - title: "Implement secure token persistence and session restore in apps/mobile"
+        body: |
+          ## Instructions
+          Use a secure on-device storage mechanism for auth tokens and implement
+          session bootstrap behavior for app cold start and resume.
+
+          ## Acceptance criteria
+          - Tokens are not stored in plain async storage.
+          - Relaunch restores authenticated state when tokens are still valid.
+        labels: ["mobile", "auth", "security"]
+      - title: "Adapt shared auth helpers for mobile runtime constraints"
+        body: |
+          ## Instructions
+          Identify any browser-only assumptions in current auth helpers and provide
+          the thin mobile wrappers needed for safe reuse.
+
+          ## Acceptance criteria
+          - Shared auth utilities used by mobile are platform-safe.
+          - Browser-specific behavior remains isolated to the web app.
+        labels: ["mobile", "auth", "shared-packages"]
+
+  - title: "Build the buyer discovery and show-browsing experience for mobile"
+    body: |
+      ## Context
+      Buyers should primarily discover and join shows from mobile. The first
+      meaningful buyer release needs native-feeling discovery and show-entry flows.
+
+      ## Required outcome
+      Deliver the mobile surfaces for home, live and upcoming shows, show detail,
+      and fast entry into the live room.
+
+      ## Acceptance criteria
+      - Buyers can sign in, browse shows, and open a show from the app.
+      - The show-detail experience is tailored for mobile rather than copied from web.
+      - Live-show discovery is fast and obvious.
+    milestone: "Phase 1: Buyer Discovery and Show Browsing"
+    status: "Todo"
+    labels: ["mobile", "buyer-experience", "discovery"]
+    children:
+      - title: "Implement buyer home feed with live and upcoming modules"
+        body: |
+          ## Instructions
+          Create the primary buyer home surface with sections for live now, starting
+          soon, and other key show-discovery entry points.
+
+          ## Acceptance criteria
+          - Home feed renders live and upcoming shows from current APIs.
+          - The design is mobile-first and optimized for quick tap-through.
+        labels: ["mobile", "buyer-experience", "discovery"]
+      - title: "Add shows listing and filtering flows for mobile"
+        body: |
+          ## Instructions
+          Build the mobile shows browsing surfaces using the current public show APIs.
+
+          ## Acceptance criteria
+          - Buyers can browse live and upcoming shows in dedicated views.
+          - Query and refresh behavior is responsive on mobile networks.
+        labels: ["mobile", "buyer-experience", "shows"]
+      - title: "Create mobile show detail with seller trust and queue preview"
+        body: |
+          ## Instructions
+          Build a show-detail screen that presents schedule, seller summary, and item
+          preview clearly and drives users into the live room.
+
+          ## Acceptance criteria
+          - Show detail surfaces seller-trust data cleanly.
+          - Buyers can enter the live room from this screen with one obvious CTA.
+        labels: ["mobile", "buyer-experience", "shows"]
+
+  - title: "Deliver the native buyer live-room experience"
+    body: |
+      ## Context
+      The mobile app's most important surface is the live room. It must make video,
+      chat, bidding, and claim actions feel fast and native on a phone.
+
+      ## Required outcome
+      Build the buyer live room in mobile with provider playback support, seller
+      overlays, chat, viewer state, bid entry, claim flow, and transition into
+      checkout.
+
+      ## Constraints
+      - Keep the current `ShowSession.playbackUrl` contract where possible.
+      - Respect the current API's polling-based control plane for v1.
+      - Optimize for buyer experience first, not seller broadcasting.
+
+      ## Acceptance criteria
+      - Buyers can watch the live stream reliably on mobile.
+      - Buyers can chat, bid, and claim from the live room.
+      - The mobile live room is clearly native and vertically optimized.
+    milestone: "Phase 2: Live Room and Commerce"
+    status: "Todo"
+    labels: ["mobile", "live-room", "video", "buyer-experience"]
+    children:
+      - title: "Implement mobile live playback using current session playbackUrl contract"
+        body: |
+          ## Instructions
+          Build the mobile playback layer using the existing `GET /v1/shows/:showId/session`
+          contract and whichever native player strategy best matches the active provider.
+
+          ## Acceptance criteria
+          - Live playback works on iOS and Android target devices.
+          - Playback concerns remain inside the mobile client rather than forcing a new API model.
+        labels: ["mobile", "video", "live-room"]
+      - title: "Build the buyer live-room overlay UI for chat, seller trust, and pinned item state"
+        body: |
+          ## Instructions
+          Implement the full-screen mobile live-room presentation with overlaid seller
+          summary, viewer cues, chat, and current-item details.
+
+          ## Acceptance criteria
+          - The live room is thumb-friendly and vertically optimized.
+          - Seller trust and item state remain visible without overwhelming the video.
+        labels: ["mobile", "live-room", "design"]
+      - title: "Implement mobile bid and claim actions with fast feedback"
+        body: |
+          ## Instructions
+          Bring bid entry, minimum-bid cues, claim actions, and buyer feedback into
+          the mobile live room using the current commerce endpoints.
+
+          ## Acceptance criteria
+          - Buyers can submit bids and claims from the mobile live room.
+          - Errors and loading states are tuned for realtime mobile interaction.
+        labels: ["mobile", "commerce", "live-room"]
+
+  - title: "Build mobile checkout and post-purchase order flows"
+    body: |
+      ## Context
+      Joining a show is not enough. The buyer must be able to complete payment and
+      return for order status and fulfillment updates inside the mobile app.
+
+      ## Required outcome
+      Deliver the buyer order lifecycle on mobile from claim confirmation through
+      Pix flow visibility and order tracking.
+
+      ## Acceptance criteria
+      - Buyers can move from claim to order to Pix payment state from mobile.
+      - Buyers can revisit orders and understand fulfillment status clearly.
+    milestone: "Phase 2: Live Room and Commerce"
+    status: "Todo"
+    labels: ["mobile", "checkout", "orders"]
+    children:
+      - title: "Implement mobile order creation and Pix payment status screens"
+        body: |
+          ## Instructions
+          Build the post-claim buyer flow for order creation, Pix display, and
+          payment progression using the existing payment endpoints.
+
+          ## Acceptance criteria
+          - Buyers can complete the existing payment flow without falling back to web.
+          - Pix status and instructions are legible and trustworthy on mobile.
+        labels: ["mobile", "checkout", "payments"]
+      - title: "Add buyer order list and order detail screens to apps/mobile"
+        body: |
+          ## Instructions
+          Bring the buyer order lifecycle into mobile with order history and detail
+          views that reflect shipping and payment state.
+
+          ## Acceptance criteria
+          - Order history is available in-app.
+          - Order detail presents payment and fulfillment state clearly.
+        labels: ["mobile", "orders", "buyer-experience"]
+      - title: "Define mobile-friendly error, retry, and recovery flows for payment and order transitions"
+        body: |
+          ## Instructions
+          Mobile buyers need better interrupted-flow handling than a web page alone.
+          Add clear recovery states for payment, fetch failures, and stale order refreshes.
+
+          ## Acceptance criteria
+          - Interrupted payment/order states can be retried or resumed in-app.
+          - Failure messaging is understandable without support intervention.
+        labels: ["mobile", "orders", "payments", "qa"]
+
+  - title: "Add mobile notifications, deep links, and operational readiness"
+    body: |
+      ## Context
+      Mobile becomes materially more valuable when it can bring buyers back to live
+      shows and let them resume important order or claim states directly.
+
+      ## Required outcome
+      Add the backend and client support needed for push notifications, deep links,
+      analytics, and staged release readiness.
+
+      ## Acceptance criteria
+      - Device registration and deep links work end to end.
+      - Buyers can re-enter shows and orders from notifications.
+      - Mobile analytics and release readiness are in place for beta rollout.
+    milestone: "Phase 3: Orders, Notifications, and Mobile Operations"
+    status: "Todo"
+    labels: ["mobile", "notifications", "operations"]
+    children:
+      - title: "Add backend support for mobile device registration and notification preferences"
+        body: |
+          ## Instructions
+          Introduce the API and persistence needed to register buyer devices and
+          manage mobile notification preferences.
+
+          ## Acceptance criteria
+          - Devices can be associated with users securely.
+          - Notification preferences are modeled explicitly.
+        labels: ["mobile", "backend", "notifications"]
+      - title: "Implement mobile deep-link handling for auth, shows, live rooms, and orders"
+        body: |
+          ## Instructions
+          Build the deep-link routing and path handling needed to enter the app in
+          the correct place from auth callbacks and notifications.
+
+          ## Acceptance criteria
+          - Auth callback links work on mobile.
+          - Show, live-room, and order deep links resolve to the right screens.
+        labels: ["mobile", "deep-linking", "navigation"]
+      - title: "Add analytics, crash reporting, and staged release support for mobile beta"
+        body: |
+          ## Instructions
+          Prepare the mobile app for real-world rollout with usage analytics, crash
+          visibility, and controlled release readiness.
+
+          ## Acceptance criteria
+          - Core funnel analytics are captured.
+          - Crash reporting is wired.
+          - The app can be distributed through internal and beta channels.
+        labels: ["mobile", "operations", "analytics"]
