@@ -48,6 +48,8 @@ model User {
   issuedRefunds         OrderRefund[]       @relation("IssuedRefunds")
   settlementEntries     SettlementLedgerEntry[] @relation("SellerLedgerEntries")
   showPresences         ShowPresence[]
+  payables              SellerPayable[]         @relation("SellerPayables")
+  payoutEntries         PayoutEntry[]           @relation("SellerPayoutEntries")
 
   @@map("users")
 }
@@ -351,6 +353,7 @@ model Order {
   refunds        OrderRefund[]
   ledgerEntries  SettlementLedgerEntry[]
   review         SellerReview?
+  payable        SellerPayable?
 
   @@map("orders")
 }
@@ -758,6 +761,76 @@ model SettlementLedgerEntry {
   metadata    Json?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
+  payoutEntry PayoutEntry?
 
   @@map("settlement_ledger_entries")
+}
+
+// ─── Seller Payables ──────────────────────────────────────────────────────────
+// A payable is created for each paid order, recording the seller's owed amount.
+// It moves through PENDING → INCLUDED_IN_BATCH → PAID (or OFFSET for refunds).
+
+enum PayableStatus {
+  PENDING
+  INCLUDED_IN_BATCH
+  PAID
+  OFFSET
+}
+
+model SellerPayable {
+  id          String        @id @default(cuid())
+  sellerId    String
+  seller      User          @relation("SellerPayables", fields: [sellerId], references: [id])
+  orderId     String        @unique
+  order       Order         @relation(fields: [orderId], references: [id])
+  amountCents Int
+  status      PayableStatus @default(PENDING)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  payoutEntry PayoutEntry?
+
+  @@map("seller_payables")
+}
+
+// ─── Payout Batches & Entries ─────────────────────────────────────────────────
+// A batch groups one or more payout entries (payables + ledger adjustments)
+// for a given settlement period and is marked PAID once disbursed.
+
+enum PayoutBatchStatus {
+  PENDING
+  PROCESSING
+  PAID
+  FAILED
+}
+
+model PayoutBatch {
+  id          String            @id @default(cuid())
+  status      PayoutBatchStatus @default(PENDING)
+  periodStart DateTime
+  periodEnd   DateTime
+  totalCents  Int
+  notes       String?
+  paidAt      DateTime?
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  entries     PayoutEntry[]
+
+  @@map("payout_batches")
+}
+
+model PayoutEntry {
+  id             String      @id @default(cuid())
+  batchId        String
+  batch          PayoutBatch @relation(fields: [batchId], references: [id], onDelete: Cascade)
+  sellerId       String
+  seller         User        @relation("SellerPayoutEntries", fields: [sellerId], references: [id])
+  amountCents    Int
+  description    String?
+  payableId      String?     @unique
+  payable        SellerPayable? @relation(fields: [payableId], references: [id], onDelete: SetNull)
+  ledgerEntryId  String?     @unique
+  ledgerEntry    SettlementLedgerEntry? @relation(fields: [ledgerEntryId], references: [id], onDelete: SetNull)
+  createdAt      DateTime    @default(now())
+
+  @@map("payout_entries")
 }

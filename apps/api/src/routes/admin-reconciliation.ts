@@ -4,6 +4,7 @@ import { createPixAdapter } from '@arremate/payments';
 import { logger } from '@arremate/observability';
 import { authenticate } from '../plugins/authenticate.js';
 import { requireRole } from '../plugins/authorize.js';
+import { createPayableFromOrder } from '../services/payout-service.js';
 import type { AppEnv } from '../types.js';
 
 const app = new Hono<AppEnv>();
@@ -100,6 +101,9 @@ app.post('/v1/admin/payments/reconcile', ...adminGuard, async (c) => {
           where: { id: payment.orderId },
           data: { status: dbOrderStatus },
         });
+        if (dbOrderStatus === 'PAID') {
+          await createPayableFromOrder(payment.orderId, tx);
+        }
       });
 
       logger.info('payment reconciled', {
@@ -202,6 +206,9 @@ app.post('/v1/admin/payments/:paymentId/reconcile', ...adminGuard, async (c) => 
       where: { id: payment.orderId },
       data: { status: dbOrderStatus },
     });
+    if (dbOrderStatus === 'PAID') {
+      await createPayableFromOrder(payment.orderId, tx);
+    }
   });
 
   logger.info('payment reconciled', {

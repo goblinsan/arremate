@@ -13,6 +13,7 @@ import SellerInventoryFormPage from './pages/SellerInventoryFormPage';
 import SellerOrdersPage from './pages/SellerOrdersPage';
 import SellerOrderDetailPage from './pages/SellerOrderDetailPage';
 import SellerPayoutLedgerPage from './pages/SellerPayoutLedgerPage';
+import SellerPayoutStatementPage from './pages/SellerPayoutStatementPage';
 import PayoutCalculatorPage from './pages/PayoutCalculatorPage';
 import BuyerOrdersPage from './pages/BuyerOrdersPage';
 import BuyerOrderDetailPage from './pages/BuyerOrderDetailPage';
@@ -196,6 +197,9 @@ function AppShell() {
                   <NavLink to="/seller/payouts" className={navLinkClass}>
                     Repasses
                   </NavLink>
+                  <NavLink to="/seller/payout-statement" className={navLinkClass}>
+                    Extrato
+                  </NavLink>
                   <NavLink to="/seller/payout-calculator" className={navLinkClass}>
                     Calculadora
                   </NavLink>
@@ -264,6 +268,9 @@ function AppShell() {
                 <NavLink to="/seller/payouts" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
                   Repasses
                 </NavLink>
+                <NavLink to="/seller/payout-statement" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
+                  Extrato
+                </NavLink>
                 <NavLink to="/seller/payout-calculator" className={mobileNavLinkClass} onClick={() => setMobileMenuOpen(false)}>
                   Calculadora
                 </NavLink>
@@ -316,6 +323,7 @@ function AppShell() {
           <Route path="/seller/orders" element={<SellerOrdersPage />} />
           <Route path="/seller/orders/:orderId" element={<SellerOrderDetailPage />} />
           <Route path="/seller/payouts" element={<SellerPayoutLedgerPage />} />
+          <Route path="/seller/payout-statement" element={<SellerPayoutStatementPage />} />
           <Route path="/seller/payout-calculator" element={<PayoutCalculatorPage />} />
           <Route path="/orders" element={<BuyerOrdersPage />} />
           <Route path="/orders/:orderId" element={<BuyerOrderDetailPage />} />
