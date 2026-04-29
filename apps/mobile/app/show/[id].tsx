@@ -110,8 +110,7 @@ export default function ShowDetailScreen() {
       ]);
       return;
     }
-    // Live room navigation placeholder — will be wired up when live room screen is built
-    Alert.alert('Show ao vivo', 'A sala ao vivo será implementada em breve!');
+    router.push(`/live/${id}`);
   }
 
   if (isLoading) {
