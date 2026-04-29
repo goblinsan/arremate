@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Info, CheckCircle, Clock, PackageCheck } from 'lucide-react';
+import { Info, CheckCircle, Clock, PackageCheck, AlertTriangle } from 'lucide-react';
 import type { SellerPayoutStatement, PayableStatus } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
@@ -108,6 +108,21 @@ export default function SellerPayoutStatementPage() {
             </div>
           </div>
 
+          {/* Pending offset warning */}
+          {statement.pendingOffsets.length > 0 && (
+            <div className="bg-orange-50 border border-orange-200 rounded-xl p-4 mb-6 flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-orange-500 shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-semibold text-orange-800">
+                  Estornos pendentes: {brl(Math.abs(statement.pendingOffsetCents))}
+                </p>
+                <p className="text-xs text-orange-700 mt-1">
+                  Esses valores serao descontados do seu proximo repasse.
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* Payables list */}
           {statement.payables.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6">
@@ -154,6 +169,46 @@ export default function SellerPayoutStatementPage() {
             </div>
           )}
 
+          {/* Pending offsets list */}
+          {statement.pendingOffsets.length > 0 && (
+            <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6">
+              <div className="px-5 py-4 border-b border-gray-100">
+                <h2 className="text-sm font-semibold text-gray-700">Estornos pendentes</h2>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Origem</th>
+                      <th className="text-left px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Data</th>
+                      <th className="text-right px-4 py-3 text-xs font-semibold text-gray-500 uppercase tracking-wide">Valor</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {statement.pendingOffsets.map((entry) => (
+                      <tr key={entry.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3 text-gray-700">
+                          <span>{entry.description ?? 'Estorno de reembolso'}</span>
+                          {entry.orderId && (
+                            <span className="ml-2 font-mono text-xs text-gray-400">
+                              #{entry.orderId.slice(-8).toUpperCase()}
+                            </span>
+                          )}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 whitespace-nowrap">
+                          {new Date(entry.createdAt).toLocaleDateString('pt-BR')}
+                        </td>
+                        <td className="px-4 py-3 text-right font-semibold text-red-600">
+                          {brl(entry.amountCents)}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
           {/* Settled ledger entries */}
           {statement.settledLedgerEntries.length > 0 && (
             <div className="bg-white rounded-xl border border-gray-100 shadow-sm mb-6">
@@ -187,7 +242,7 @@ export default function SellerPayoutStatementPage() {
             </div>
           )}
 
-          {statement.payables.length === 0 && statement.settledLedgerEntries.length === 0 && (
+          {statement.payables.length === 0 && statement.settledLedgerEntries.length === 0 && statement.pendingOffsets.length === 0 && (
             <div className="text-center py-16 text-gray-400">
               <p>Nenhum repasse registrado ainda.</p>
               <p className="text-xs mt-2">Os repasses aparecem aqui após o pagamento dos pedidos ser confirmado.</p>

@@ -12,11 +12,12 @@ const sellerGuard = [authenticate, requireRole('SELLER', 'ADMIN')] as const;
 // Returns the seller's payout statement: estimated (orders without a settled
 // payable), payable (pending SellerPayables), and settled (PAID payables and
 // ledger entries that are already in a PAID batch) totals.
+// Also includes pending refund offset entries not yet absorbed into a batch.
 
 app.get('/v1/seller/payout-statement', ...sellerGuard, async (c) => {
   const user = c.get('currentUser');
 
-  const [pendingPayables, batchedPayables, paidPayables, ledgerEntries, estimatedOrders] =
+  const [pendingPayables, batchedPayables, paidPayables, ledgerEntries, estimatedOrders, pendingOffsets] =
     await Promise.all([
       // Amounts owed but not yet batched
       prisma.sellerPayable.findMany({
@@ -60,6 +61,23 @@ app.get('/v1/seller/payout-statement', ...sellerGuard, async (c) => {
           createdAt: true,
         },
       }),
+
+      // Refund offset entries not yet absorbed into a payout batch
+      prisma.settlementLedgerEntry.findMany({
+        where: {
+          sellerId: user.id,
+          feeType: 'REFUND_OFFSET',
+          payoutEntry: null,
+        },
+        select: {
+          id: true,
+          amountCents: true,
+          description: true,
+          orderId: true,
+          orderRefundId: true,
+          createdAt: true,
+        },
+      }),
     ]);
 
   const payableCents = pendingPayables.reduce((s, p) => s + p.amountCents, 0);
@@ -70,12 +88,14 @@ app.get('/v1/seller/payout-statement', ...sellerGuard, async (c) => {
     (s, o) => s + (o.sellerPayoutCents ?? 0),
     0,
   );
+  const pendingOffsetCents = pendingOffsets.reduce((s, e) => s + e.amountCents, 0);
 
   return c.json({
     estimatedCents,
     payableCents,
     inBatchCents,
     settledCents: settledFromOrdersCents + settledFromLedgerCents,
+    pendingOffsetCents,
     totals: {
       pendingPayables: pendingPayables.length,
       batchedPayables: batchedPayables.length,
@@ -88,6 +108,7 @@ app.get('/v1/seller/payout-statement', ...sellerGuard, async (c) => {
       ...paidPayables.map((p) => ({ ...p, source: 'ORDER' as const })),
     ],
     settledLedgerEntries: ledgerEntries,
+    pendingOffsets,
   });
 });
 

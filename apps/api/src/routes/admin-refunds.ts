@@ -15,7 +15,13 @@ app.post('/v1/admin/orders/:orderId/refund', ...adminGuard, async (c) => {
   const admin = c.get('currentUser');
   const body = await c.req.json<{ amountCents?: number; reason?: string }>().catch(() => ({} as { amountCents?: number; reason?: string }));
 
-  const order = await prisma.order.findUnique({ where: { id: orderId }, include: { payments: { orderBy: { createdAt: 'desc' } } } });
+  const order = await prisma.order.findUnique({
+    where: { id: orderId },
+    include: {
+      payments: { orderBy: { createdAt: 'desc' } },
+      payable: { select: { id: true, status: true } },
+    },
+  });
   if (!order) return c.json({ statusCode: 404, error: 'Not Found', message: 'Order not found' }, 404);
   if (order.status !== 'PAID') return c.json({ statusCode: 409, error: 'Conflict', message: `Cannot refund an order with status: ${order.status}` }, 409);
   const paidPayment = order.payments.find((p) => p.status === 'PAID');
@@ -67,6 +73,31 @@ app.post('/v1/admin/orders/:orderId/refund', ...adminGuard, async (c) => {
         reason: body.reason ?? null,
       },
     });
+
+    // Create a settlement offset entry so the clawback is absorbed in the next
+    // payout batch.  The entry uses a negative amountCents to reduce the seller
+    // net payout.
+    if (refundBreakdown.payoutOffsetCents > 0) {
+      await tx.settlementLedgerEntry.create({
+        data: {
+          sellerId: order.sellerId,
+          feeType: 'REFUND_OFFSET',
+          amountCents: -refundBreakdown.payoutOffsetCents,
+          description: `Estorno de reembolso - pedido #${orderId.slice(-8).toUpperCase()}`,
+          orderId,
+          orderRefundId: createdRefund.id,
+        },
+      });
+    }
+
+    // When a full refund voids the payable, mark it OFFSET so it is excluded
+    // from future payout batches.
+    if (isFullRefund && order.payable && order.payable.status === 'PENDING') {
+      await tx.sellerPayable.update({
+        where: { id: order.payable.id },
+        data: { status: 'OFFSET' },
+      });
+    }
 
     return { updatedPayment: nextPayment, updatedOrder: nextOrder, orderRefund: createdRefund };
   });
