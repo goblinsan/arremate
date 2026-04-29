@@ -343,6 +343,7 @@ model Order {
   promotionCode         String?
   promotionDiscountBps  Int?
   sellerOverrideApplied Boolean?
+  invoiceResponsibility InvoiceResponsibility?
 
   createdAt   DateTime    @default(now())
   updatedAt   DateTime    @updatedAt
@@ -356,6 +357,7 @@ model Order {
   ledgerEntries  SettlementLedgerEntry[]
   review         SellerReview?
   payable        SellerPayable?
+  fiscalDocuments FiscalDocument[]
 
   @@map("orders")
 }
@@ -746,6 +748,74 @@ model FeePromotion {
   updatedAt     DateTime   @updatedAt
 
   @@map("fee_promotions")
+}
+
+// ─── Fiscal Documents ────────────────────────────────────────────────────────
+// Tracks the lifecycle of fiscal documents (NFS-e, NF-e) for platform fees
+// and goods sold through the marketplace. A single order may have up to two
+// documents: one for the platform service fee (PLATFORM responsibility) and one
+// for the underlying goods sale (SELLER responsibility when SELLER_ISSUED).
+
+enum InvoiceResponsibility {
+  PLATFORM
+  SELLER
+}
+
+enum FiscalDocumentStatus {
+  PENDING
+  ISSUED
+  CANCELLED
+  ERROR
+}
+
+enum FiscalDocumentType {
+  NFS_E_SERVICE_FEE
+  NF_E_GOODS
+}
+
+model FiscalDocument {
+  id                    String                @id @default(cuid())
+  orderId               String?
+  order                 Order?                @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  invoiceResponsibility InvoiceResponsibility
+  documentType          FiscalDocumentType
+  status                FiscalDocumentStatus  @default(PENDING)
+  externalId            String?
+  issuedAt              DateTime?
+  errorMessage          String?
+  metadata              Json?
+  createdAt             DateTime              @default(now())
+  updatedAt             DateTime              @updatedAt
+
+  @@index([orderId])
+  @@index([status])
+  @@map("fiscal_documents")
+}
+
+// ─── Tax Configuration ────────────────────────────────────────────────────────
+// Accountant-approved tax configuration that controls how the platform accounts
+// for taxes on service fees and goods. Replaces any hard-coded fiscal constants
+// in order or payment flow code.
+
+enum GoodsSaleTaxModel {
+  SELLER_ISSUED
+  EXEMPT
+  MARKETPLACE_FACILITATED
+}
+
+model TaxConfig {
+  id                        String            @id @default(cuid())
+  label                     String?
+  isActive                  Boolean           @default(false)
+  platformServiceTaxRateBps Int               @default(0)
+  goodsSaleTaxModel         GoodsSaleTaxModel @default(SELLER_ISSUED)
+  metadata                  Json?
+  effectiveFrom             DateTime
+  effectiveTo               DateTime?
+  createdAt                 DateTime          @default(now())
+  updatedAt                 DateTime          @updatedAt
+
+  @@map("tax_configs")
 }
 
 // ─── Settlement Ledger ────────────────────────────────────────────────────────

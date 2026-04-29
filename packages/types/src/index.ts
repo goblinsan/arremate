@@ -406,6 +406,7 @@ export interface Order {
   promotionCode: string | null;
   promotionDiscountBps: number | null;
   sellerOverrideApplied: boolean | null;
+  invoiceResponsibility: InvoiceResponsibility | null;
   createdAt: Date;
   updatedAt: Date;
   lines?: OrderLine[];
@@ -413,6 +414,7 @@ export interface Order {
   shipment?: Shipment | null;
   supportTickets?: SupportTicket[];
   refunds?: OrderRefund[];
+  fiscalDocuments?: FiscalDocument[];
 }
 
 export type RefundType = 'FULL' | 'PARTIAL';
@@ -472,6 +474,49 @@ export interface ModerationCase {
   actorId: string;
   actor?: Pick<User, 'id' | 'name' | 'email'>;
   createdAt: Date;
+}
+
+// ─── Fiscal Documents ─────────────────────────────────────────────────────────
+
+export type InvoiceResponsibility = 'PLATFORM' | 'SELLER';
+
+export type FiscalDocumentStatus = 'PENDING' | 'ISSUED' | 'CANCELLED' | 'ERROR';
+
+export type FiscalDocumentType = 'NFS_E_SERVICE_FEE' | 'NF_E_GOODS';
+
+export interface FiscalDocument {
+  id: string;
+  orderId: string | null;
+  order?: Pick<Order, 'id' | 'totalCents' | 'status'> | null;
+  invoiceResponsibility: InvoiceResponsibility;
+  documentType: FiscalDocumentType;
+  status: FiscalDocumentStatus;
+  externalId: string | null;
+  issuedAt: Date | null;
+  errorMessage: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+// ─── Tax Configuration ────────────────────────────────────────────────────────
+
+export type GoodsSaleTaxModel =
+  | 'SELLER_ISSUED'
+  | 'EXEMPT'
+  | 'MARKETPLACE_FACILITATED';
+
+export interface TaxConfig {
+  id: string;
+  label: string | null;
+  isActive: boolean;
+  platformServiceTaxRateBps: number;
+  goodsSaleTaxModel: GoodsSaleTaxModel;
+  metadata: Record<string, unknown> | null;
+  effectiveFrom: Date;
+  effectiveTo: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 // ─── Fee Configuration ────────────────────────────────────────────────────────

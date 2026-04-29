@@ -27,6 +27,8 @@ import { adminReconciliationRoutes } from './routes/admin-reconciliation.js';
 import { healthRoutes } from './routes/health.js';
 import { sellerPayoutRoutes } from './routes/seller-payouts.js';
 import { adminPayoutRoutes } from './routes/admin-payouts.js';
+import { adminFiscalDocRoutes } from './routes/admin-fiscal-docs.js';
+import { adminTaxConfigRoutes } from './routes/admin-tax-configs.js';
 import { deviceRoutes } from './routes/devices.js';
 import type { AppEnv } from './types.js';
 
@@ -152,4 +154,6 @@ app.route('/', adminReconciliationRoutes);
 app.route('/', healthRoutes);
 app.route('/', sellerPayoutRoutes);
 app.route('/', adminPayoutRoutes);
+app.route('/', adminFiscalDocRoutes);
+app.route('/', adminTaxConfigRoutes);
 app.route('/', deviceRoutes);
