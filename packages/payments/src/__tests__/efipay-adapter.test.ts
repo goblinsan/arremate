@@ -30,7 +30,7 @@ type MockFetchEntry = { status: number; body: unknown };
 
 function makeFetchMock(...entries: MockFetchEntry[]): typeof fetch {
   let callIndex = 0;
-  return async (_input: RequestInfo | URL, _init?: RequestInit): Promise<Response> => {
+  return async (_input: Parameters<typeof fetch>[0], _init?: Parameters<typeof fetch>[1]): Promise<Response> => {
     const entry = entries[callIndex++] ?? { status: 200, body: {} };
     const bodyText = typeof entry.body === 'string' ? entry.body : JSON.stringify(entry.body);
     return new Response(bodyText, { status: entry.status });
