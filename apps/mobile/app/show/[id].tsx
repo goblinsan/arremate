@@ -104,14 +104,14 @@ export default function ShowDetailScreen() {
 
   function handleEnterLive() {
     if (!isAuthenticated) {
-      Alert.alert('Login necessario', 'Faca login para entrar no show ao vivo.', [
+      Alert.alert('Login necessário', 'Faça login para entrar no show ao vivo.', [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Entrar', onPress: () => router.push('/login') },
       ]);
       return;
     }
     // Live room navigation placeholder — will be wired up when live room screen is built
-    Alert.alert('Show ao vivo', 'A sala ao vivo sera implementada em breve!');
+    Alert.alert('Show ao vivo', 'A sala ao vivo será implementada em breve!');
   }
 
   if (isLoading) {
@@ -128,7 +128,7 @@ export default function ShowDetailScreen() {
     return (
       <SafeAreaView style={styles.container}>
         <View style={styles.errorContainer}>
-          <Text style={styles.errorText}>Show nao encontrado.</Text>
+          <Text style={styles.errorText}>Show não encontrado.</Text>
           <Pressable onPress={() => router.back()} style={styles.backBtn}>
             <Text style={styles.backBtnText}>Voltar</Text>
           </Pressable>
@@ -213,7 +213,7 @@ export default function ShowDetailScreen() {
                 <Text style={styles.metricValue}>
                   {seller.metrics.averageShippingDays.toFixed(1)}d
                 </Text>
-                <Text style={styles.metricLabel}>envio medio</Text>
+                <Text style={styles.metricLabel}>envio médio</Text>
               </View>
             )}
             {seller.metrics.ratingAverage != null && (
@@ -221,7 +221,7 @@ export default function ShowDetailScreen() {
                 <Text style={styles.metricValue}>
                   {seller.metrics.ratingAverage.toFixed(1)}
                 </Text>
-                <Text style={styles.metricLabel}>avaliacao</Text>
+                <Text style={styles.metricLabel}>avaliação</Text>
               </View>
             )}
           </View>
