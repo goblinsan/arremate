@@ -14,7 +14,8 @@ arremate/
 ├── apps/
 │   ├── web/          (@arremate/web)    Buyer-facing storefront  – React + Vite + Tailwind  :3000
 │   ├── admin/        (@arremate/admin)  Internal ops panel       – React + Vite + Tailwind  :3001
-│   └── api/          (@arremate/api)    Backend REST API          – Hono + TypeScript        :4000
+│   ├── api/          (@arremate/api)    Backend REST API          – Hono + TypeScript        :4000
+│   └── mobile/       (@arremate/mobile) Buyer-first mobile app   – Expo + React Native + TypeScript
 ├── packages/
 │   ├── ui/           (@arremate/ui)           Shared React components (Button, Badge, …)
 │   ├── types/        (@arremate/types)         Core domain TypeScript interfaces
@@ -98,6 +99,10 @@ Run for a specific package:
 pnpm --filter @arremate/api dev
 pnpm --filter @arremate/web build
 pnpm --filter @arremate/database db:migrate
+
+# Mobile app (requires Expo CLI)
+pnpm --filter @arremate/mobile dev       # Start Expo dev server
+pnpm --filter @arremate/mobile typecheck # TypeScript check
 ```
 
 ---
@@ -109,6 +114,7 @@ pnpm --filter @arremate/database db:migrate
 | `@arremate/web` | Buyer storefront: browse auctions, watch live, bid |
 | `@arremate/admin` | Ops panel: auction moderation, user & payment management |
 | `@arremate/api` | REST API with Hono; deploys to Cloudflare Workers in staging/production |
+| `@arremate/mobile` | Buyer-first iOS/Android app built with Expo + React Native |
 | `@arremate/ui` | Reusable design-system components |
 | `@arremate/types` | Shared TypeScript types (`User`, `Auction`, `Bid`, `Product`) |
 | `@arremate/config` | `getEnv` / `requireEnv` helpers |
