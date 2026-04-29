@@ -122,7 +122,7 @@ export default function BuyerOrdersPage() {
                 </div>
                 <div className="shrink-0 text-right">
                   <p className="text-lg font-bold text-gray-900">
-                    {(order.totalCents / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    {((order.buyerTotalCents ?? order.totalCents) / 100).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                   </p>
                   <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${STATUS_COLORS[order.status as OrderStatus]}`}>
                     {STATUS_LABELS[order.status as OrderStatus]}

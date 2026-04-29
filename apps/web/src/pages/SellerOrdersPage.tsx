@@ -151,7 +151,7 @@ export default function SellerOrdersPage() {
 
 function OrderCard({ order }: { order: Order }) {
   const firstLine = order.lines?.[0];
-  const totalBRL = (order.totalCents / 100).toLocaleString('pt-BR', {
+  const totalBRL = ((order.buyerTotalCents ?? order.totalCents) / 100).toLocaleString('pt-BR', {
     style: 'currency',
     currency: 'BRL',
   });
