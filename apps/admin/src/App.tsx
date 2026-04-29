@@ -14,6 +14,8 @@ import {
   Tag,
   Wallet,
   FileText,
+  FileDown,
+  Scale,
 } from 'lucide-react';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
@@ -28,6 +30,8 @@ import MonetizationReportPage from './pages/MonetizationReportPage';
 import IncentiveReportPage from './pages/IncentiveReportPage';
 import PayoutBatchesPage from './pages/PayoutBatchesPage';
 import FiscalDocumentsPage from './pages/FiscalDocumentsPage';
+import FinanceExportPage from './pages/FinanceExportPage';
+import FinanceReconciliationPage from './pages/FinanceReconciliationPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 
@@ -44,6 +48,8 @@ const navItems = [
   { to: '/analytics/incentives', label: 'Incentivos', icon: Tag },
   { to: '/payouts', label: 'Repasses', icon: Wallet },
   { to: '/fiscal-documents', label: 'Documentos Fiscais', icon: FileText },
+  { to: '/finance/export', label: 'Exportação Financeira', icon: FileDown },
+  { to: '/finance/reconciliation', label: 'Reconc. Financeira', icon: Scale },
   { to: '/health', label: 'Saúde', icon: HeartPulse },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
@@ -128,6 +134,8 @@ function AdminShell() {
             <Route path="/analytics/incentives" element={<IncentiveReportPage />} />
             <Route path="/payouts" element={<PayoutBatchesPage />} />
             <Route path="/fiscal-documents" element={<FiscalDocumentsPage />} />
+            <Route path="/finance/export" element={<FinanceExportPage />} />
+            <Route path="/finance/reconciliation" element={<FinanceReconciliationPage />} />
             <Route path="/health" element={<SystemHealthPage />} />
             <Route
               path="/settings"
