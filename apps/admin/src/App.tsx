@@ -44,7 +44,7 @@ const navItems = [
   { to: '/analytics/incentives', label: 'Incentivos', icon: Tag },
   { to: '/payouts', label: 'Repasses', icon: Wallet },
   { to: '/fiscal-documents', label: 'Documentos Fiscais', icon: FileText },
-  { to: '/health', label: 'Saude', icon: HeartPulse },
+  { to: '/health', label: 'Saúde', icon: HeartPulse },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
 

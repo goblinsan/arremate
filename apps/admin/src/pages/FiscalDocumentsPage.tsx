@@ -25,7 +25,7 @@ const RESPONSIBILITY_LABELS: Record<InvoiceResponsibility, string> = {
 };
 
 const DOCUMENT_TYPE_LABELS: Record<string, string> = {
-  NFS_E_SERVICE_FEE: 'NFS-e Taxa de Servico',
+  NFS_E_SERVICE_FEE: 'NFS-e Taxa de Serviço',
   NF_E_GOODS: 'NF-e Mercadoria',
 };
 
@@ -104,7 +104,7 @@ export default function FiscalDocumentsPage() {
         <div>
           <h2 className="text-2xl font-bold text-gray-900">Documentos Fiscais</h2>
           <p className="mt-1 text-sm text-gray-500">
-            Acompanhe o status de emissao de NFS-e e NF-e por pedido.
+            Acompanhe o status de emissão de NFS-e e NF-e por pedido.
           </p>
         </div>
         <button
@@ -242,7 +242,7 @@ export default function FiscalDocumentsPage() {
         {totalPages > 1 && (
           <div className="px-4 py-3 border-t border-gray-100 bg-gray-50 flex items-center justify-between text-xs text-gray-500">
             <span>
-              Pagina {page} de {totalPages} ({total} total)
+              Página {page} de {totalPages} ({total} total)
             </span>
             <div className="flex gap-2">
               <button
@@ -257,7 +257,7 @@ export default function FiscalDocumentsPage() {
                 disabled={page === totalPages}
                 className="px-3 py-1 rounded border border-gray-200 bg-white hover:bg-gray-100 disabled:opacity-40"
               >
-                Proxima
+                Próxima
               </button>
             </div>
           </div>
