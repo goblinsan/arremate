@@ -586,7 +586,7 @@ export default function OrderDetailScreen() {
               ) : null}
               {order.shipment.trackingNumber ? (
                 <Text style={styles.shipmentDetail}>
-                  Codigo de rastreio:{' '}
+                  Código de rastreio:{' '}
                   <Text
                     style={[styles.shipmentDetailValue, styles.trackingCode]}
                     selectable
@@ -597,7 +597,7 @@ export default function OrderDetailScreen() {
               ) : null}
               {order.shipment.estimatedDelivery ? (
                 <Text style={styles.shipmentDetail}>
-                  Previsao de entrega:{' '}
+                  Previsão de entrega:{' '}
                   <Text style={styles.shipmentDetailValue}>
                     {new Date(order.shipment.estimatedDelivery).toLocaleDateString('pt-BR')}
                   </Text>
