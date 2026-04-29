@@ -926,7 +926,7 @@ export default function LiveRoomScreen() {
             {bastaoTargetId ? (
               <View style={styles.bastaoBox}>
                 <Ionicons name="radio-outline" size={32} color="#a78bfa" />
-                <Text style={styles.bastaoTitle}>O bastao foi passado!</Text>
+                <Text style={styles.bastaoTitle}>O bastão foi passado!</Text>
                 <Text style={styles.bastaoSub}>
                   Redirecionando em{' '}
                   <Text style={styles.bastaoCount}>{bastaoCountdown ?? 0}</Text>
@@ -941,7 +941,7 @@ export default function LiveRoomScreen() {
                 </Pressable>
               </View>
             ) : (
-              <Text style={styles.endedText}>A transmissao foi encerrada.</Text>
+              <Text style={styles.endedText}>A transmissão foi encerrada.</Text>
             )}
           </View>
         )}
@@ -949,7 +949,7 @@ export default function LiveRoomScreen() {
         {/* ── Not live yet ── */}
         {!isLive && !isEnded && (
           <View style={styles.endedOverlay}>
-            <Text style={styles.endedText}>O show ainda nao comecou.</Text>
+            <Text style={styles.endedText}>O show ainda não começou.</Text>
           </View>
         )}
 
