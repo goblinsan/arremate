@@ -25,6 +25,8 @@ import { adminOrderRoutes } from './routes/admin-orders.js';
 import { adminAnalyticsRoutes } from './routes/admin-analytics.js';
 import { adminReconciliationRoutes } from './routes/admin-reconciliation.js';
 import { healthRoutes } from './routes/health.js';
+import { sellerPayoutRoutes } from './routes/seller-payouts.js';
+import { adminPayoutRoutes } from './routes/admin-payouts.js';
 import type { AppEnv } from './types.js';
 
 export const app = new Hono<AppEnv>();
@@ -147,3 +149,5 @@ app.route('/', adminOrderRoutes);
 app.route('/', adminAnalyticsRoutes);
 app.route('/', adminReconciliationRoutes);
 app.route('/', healthRoutes);
+app.route('/', sellerPayoutRoutes);
+app.route('/', adminPayoutRoutes);

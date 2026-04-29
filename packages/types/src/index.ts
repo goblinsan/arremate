@@ -572,6 +572,75 @@ export interface SettlementLedgerEntry {
   updatedAt: Date;
 }
 
+// ─── Seller Payables & Payout Lifecycle ──────────────────────────────────────
+
+export type PayableStatus = 'PENDING' | 'INCLUDED_IN_BATCH' | 'PAID' | 'OFFSET';
+
+/** A seller payable is created for every order that transitions to PAID. */
+export interface SellerPayable {
+  id: string;
+  sellerId: string;
+  seller?: Pick<User, 'id' | 'name' | 'email'>;
+  orderId: string;
+  amountCents: number;
+  status: PayableStatus;
+  source: 'ORDER';
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export type PayoutBatchStatus = 'PENDING' | 'PROCESSING' | 'PAID' | 'FAILED';
+
+/** A payout batch groups one or more payout entries for a settlement period. */
+export interface PayoutBatch {
+  id: string;
+  status: PayoutBatchStatus;
+  periodStart: Date;
+  periodEnd: Date;
+  totalCents: number;
+  notes: string | null;
+  paidAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  entries?: PayoutEntry[];
+  _count?: { entries: number };
+}
+
+/** A single line item in a payout batch, linked to a payable or ledger entry. */
+export interface PayoutEntry {
+  id: string;
+  batchId: string;
+  sellerId: string;
+  seller?: Pick<User, 'id' | 'name' | 'email'>;
+  amountCents: number;
+  description: string | null;
+  payableId: string | null;
+  payable?: Pick<SellerPayable, 'id' | 'orderId' | 'status'> | null;
+  ledgerEntryId: string | null;
+  ledgerEntry?: Pick<SettlementLedgerEntry, 'id' | 'feeType' | 'description' | 'orderId'> | null;
+  createdAt: Date;
+}
+
+/** Seller payout statement: estimated + settled amounts. */
+export interface SellerPayoutStatement {
+  /** Estimated payout from PAID orders that do not yet have a SellerPayable (legacy). */
+  estimatedCents: number;
+  /** Owed amounts in PENDING payables (not yet batched). */
+  payableCents: number;
+  /** Owed amounts already included in a payout batch (not yet disbursed). */
+  inBatchCents: number;
+  /** Total amounts from PAID payables and settled ledger entries. */
+  settledCents: number;
+  totals: {
+    pendingPayables: number;
+    batchedPayables: number;
+    paidPayables: number;
+    estimatedOrders: number;
+  };
+  payables: SellerPayable[];
+  settledLedgerEntries: Pick<PayoutEntry, 'id' | 'amountCents' | 'description' | 'createdAt'>[];
+}
+
 // ─── Monetization Analytics ──────────────────────────────────────────────────
 
 export interface MonetizationReport {

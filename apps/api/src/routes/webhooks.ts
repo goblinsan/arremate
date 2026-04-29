@@ -3,6 +3,7 @@ import { prisma, Prisma } from '@arremate/database';
 import { createPixAdapter } from '@arremate/payments';
 import { createLiveVideoProvider } from '@arremate/video';
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { createPayableFromOrder } from '../services/payout-service.js';
 import type { AppEnv } from '../types.js';
 
 const app = new Hono<AppEnv>();
@@ -87,6 +88,9 @@ app.post('/v1/webhooks/pix', async (c) => {
   await prisma.$transaction(async (tx) => {
     await tx.payment.update({ where: { id: payment.id }, data: { status: dbPaymentStatus, webhookPayload: parsedPayload } });
     await tx.order.update({ where: { id: payment.orderId }, data: { status: dbOrderStatus } });
+    if (dbOrderStatus === 'PAID') {
+      await createPayableFromOrder(payment.orderId, tx);
+    }
   });
 
   return c.json({ received: true });
