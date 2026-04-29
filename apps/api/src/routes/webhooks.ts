@@ -1,5 +1,5 @@
 import { Hono } from 'hono';
-import { prisma } from '@arremate/database';
+import { prisma, Prisma } from '@arremate/database';
 import { createPixAdapter } from '@arremate/payments';
 import { createLiveVideoProvider } from '@arremate/video';
 import { createHash, timingSafeEqual } from 'node:crypto';
@@ -63,7 +63,7 @@ app.post('/v1/webhooks/pix', async (c) => {
 
   // Persist the raw event for audit purposes regardless of whether a matching
   // payment exists or has already been transitioned.
-  const parsedPayload = JSON.parse(rawBody) as Record<string, unknown>;
+  const parsedPayload = JSON.parse(rawBody) as Prisma.InputJsonValue;
   await prisma.pixWebhookLog.create({
     data: {
       paymentId: payment?.id ?? null,
