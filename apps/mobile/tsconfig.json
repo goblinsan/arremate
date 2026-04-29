@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "jsx": "react-native",
+    "lib": ["ESNext", "DOM"],
+    "allowJs": true,
+    "noEmit": true,
+    "moduleResolution": "bundler",
+    "strict": true,
+    "paths": {
+      "@arremate/types": ["../../packages/types/src/index.ts"],
+      "@arremate/auth": ["../../packages/auth/src/index.ts"],
+      "@arremate/shared-utils": ["../../packages/shared-utils/src/index.ts"]
+    }
+  },
+  "include": ["app", "src", "app.config.ts", "*.ts", "*.tsx"]
+}

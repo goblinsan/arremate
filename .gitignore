@@ -50,3 +50,6 @@ pnpm-debug.log*
 
 # npm lock files (project uses pnpm)
 package-lock.json
+
+# Expo
+.expo/
