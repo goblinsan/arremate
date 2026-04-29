@@ -63,5 +63,11 @@ S3_UPLOAD_URL_EXPIRY_SECONDS = "300"
 #   wrangler secret put CF_ACCOUNT_ID
 #   wrangler secret put CF_API_TOKEN
 #   wrangler secret put CF_STREAM_WEBHOOK_SECRET
+#   wrangler secret put EFIPAY_CLIENT_ID
+#   wrangler secret put EFIPAY_CLIENT_SECRET
+#   wrangler secret put EFIPAY_PIX_KEY
+#   wrangler secret put EFIPAY_WEBHOOK_SECRET
+#   wrangler secret put EFIPAY_CERT_BASE64
+#   wrangler secret put EFIPAY_CERT_PASSWORD
 
 # ── Non-secret vars (safe to commit) are under [env.production.vars] ───────
