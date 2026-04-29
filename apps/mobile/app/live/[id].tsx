@@ -123,6 +123,23 @@ function formatTime(isoDate: string | null): string {
   return d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
 }
 
+/** Parses a bid string that may use comma or period as the decimal separator. */
+function parseBidAmount(raw: string): number {
+  // Remove spaces and currency symbols, normalize decimal separator
+  const cleaned = raw.replace(/\s/g, '').replace(/[R$]/g, '').replace(',', '.');
+  const value = Number(cleaned);
+  return Number.isFinite(value) ? value : NaN;
+}
+
+/** Safely parses a JSON response body; returns an empty object on failure. */
+async function safeJsonParse<T = { message?: string }>(res: Response): Promise<T> {
+  try {
+    return (await res.json()) as T;
+  } catch {
+    return {} as T;
+  }
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 function SellerStrip({ show }: { show: PublicShow }) {
@@ -308,11 +325,14 @@ function CheckoutPanel({
           </Text>
           <Pressable
             style={checkoutStyles.shareBtn}
-            onPress={() =>
-              payment.pixKey
-                ? void Share.share({ message: payment.pixKey, title: 'Chave Pix Arremate' })
-                : undefined
-            }
+            onPress={() => {
+              if (!payment.pixKey) return;
+              Share.share({ message: payment.pixKey, title: 'Chave Pix Arremate' }).catch(
+                () => {
+                  /* silenced: share cancellation is not an error */
+                },
+              );
+            }}
           >
             <Ionicons name="copy-outline" size={16} color="#f97316" />
             <Text style={checkoutStyles.shareBtnText}>Copiar chave Pix</Text>
@@ -565,11 +585,12 @@ export default function LiveRoomScreen() {
   const [showCheckoutPanel, setShowCheckoutPanel] = useState(false);
 
   // ─── Video player ────────────────────────────────────────────────────────────
+  // Initialize with null so the hook call is stable; the source is replaced
+  // via player.replace() once the session's playbackUrl becomes available.
   const playbackUrlRef = useRef<string | null>(null);
-  const player = useVideoPlayer(session?.playbackUrl ?? null, (p) => {
+  const player = useVideoPlayer(null, (p) => {
     p.loop = false;
     p.muted = false;
-    p.play();
   });
 
   // Replace video source when playback URL arrives or changes
@@ -698,7 +719,7 @@ export default function LiveRoomScreen() {
         return;
       }
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { message?: string };
+        const body = await safeJsonParse(res);
         setChatError(body.message ?? 'Erro ao enviar mensagem.');
         return;
       }
@@ -721,7 +742,7 @@ export default function LiveRoomScreen() {
       Alert.alert('Login necessário', 'Faça login para dar lances.', [{ text: 'OK' }]);
       return;
     }
-    const amount = Number(bidAmount.replace(',', '.'));
+    const amount = parseBidAmount(bidAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       setBidError('Informe um valor de lance válido.');
       return;
@@ -738,10 +759,7 @@ export default function LiveRoomScreen() {
         body: JSON.stringify({ amount }),
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as {
-          message?: string;
-          minimumBid?: number;
-        };
+        const body = await safeJsonParse<{ message?: string; minimumBid?: number }>(res);
         setBidError(body.message ?? 'Não foi possível registrar seu lance.');
         return;
       }
@@ -774,7 +792,7 @@ export default function LiveRoomScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { message?: string };
+        const body = await safeJsonParse(res);
         setClaimError(body.message ?? 'Erro ao reservar item.');
         return;
       }
@@ -801,7 +819,7 @@ export default function LiveRoomScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { message?: string };
+        const body = await safeJsonParse(res);
         setCheckoutError(body.message ?? 'Erro ao criar pedido.');
         return;
       }
@@ -827,7 +845,7 @@ export default function LiveRoomScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!res.ok) {
-        const body = (await res.json().catch(() => ({}))) as { message?: string };
+        const body = await safeJsonParse(res);
         setCheckoutError(body.message ?? 'Erro ao gerar Pix.');
         return;
       }
