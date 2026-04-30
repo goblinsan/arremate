@@ -75,6 +75,45 @@ export function normalizeRoute(pathname: string): string {
     .replace(/\/\d+(?=\/|$)/g, '/:id');
 }
 
+/**
+ * Patterns that indicate an actively suspicious or scanning request.
+ *
+ * The list covers the most common automated probes (path traversal, sensitive
+ * file discovery, CMS finger-printing, injection fragments in the URL, and
+ * null-byte / CRLF smuggling).  We test against the raw, un-normalized
+ * pathname so that obfuscated variants (e.g. double-encoded sequences) are
+ * still caught; the sanitized, normalized route is what gets logged.
+ */
+const SUSPICIOUS_PATH_PATTERNS: readonly RegExp[] = [
+  /\.\./,                                                          // path traversal
+  /\.(env|git|svn|htaccess|htpasswd|ssh|pem|key)([/?#]|$)/i,      // sensitive files
+  /\/(etc|proc|sys)\//i,                                           // Unix system paths
+  /(wp-admin|wp-config|phpmyadmin|admin\.php|shell\.php)/i,        // CMS / admin probes
+  /[<>'"`]|%3[cCeE]|%27|%22|%60/,                                 // XSS / injection chars
+  /union[\s+]select|exec[\s]*\(|eval[\s]*\(/i,                     // SQL / code injection
+  /(%00|%0[aAdD])/,                                                // null bytes / CRLF
+];
+
+/**
+ * Returns `true` when the raw pathname matches a known suspicious pattern.
+ *
+ * @internal Exported for unit testing only.
+ */
+export function isSuspiciousPath(pathname: string): boolean {
+  // Decode percent-encoded sequences so that obfuscated variants (e.g.
+  // %2F for '/', %20UNION%20SELECT) are normalised before pattern matching.
+  // An invalid encoding leaves the original string unchanged.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(pathname);
+  } catch {
+    decoded = pathname;
+  }
+  return SUSPICIOUS_PATH_PATTERNS.some(
+    (pattern) => pattern.test(pathname) || pattern.test(decoded),
+  );
+}
+
 // ─── Middleware ──────────────────────────────────────────────────────────────
 app.use('*', cors({ origin: corsOrigin, allowHeaders: ['Authorization', 'Content-Type'] }));
 app.use('*', secureHeaders());
@@ -98,6 +137,7 @@ app.use('*', async (c, next) => {
   const status = c.res.status;
   const route = normalizeRoute(pathname);
   const statusClass = `${Math.floor(status / 100)}xx`;
+  const requestId = c.res.headers.get('x-request-id') ?? c.req.header('x-request-id') ?? 'unknown';
 
   const eventName =
     status >= 500
@@ -107,7 +147,7 @@ app.use('*', async (c, next) => {
         : TelemetryEvents.HTTP_REQUEST_COMPLETED;
 
   trackEvent(eventName, {
-    requestId: c.res.headers.get('x-request-id') ?? c.req.header('x-request-id') ?? 'unknown',
+    requestId,
     method,
     route,
     status,
@@ -119,6 +159,24 @@ app.use('*', async (c, next) => {
 
   trackMetric('usage.request.count', 1, { route, method, statusClass });
   trackMetric('usage.request.latency_ms', elapsedMs, { route, method, statusClass });
+
+  // Emit a security event when the raw request path matches a known suspicious
+  // pattern (path traversal, injection probe, CMS scanner, etc.).  We log the
+  // normalised route rather than the raw path to avoid persisting the injection
+  // content itself in telemetry sinks.
+  if (isSuspiciousPath(pathname)) {
+    const ip =
+      c.req.header('cf-connecting-ip') ??
+      c.req.header('x-forwarded-for')?.split(',')[0]?.trim() ??
+      'unknown';
+    trackEvent(TelemetryEvents.SECURITY_SUSPICIOUS_REQUEST, {
+      requestId,
+      method,
+      route,
+      status,
+      ip,
+    });
+  }
 });
 
 // ─── Global error handler ────────────────────────────────────────────────────

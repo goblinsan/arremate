@@ -1,5 +1,6 @@
 import { createMiddleware } from 'hono/factory';
 import type { Role } from '@arremate/database';
+import { trackEvent, TelemetryEvents } from '@arremate/observability';
 import type { AppEnv } from '../types.js';
 
 /**
@@ -27,6 +28,12 @@ export function requireRole(...roles: Role[]) {
     const effectiveRole: Role = user.role === 'ADMIN' ? 'ADMIN' : (user.activeRole ?? user.role);
 
     if (!roles.includes(effectiveRole)) {
+      trackEvent(TelemetryEvents.AUTH_ACCESS_DENIED, {
+        requestId: c.req.header('x-request-id') ?? 'unknown',
+        requiredRoles: roles,
+        effectiveRole,
+        route: new URL(c.req.url).pathname,
+      });
       return c.json({ statusCode: 403, error: 'Forbidden', message: `Requires role: ${roles.join(' or ')}` }, 403);
     }
 

@@ -267,6 +267,7 @@ describe('TelemetryEvents', () => {
   it('exposes canonical security event names', () => {
     expect(TelemetryEvents.SECURITY_RATE_LIMIT_EXCEEDED).toBe('security.rate_limit.exceeded');
     expect(TelemetryEvents.SECURITY_INVALID_REQUEST).toBe('security.invalid_request');
+    expect(TelemetryEvents.SECURITY_SUSPICIOUS_REQUEST).toBe('security.suspicious_request');
     expect(TelemetryEvents.SECURITY_ADMIN_ACTION).toBe('security.admin.action');
   });
 
