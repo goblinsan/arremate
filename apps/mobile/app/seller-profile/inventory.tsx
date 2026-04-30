@@ -20,7 +20,7 @@ interface InventoryItem {
   title: string;
   description: string | null;
   condition: string | null;
-  startingPrice: number | string;
+  startingPrice: string;
   status: string;
   createdAt: string;
 }
@@ -30,8 +30,8 @@ interface InventoryResponse {
   meta: { total: number; page: number; perPage: number };
 }
 
-function formatBrl(amount: number | string): string {
-  const value = typeof amount === 'string' ? parseFloat(amount) : amount;
+function formatBrl(amount: string): string {
+  const value = parseFloat(amount);
   return value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
