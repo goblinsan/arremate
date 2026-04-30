@@ -32,7 +32,9 @@ let _deploymentContext: DeploymentContext = {};
  * Configure deployment metadata that will be automatically attached to every
  * {@link trackEvent} and {@link trackMetric} record.
  *
- * Call this once at application startup before any telemetry is emitted:
+ * Call this **once** at application startup (before any telemetry is emitted)
+ * and do not call it again at runtime.  Concurrent writes are not synchronised;
+ * calling this function after startup may produce inconsistent records.
  *
  * @example
  * setDeploymentContext({
@@ -43,6 +45,21 @@ let _deploymentContext: DeploymentContext = {};
  */
 export function setDeploymentContext(ctx: DeploymentContext): void {
   _deploymentContext = { ..._deploymentContext, ...ctx };
+}
+
+/** @internal */
+function getDeploymentFields(): MetricDimensions {
+  const fields: MetricDimensions = {};
+  if (_deploymentContext.service !== undefined) {
+    fields.service = _deploymentContext.service;
+  }
+  if (_deploymentContext.deploymentVersion !== undefined) {
+    fields.deploymentVersion = _deploymentContext.deploymentVersion;
+  }
+  if (_deploymentContext.gitSha !== undefined) {
+    fields.gitSha = _deploymentContext.gitSha;
+  }
+  return fields;
 }
 
 /** Replaceable error reporter. Set via {@link setErrorReporter}. */
@@ -189,20 +206,10 @@ export function emitMetric(name: string, value: number, dimensions?: MetricDimen
  * trackMetric('usage.request.count', 1, { route: '/v1/orders', statusClass: '2xx' });
  */
 export function trackMetric(name: string, value: number, dimensions?: MetricDimensions): void {
-  const deployment: MetricDimensions = {};
-  if (_deploymentContext.service !== undefined) {
-    deployment.service = _deploymentContext.service;
-  }
-  if (_deploymentContext.deploymentVersion !== undefined) {
-    deployment.deploymentVersion = _deploymentContext.deploymentVersion;
-  }
-  if (_deploymentContext.gitSha !== undefined) {
-    deployment.gitSha = _deploymentContext.gitSha;
-  }
   emit('info', 'usage.metric', {
     metric: name,
     value,
-    ...deployment,
+    ...getDeploymentFields(),
     ...dimensions,
   });
 }
@@ -234,9 +241,7 @@ export function trackEvent(name: string, payload?: EventPayload): void {
   emit('info', name, {
     event: name,
     ts: new Date().toISOString(),
-    ...((_deploymentContext.service !== undefined) && { service: _deploymentContext.service }),
-    ...((_deploymentContext.deploymentVersion !== undefined) && { deploymentVersion: _deploymentContext.deploymentVersion }),
-    ...((_deploymentContext.gitSha !== undefined) && { gitSha: _deploymentContext.gitSha }),
+    ...getDeploymentFields(),
     ...payload,
   });
 }
