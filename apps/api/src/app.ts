@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { randomUUID } from 'crypto';
-import { captureException, logger, emitMetric } from '@arremate/observability';
+import { captureException, trackEvent, trackMetric, TelemetryEvents } from '@arremate/observability';
 import { meRoutes } from './routes/me.js';
 import { sellerApplicationRoutes } from './routes/seller-applications.js';
 import { adminSellerApplicationRoutes } from './routes/admin-seller-applications.js';
@@ -94,37 +94,29 @@ app.use('*', async (c, next) => {
   const method = c.req.method;
   const pathname = new URL(c.req.url).pathname;
   const status = c.res.status;
-  const level = status >= 500 ? 'error' : status >= 400 ? 'warn' : 'info';
+  const route = normalizeRoute(pathname);
+  const statusClass = `${Math.floor(status / 100)}xx`;
 
-  const context = {
-    event: 'http.request.completed',
+  const eventName =
+    status >= 500
+      ? TelemetryEvents.HTTP_REQUEST_FAILED
+      : status >= 400
+        ? TelemetryEvents.HTTP_REQUEST_CLIENT_ERROR
+        : TelemetryEvents.HTTP_REQUEST_COMPLETED;
+
+  trackEvent(eventName, {
     requestId: c.res.headers.get('x-request-id') ?? c.req.header('x-request-id') ?? 'unknown',
     method,
-    path: pathname,
+    route,
     status,
     elapsedMs,
     origin: c.req.header('origin') ?? null,
     cfRay: c.req.header('cf-ray') ?? null,
     hasAuthorization: !!c.req.header('authorization'),
-  };
-
-  if (level === 'error') {
-    logger.error('http request failed', undefined, context);
-  } else if (level === 'warn') {
-    logger.warn('http request warning', context);
-  } else {
-    logger.info('http request', context);
-  }
-
-  // ── usage.request.count metric ───────────────────────────────────────────
-  const statusClass = `${Math.floor(status / 100)}xx`;
-  emitMetric('usage.request.count', 1, {
-    service: 'arremate-api',
-    route: normalizeRoute(pathname),
-    method,
-    statusClass,
-    deploymentVersion: process.env.DEPLOY_VERSION,
   });
+
+  trackMetric('usage.request.count', 1, { route, method, statusClass });
+  trackMetric('usage.request.latency_ms', elapsedMs, { route, method, statusClass });
 });
 
 // ─── Global error handler ────────────────────────────────────────────────────

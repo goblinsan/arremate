@@ -35,6 +35,8 @@ export const TelemetryEvents = {
   // ── Payment ────────────────────────────────────────────────────────────────
   /** A Pix payment charge was created. */
   PAYMENT_CREATED: 'payment.created',
+  /** A Pix payment charge could not be created (provider or validation error). */
+  PAYMENT_CREATION_FAILED: 'payment.creation.failed',
   /** A Pix payment was confirmed as paid (webhook). */
   PAYMENT_PAID: 'payment.paid',
   /** A Pix payment expired without being paid. */

@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { prisma } from '@arremate/database';
 import { createLiveVideoProvider } from '@arremate/video';
 import { randomInt } from 'node:crypto';
+import { trackEvent, TelemetryEvents } from '@arremate/observability';
 import { authenticate } from '../plugins/authenticate.js';
 import { requireRole } from '../plugins/authorize.js';
 import type { AppEnv } from '../types.js';
@@ -251,6 +252,7 @@ app.post('/v1/sessions/:sessionId/bids', authenticate, async (c) => {
 
   const amount = Number(body.amount);
   if (!Number.isFinite(amount) || amount <= 0) {
+    trackEvent(TelemetryEvents.AUCTION_BID_REJECTED, { sessionId, userId: user.id, reason: 'INVALID_AMOUNT' });
     return c.json({ statusCode: 400, error: 'Bad Request', message: 'amount must be a positive number' }, 400);
   }
 
@@ -267,18 +269,22 @@ app.post('/v1/sessions/:sessionId/bids', authenticate, async (c) => {
   }
 
   if (session.status !== 'LIVE') {
+    trackEvent(TelemetryEvents.AUCTION_BID_REJECTED, { sessionId, auctionId: session.showId, userId: user.id, amount, reason: 'SESSION_NOT_LIVE' });
     return c.json({ statusCode: 409, error: 'Conflict', message: 'Bids are only accepted during a LIVE session' }, 409);
   }
 
   if (!session.pinnedItem || !session.pinnedItemId) {
+    trackEvent(TelemetryEvents.AUCTION_BID_REJECTED, { sessionId, auctionId: session.showId, userId: user.id, amount, reason: 'NO_PINNED_ITEM' });
     return c.json({ statusCode: 409, error: 'Conflict', message: 'No item is currently pinned for bidding' }, 409);
   }
 
   if (session.show.sellerId === user.id) {
+    trackEvent(TelemetryEvents.AUCTION_BID_REJECTED, { sessionId, auctionId: session.showId, userId: user.id, amount, reason: 'SELLER_OWN_BID' });
     return c.json({ statusCode: 403, error: 'Forbidden', message: 'Sellers cannot bid on their own live item' }, 403);
   }
 
   if (session.pinnedItem.soldOut) {
+    trackEvent(TelemetryEvents.AUCTION_BID_REJECTED, { sessionId, auctionId: session.showId, userId: user.id, amount, reason: 'ITEM_SOLD_OUT' });
     return c.json({ statusCode: 409, error: 'Conflict', message: 'This item is no longer available for bidding' }, 409);
   }
 
@@ -332,20 +338,32 @@ app.post('/v1/sessions/:sessionId/bids', authenticate, async (c) => {
       };
     });
 
+    trackEvent(TelemetryEvents.AUCTION_BID_PLACED, {
+      sessionId,
+      auctionId: session.showId,
+      userId: user.id,
+      amount,
+      bidId: result.bid.id,
+      queueItemId: result.queueItem.id,
+    });
+
     return c.json(result, 201);
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
 
     if (message === 'QUEUE_ITEM_NOT_FOUND') {
+      trackEvent(TelemetryEvents.AUCTION_BID_REJECTED, { sessionId, auctionId: session.showId, userId: user.id, amount, reason: 'QUEUE_ITEM_NOT_FOUND' });
       return c.json({ statusCode: 404, error: 'Not Found', message: 'Pinned item not found' }, 404);
     }
 
     if (message === 'ITEM_SOLD_OUT') {
+      trackEvent(TelemetryEvents.AUCTION_BID_REJECTED, { sessionId, auctionId: session.showId, userId: user.id, amount, reason: 'ITEM_SOLD_OUT' });
       return c.json({ statusCode: 409, error: 'Conflict', message: 'This item is no longer available for bidding' }, 409);
     }
 
     if (message.startsWith('BID_TOO_LOW:')) {
       const minimumBid = Number(message.split(':')[1]);
+      trackEvent(TelemetryEvents.AUCTION_BID_REJECTED, { sessionId, auctionId: session.showId, userId: user.id, amount, reason: 'BID_TOO_LOW', minimumBid });
       return c.json({
         statusCode: 409,
         error: 'Conflict',
