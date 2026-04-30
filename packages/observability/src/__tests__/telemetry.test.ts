@@ -242,6 +242,7 @@ describe('TelemetryEvents', () => {
 
   it('exposes canonical payment event names', () => {
     expect(TelemetryEvents.PAYMENT_CREATED).toBe('payment.created');
+    expect(TelemetryEvents.PAYMENT_CREATION_FAILED).toBe('payment.creation.failed');
     expect(TelemetryEvents.PAYMENT_PAID).toBe('payment.paid');
     expect(TelemetryEvents.PAYMENT_EXPIRED).toBe('payment.expired');
     expect(TelemetryEvents.PAYMENT_REFUNDED).toBe('payment.refunded');

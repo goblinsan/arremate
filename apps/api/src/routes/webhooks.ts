@@ -3,6 +3,7 @@ import { prisma, Prisma } from '@arremate/database';
 import { createPixAdapter } from '@arremate/payments';
 import { createLiveVideoProvider } from '@arremate/video';
 import { createHash, timingSafeEqual } from 'node:crypto';
+import { trackEvent, TelemetryEvents } from '@arremate/observability';
 import { createPayableFromOrder } from '../services/payout-service.js';
 import type { AppEnv } from '../types.js';
 
@@ -41,11 +42,14 @@ app.post('/v1/webhooks/pix', async (c) => {
   const signature = c.req.header('x-pix-signature') ?? '';
   const rawBody = await c.req.text();
 
+  trackEvent(TelemetryEvents.WEBHOOK_RECEIVED, { provider: 'pix' });
+
   const pixAdapter = createPixAdapter();
   let event;
   try {
     event = pixAdapter.verifyWebhook(rawBody, signature);
   } catch {
+    trackEvent(TelemetryEvents.WEBHOOK_REJECTED, { provider: 'pix', reason: 'INVALID_SIGNATURE' });
     return c.json({ statusCode: 400, error: 'Bad Request', message: 'Invalid webhook signature' }, 400);
   }
 
@@ -57,6 +61,7 @@ app.post('/v1/webhooks/pix', async (c) => {
   // Deduplicate: if we have already processed this exact delivery, ack and return.
   const existingLog = await prisma.pixWebhookLog.findUnique({ where: { idempotencyKey } });
   if (existingLog) {
+    trackEvent(TelemetryEvents.WEBHOOK_DUPLICATE, { provider: 'pix', providerId: event.providerId });
     return c.json({ received: true });
   }
 
@@ -93,6 +98,14 @@ app.post('/v1/webhooks/pix', async (c) => {
     }
   });
 
+  trackEvent(TelemetryEvents.WEBHOOK_PROCESSED, {
+    provider: 'pix',
+    providerId: event.providerId,
+    paymentId: payment.id,
+    orderId: payment.orderId,
+    eventStatus: event.status,
+  });
+
   return c.json({ received: true });
 });
 
@@ -101,6 +114,8 @@ app.post('/v1/webhooks/live-video', async (c) => {
   const provider = createLiveVideoProvider(providerName);
   const rawBody = await c.req.text();
 
+  trackEvent(TelemetryEvents.WEBHOOK_RECEIVED, { provider: providerName });
+
   let payload: CloudflareLiveWebhookPayload;
 
   if (providerName === 'cloudflare_stream') {
@@ -108,12 +123,14 @@ app.post('/v1/webhooks/live-video', async (c) => {
     if (genericWebhookSecret) {
       const expectedSecret = process.env.CF_STREAM_WEBHOOK_SECRET;
       if (!expectedSecret || !secureEqual(genericWebhookSecret, expectedSecret)) {
+        trackEvent(TelemetryEvents.WEBHOOK_REJECTED, { provider: providerName, reason: 'INVALID_SIGNATURE' });
         return c.json({ statusCode: 400, error: 'Bad Request', message: 'Invalid webhook signature' }, 400);
       }
 
       payload = JSON.parse(rawBody) as CloudflareLiveWebhookPayload;
     } else {
       if (!provider.verifyWebhook) {
+        trackEvent(TelemetryEvents.WEBHOOK_REJECTED, { provider: providerName, reason: 'NO_VERIFY_SUPPORT' });
         return c.json({ statusCode: 400, error: 'Bad Request', message: 'Provider does not support webhooks' }, 400);
       }
 
@@ -121,11 +138,13 @@ app.post('/v1/webhooks/live-video', async (c) => {
       try {
         payload = provider.verifyWebhook(rawBody, signature) as CloudflareLiveWebhookPayload;
       } catch {
+        trackEvent(TelemetryEvents.WEBHOOK_REJECTED, { provider: providerName, reason: 'INVALID_SIGNATURE' });
         return c.json({ statusCode: 400, error: 'Bad Request', message: 'Invalid webhook signature' }, 400);
       }
     }
   } else {
     if (!provider.verifyWebhook) {
+      trackEvent(TelemetryEvents.WEBHOOK_REJECTED, { provider: providerName, reason: 'NO_VERIFY_SUPPORT' });
       return c.json({ statusCode: 400, error: 'Bad Request', message: 'Provider does not support webhooks' }, 400);
     }
 
@@ -133,6 +152,7 @@ app.post('/v1/webhooks/live-video', async (c) => {
     try {
       payload = provider.verifyWebhook(rawBody, signature) as CloudflareLiveWebhookPayload;
     } catch {
+      trackEvent(TelemetryEvents.WEBHOOK_REJECTED, { provider: providerName, reason: 'INVALID_SIGNATURE' });
       return c.json({ statusCode: 400, error: 'Bad Request', message: 'Invalid webhook signature' }, 400);
     }
   }
@@ -212,6 +232,14 @@ app.post('/v1/webhooks/live-video', async (c) => {
       });
     }
   }
+
+  trackEvent(TelemetryEvents.WEBHOOK_PROCESSED, {
+    provider: providerName,
+    providerSessionId,
+    sessionId: session.id,
+    showId: session.showId,
+    eventType,
+  });
 
   return c.json({ received: true });
 });

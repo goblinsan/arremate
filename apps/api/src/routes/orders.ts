@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { prisma } from '@arremate/database';
 import { createPixAdapter } from '@arremate/payments';
-import { logger } from '@arremate/observability';
+import { logger, trackEvent, TelemetryEvents } from '@arremate/observability';
 import { authenticate } from '../plugins/authenticate.js';
 import { requireRole } from '../plugins/authorize.js';
 import { evaluateFee } from '../services/fee-evaluator.js';
@@ -107,13 +107,30 @@ app.post('/v1/orders/:orderId/pix-payment', authenticate, async (c) => {
   if (existingPayment) return c.json(existingPayment);
   const chargeAmountCents = resolveChargeAmount(order);
   const pixAdapter = createPixAdapter();
-  const charge = await pixAdapter.createPixCharge({
-    amountCents: chargeAmountCents, orderId: order.id,
-    description: `Pedido Arremate #${order.id.slice(-8).toUpperCase()}`,
-    expiresInMinutes: 30,
-  });
+  let charge;
+  try {
+    charge = await pixAdapter.createPixCharge({
+      amountCents: chargeAmountCents, orderId: order.id,
+      description: `Pedido Arremate #${order.id.slice(-8).toUpperCase()}`,
+      expiresInMinutes: 30,
+    });
+  } catch (err) {
+    trackEvent(TelemetryEvents.PAYMENT_CREATION_FAILED, {
+      orderId: order.id,
+      amountCents: chargeAmountCents,
+      provider: 'pix',
+      reason: err instanceof Error ? err.message : 'unknown',
+    });
+    throw err;
+  }
   const payment = await prisma.payment.create({
     data: { orderId: order.id, status: 'PENDING', provider: 'pix', amountCents: chargeAmountCents, providerId: charge.providerId, pixCode: charge.pixCode, pixQrCodeBase64: charge.pixQrCodeBase64, pixExpiresAt: charge.expiresAt },
+  });
+  trackEvent(TelemetryEvents.PAYMENT_CREATED, {
+    orderId: order.id,
+    paymentId: payment.id,
+    amountCents: chargeAmountCents,
+    provider: 'pix',
   });
   return c.json(payment, 201);
 });
