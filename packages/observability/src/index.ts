@@ -1,5 +1,11 @@
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+// ─── Metrics ──────────────────────────────────────────────────────────────────
+
+export interface MetricDimensions {
+  [key: string]: string | number | boolean | undefined;
+}
+
 export interface LogContext {
   [key: string]: unknown;
 }
@@ -104,6 +110,29 @@ export function captureException(error: unknown, context?: LogContext): void {
       ? { message: error.message, stack: error.stack, name: error.name }
       : { raw: String(error) };
   emit('error', 'captureException', { ...context, err });
+}
+
+/**
+ * Emit a counter or gauge metric as a structured log event.
+ *
+ * Metric entries are distinguishable from regular log entries by the presence
+ * of the `metric` and `value` fields.  Any log aggregation pipeline (e.g.
+ * CloudWatch Metric Filters, Datadog log-based metrics, Grafana Loki rules)
+ * can parse these entries to build counters, gauges, and alert conditions.
+ *
+ * @param name       Dot-separated metric name, e.g. `usage.request.count`.
+ * @param value      Numeric value for the metric (counter increment, gauge reading, duration, …).
+ * @param dimensions Optional key/value tags that annotate the measurement.
+ *
+ * @example
+ * emitMetric('usage.request.count', 1, { service: 'arremate-api', statusClass: '2xx' });
+ */
+export function emitMetric(name: string, value: number, dimensions?: MetricDimensions): void {
+  emit('info', 'usage.metric', {
+    metric: name,
+    value,
+    ...dimensions,
+  });
 }
 
 /**

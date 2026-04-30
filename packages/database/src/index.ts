@@ -1,12 +1,20 @@
 import { Pool, neonConfig } from '@neondatabase/serverless';
 import { PrismaNeon } from '@prisma/adapter-neon';
 import { PrismaClient } from '@prisma/client';
+import { emitMetric, logger } from '@arremate/observability';
 
 // Polyfill WebSocket for Node.js (not needed in CF Workers or Neon Edge)
 if (typeof WebSocket === 'undefined') {
   // eslint-disable-next-line @typescript-eslint/no-require-imports
   neonConfig.webSocketConstructor = require('ws');
 }
+
+/**
+ * Latency threshold in milliseconds above which a database query is
+ * considered slow and triggers a warning-level log entry suitable for
+ * alert rule ingestion.
+ */
+const SLOW_QUERY_THRESHOLD_MS = 500;
 
 function createPrismaClient() {
   const databaseUrl = process.env.DATABASE_URL;
@@ -52,7 +60,35 @@ function createDelegateProxy(delegateName: string): PrismaDelegate {
         if (typeof method !== 'function') {
           throw new Error(`Prisma delegate method not found: ${delegateName}.${String(delegateMethod)}`);
         }
-        return (method as (...methodArgs: unknown[]) => unknown).apply(delegate, args);
+
+        const startedAt = Date.now();
+        const dimensions = { model: delegateName, operation: String(delegateMethod) };
+
+        try {
+          const result = await (method as (...methodArgs: unknown[]) => unknown).apply(delegate, args);
+          const elapsedMs = Date.now() - startedAt;
+
+          emitMetric('usage.db.query.count', 1, dimensions);
+          emitMetric('usage.db.query.duration', elapsedMs, dimensions);
+
+          if (elapsedMs >= SLOW_QUERY_THRESHOLD_MS) {
+            logger.warn('slow database query', {
+              event: 'db.slow_query',
+              ...dimensions,
+              elapsedMs,
+              thresholdMs: SLOW_QUERY_THRESHOLD_MS,
+            });
+          }
+
+          return result;
+        } catch (err) {
+          const elapsedMs = Date.now() - startedAt;
+
+          emitMetric('usage.db.query.count', 1, { ...dimensions, error: 'true' });
+          emitMetric('usage.db.query.duration', elapsedMs, { ...dimensions, error: 'true' });
+
+          throw err;
+        }
       });
     },
   });

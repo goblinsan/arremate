@@ -2,7 +2,7 @@ import { Hono } from 'hono';
 import { cors } from 'hono/cors';
 import { secureHeaders } from 'hono/secure-headers';
 import { randomUUID } from 'crypto';
-import { captureException, logger } from '@arremate/observability';
+import { captureException, logger, emitMetric } from '@arremate/observability';
 import { meRoutes } from './routes/me.js';
 import { sellerApplicationRoutes } from './routes/seller-applications.js';
 import { adminSellerApplicationRoutes } from './routes/admin-seller-applications.js';
@@ -56,6 +56,23 @@ function resolveErrorCorsOrigin(requestOrigin: string | undefined): string | nul
   return corsOrigin;
 }
 
+/**
+ * Normalize a URL pathname to a low-cardinality route label suitable for use
+ * as a metric dimension.  Replaces dynamic segments (UUIDs and pure-numeric
+ * IDs) with the placeholder `:id`.
+ *
+ * @example
+ * normalizeRoute('/v1/orders/123')                        // → '/v1/orders/:id'
+ * normalizeRoute('/v1/admin/users/a1b2c3d4-…/profile')   // → '/v1/admin/users/:id/profile'
+ */
+export function normalizeRoute(pathname: string): string {
+  return pathname
+    // Replace UUID v1–v5 segments
+    .replace(/\/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '/:id')
+    // Replace pure-numeric segments
+    .replace(/\/\d+(?=\/|$)/g, '/:id');
+}
+
 // ─── Middleware ──────────────────────────────────────────────────────────────
 app.use('*', cors({ origin: corsOrigin, allowHeaders: ['Authorization', 'Content-Type'] }));
 app.use('*', secureHeaders());
@@ -98,6 +115,16 @@ app.use('*', async (c, next) => {
   } else {
     logger.info('http request', context);
   }
+
+  // ── usage.request.count metric ───────────────────────────────────────────
+  const statusClass = `${Math.floor(status / 100)}xx`;
+  emitMetric('usage.request.count', 1, {
+    service: 'arremate-api',
+    route: normalizeRoute(pathname),
+    method,
+    statusClass,
+    deploymentVersion: process.env.DEPLOY_VERSION,
+  });
 });
 
 // ─── Global error handler ────────────────────────────────────────────────────
