@@ -42,5 +42,20 @@ export function useApiClient() {
     [getAccessToken],
   );
 
-  return { get, post };
+  const del = useCallback(
+    async (path: string): Promise<void> => {
+      const token = getAccessToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+
+      const res = await fetch(`${API_URL}${path}`, { method: 'DELETE', headers });
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json().catch(() => null) as { message?: string } | null;
+        throw new Error(body?.message ?? `Request failed: ${res.status}`);
+      }
+    },
+    [getAccessToken],
+  );
+
+  return { get, post, del };
 }

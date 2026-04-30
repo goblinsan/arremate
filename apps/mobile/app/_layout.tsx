@@ -39,6 +39,10 @@ export default function RootLayout() {
             <Stack.Screen name="order/[id]" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="login" options={{ presentation: 'modal' }} />
             <Stack.Screen name="auth/callback" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="profile/payments-shipping" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="profile/bids-offers" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="profile/account-health" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="profile/saved-shows" options={{ animation: 'slide_from_right' }} />
           </Stack>
         </AuthProvider>
       </SafeAreaProvider>
