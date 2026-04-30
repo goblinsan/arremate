@@ -217,5 +217,119 @@ app.delete('/v1/seller/shows/:id', ...sellerGuard, async (c) => {
   return c.body(null, 204);
 });
 
+// ─── Show Analytics ──────────────────────────────────────────────────────────
+
+app.get('/v1/seller/shows/:id/analytics', ...sellerGuard, async (c) => {
+  const user = c.get('currentUser');
+  const id = c.req.param('id');
+
+  const show = await prisma.show.findUnique({ where: { id } });
+  if (!show || show.sellerId !== user.id) {
+    return c.json({ statusCode: 404, error: 'Not Found', message: 'Show not found' }, 404);
+  }
+  if (show.status !== 'ENDED') {
+    return c.json({ statusCode: 409, error: 'Conflict', message: 'Analytics are only available for ended shows' }, 409);
+  }
+
+  const sessions = await prisma.showSession.findMany({
+    where: { showId: id },
+    select: { id: true, startedAt: true, endedAt: true },
+  });
+  const sessionIds = sessions.map((s) => s.id);
+
+  const orders = await prisma.order.findMany({
+    where: { claim: { sessionId: { in: sessionIds } } },
+    select: {
+      id: true,
+      buyerId: true,
+      status: true,
+      totalCents: true,
+      sellerPayoutCents: true,
+      createdAt: true,
+      review: { select: { rating: true } },
+    },
+  });
+
+  // Sales metrics
+  const estimatedSalesCents = orders.reduce((sum, o) => sum + o.totalCents, 0);
+  const completedEarningsCents = orders
+    .filter((o) => o.status === 'PAID')
+    .reduce((sum, o) => sum + (o.sellerPayoutCents ?? 0), 0);
+  const totalOrders = orders.length;
+  const averageOrderValueCents = totalOrders > 0 ? Math.round(estimatedSalesCents / totalOrders) : 0;
+
+  // Stream metrics — buyers
+  const buyerIds = [...new Set(orders.map((o) => o.buyerId))];
+  const totalBuyers = buyerIds.length;
+
+  const showStartedAt = sessions.reduce<Date | null>((earliest, s) => {
+    if (!s.startedAt) return earliest;
+    if (!earliest || s.startedAt < earliest) return s.startedAt;
+    return earliest;
+  }, null);
+
+  let firstTimeBuyers = totalBuyers;
+  if (buyerIds.length > 0 && showStartedAt) {
+    const priorBuyers = await prisma.order.findMany({
+      where: {
+        sellerId: user.id,
+        buyerId: { in: buyerIds },
+        status: 'PAID',
+        createdAt: { lt: showStartedAt },
+      },
+      select: { buyerId: true },
+      distinct: ['buyerId'],
+    });
+    const priorBuyerSet = new Set(priorBuyers.map((o) => o.buyerId));
+    firstTimeBuyers = buyerIds.filter((bid) => !priorBuyerSet.has(bid)).length;
+  }
+  const returningBuyers = totalBuyers - firstTimeBuyers;
+
+  // Show duration
+  let showDurationSeconds: number | null = null;
+  for (const session of sessions) {
+    if (session.startedAt && session.endedAt) {
+      const durationSec = Math.round((session.endedAt.getTime() - session.startedAt.getTime()) / 1000);
+      if (showDurationSeconds === null || durationSec > showDurationSeconds) {
+        showDurationSeconds = durationSec;
+      }
+    }
+  }
+
+  // Views
+  const totalViews = await prisma.showPresence.count({ where: { showId: id } });
+
+  // Average order rating
+  const ratings = orders.filter((o) => o.review !== null).map((o) => o.review!.rating);
+  const averageOrderRating =
+    ratings.length > 0
+      ? Math.round((ratings.reduce((sum, r) => sum + r, 0) / ratings.length) * 10) / 10
+      : null;
+
+  return c.json({
+    showId: show.id,
+    showTitle: show.title,
+    showStatus: show.status,
+    salesMetrics: {
+      estimatedSalesCents,
+      completedEarningsCents,
+      totalOrders,
+      averageOrderValueCents,
+      giveawaySpendCents: 0,
+      giveaways: 0,
+    },
+    streamMetrics: {
+      totalBuyers,
+      firstTimeBuyers,
+      returningBuyers,
+      shares: 0,
+      showDurationSeconds,
+      maxConcurrentViewers: null,
+      totalViews,
+      averageOrderRating,
+    },
+  });
+});
+
 export { app as sellerShowRoutes };
 

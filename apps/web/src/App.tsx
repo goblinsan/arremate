@@ -22,6 +22,7 @@ import ShowDetailPage from './pages/ShowDetailPage';
 import AuctionsPage from './pages/AuctionsPage';
 import LiveRoomPage from './pages/LiveRoomPage';
 import AuthCallbackPage from './pages/AuthCallbackPage';
+import SellerShowAnalyticsPage from './pages/SellerShowAnalyticsPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 
 function ProfileSwitcher() {
@@ -339,6 +340,7 @@ function AppShell() {
           <Route path="/seller/shows" element={<SellerShowsPage />} />
           <Route path="/seller/shows/:id" element={<SellerShowFormPage />} />
           <Route path="/seller/shows/:id/live" element={<SellerLiveControlPage />} />
+          <Route path="/seller/shows/:id/analytics" element={<SellerShowAnalyticsPage />} />
           <Route path="/seller/inventory" element={<SellerInventoryPage />} />
           <Route path="/seller/inventory/:id" element={<SellerInventoryFormPage />} />
           <Route path="/seller/orders" element={<SellerOrdersPage />} />
