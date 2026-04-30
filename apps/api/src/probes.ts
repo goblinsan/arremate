@@ -6,6 +6,10 @@ import { runProbe } from '@arremate/observability';
  * Set `SYNTHETIC_PROBE_ORIGIN` in the environment to point probes at the
  * correct deployment.  Defaults to `http://localhost:4000` for local runs.
  *
+ * `process.env` is available in this Workers deployment because
+ * `nodejs_compat_populate_process_env` is set in wrangler.toml, consistent
+ * with how environment variables are accessed throughout this codebase.
+ *
  * @example
  * # production
  * SYNTHETIC_PROBE_ORIGIN=https://api.arrematelive.com
