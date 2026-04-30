@@ -33,6 +33,7 @@ import { adminFinanceExportRoutes } from './routes/admin-finance-exports.js';
 import { deviceRoutes } from './routes/devices.js';
 import { buyerProfileRoutes } from './routes/buyer-profile.js';
 import { sellerShippingProfileRoutes } from './routes/seller-shipping-profiles.js';
+import { adminTelemetryRoutes } from './routes/admin-telemetry.js';
 import type { AppEnv } from './types.js';
 
 export const app = new Hono<AppEnv>();
@@ -240,3 +241,4 @@ app.route('/', adminFinanceExportRoutes);
 app.route('/', deviceRoutes);
 app.route('/', buyerProfileRoutes);
 app.route('/', sellerShippingProfileRoutes);
+app.route('/', adminTelemetryRoutes);
