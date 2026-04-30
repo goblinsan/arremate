@@ -78,7 +78,7 @@ export const availabilityAlerts: readonly AlertRule[] = [
     id: 'availability.5xx_rate',
     name: 'High 5xx Error Rate',
     description:
-      'The proportion of HTTP requests that resulted in a 5xx server error has exceeded 2 %' +
+      'The proportion of HTTP requests that resulted in a 5xx server error has exceeded 2%' +
       ' over a 5-minute window.  This may indicate a deployment regression, an unhandled' +
       ' exception, or an infrastructure outage.',
     severity: 'critical',
@@ -94,7 +94,7 @@ export const availabilityAlerts: readonly AlertRule[] = [
     id: 'availability.latency_p95',
     name: 'High API Response Latency (p95)',
     description:
-      'The 95th-percentile HTTP response latency has exceeded 1 500 ms over a 5-minute' +
+      'The 95th-percentile HTTP response latency has exceeded 1500 ms over a 5-minute' +
       ' window.  This may signal slow database queries, downstream provider latency, or' +
       ' insufficient compute resources.',
     severity: 'warning',
@@ -118,7 +118,7 @@ export const businessFailureAlerts: readonly AlertRule[] = [
     id: 'business.bid_failure_rate',
     name: 'High Bid Failure Rate',
     description:
-      'The proportion of bid attempts that were rejected has exceeded 5 % over a 5-minute' +
+      'The proportion of bid attempts that were rejected has exceeded 5% over a 5-minute' +
       ' window.  Elevated bid rejection can degrade seller revenue and buyer trust during' +
       ' live auction sessions.',
     severity: 'warning',
@@ -134,7 +134,7 @@ export const businessFailureAlerts: readonly AlertRule[] = [
     id: 'business.payment_failure_rate',
     name: 'High Payment Failure Rate',
     description:
-      'The proportion of Pix payment creation attempts that failed has exceeded 3 % over a' +
+      'The proportion of Pix payment creation attempts that failed has exceeded 3% over a' +
       ' 5-minute window.  Payment failures block order completion and directly reduce GMV.',
     severity: 'critical',
     signal: 'payment.creation.failed',
@@ -230,7 +230,7 @@ export const budgetAlerts: readonly AlertRule[] = [
     id: 'budget.request_surge',
     name: 'Request Volume Surge',
     description:
-      'Total HTTP request count (usage.request.count) has exceeded 1 000 requests in a' +
+      'Total HTTP request count (usage.request.count) has exceeded 1,000 requests in a' +
       ' 1-minute window.  A sudden surge may indicate a DDoS attempt, a runaway client,' +
       ' or a viral traffic event that will drive unexpected infrastructure costs.',
     severity: 'warning',
@@ -246,7 +246,7 @@ export const budgetAlerts: readonly AlertRule[] = [
     id: 'budget.db_query_spike',
     name: 'Database Query Rate Spike',
     description:
-      'Total database query count (usage.db.query.count) has exceeded 5 000 queries in a' +
+      'Total database query count (usage.db.query.count) has exceeded 5,000 queries in a' +
       ' 1-minute window.  A query spike can saturate the Neon connection pool, cause' +
       ' latency regressions, and increase database compute costs.',
     severity: 'warning',
