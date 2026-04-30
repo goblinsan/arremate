@@ -461,6 +461,16 @@ export default function SellerLiveControlPage() {
           ) : (
             'Este show foi encerrado.'
           )}
+          {show.status === 'ENDED' && (
+            <div className="mt-4">
+              <Link
+                to={`/seller/shows/${show.id}/analytics`}
+                className="inline-flex items-center gap-2 bg-brand-500 hover:bg-orange-600 text-white font-semibold px-5 py-2.5 rounded-xl text-sm transition-colors"
+              >
+                Ver analytics do show
+              </Link>
+            </div>
+          )}
         </div>
       )}
 
