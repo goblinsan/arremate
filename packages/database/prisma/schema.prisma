@@ -52,6 +52,7 @@ model User {
   payoutEntries         PayoutEntry[]           @relation("SellerPayoutEntries")
   deviceTokens          DeviceToken[]           @relation("UserDeviceTokens")
   notificationPreference NotificationPreference?
+  savedShows            SavedShow[]             @relation("UserSavedShows")
 
   @@map("users")
 }
@@ -203,6 +204,7 @@ model Show {
   sessions       ShowSession[]
   raidedSessions ShowSession[]       @relation("RaidedSessions")
   presences      ShowPresence[]
+  savedByUsers   SavedShow[]         @relation("ShowSavedByUsers")
 
   @@map("shows")
 }
@@ -946,4 +948,18 @@ model NotificationPreference {
   updatedAt        DateTime @updatedAt
 
   @@map("notification_preferences")
+}
+
+// ─── Saved Shows ──────────────────────────────────────────────────────────────
+
+model SavedShow {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation("UserSavedShows", fields: [userId], references: [id], onDelete: Cascade)
+  showId    String
+  show      Show     @relation("ShowSavedByUsers", fields: [showId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, showId])
+  @@map("saved_shows")
 }
