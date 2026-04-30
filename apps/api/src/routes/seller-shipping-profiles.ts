@@ -36,7 +36,7 @@ app.post('/v1/seller/shipping-profiles', ...sellerGuard, async (c) => {
       ? (shippingType as ShippingType)
       : 'FREE';
 
-  if ((resolvedType === 'FLAT_RATE' || resolvedType === 'DISCOUNTED') && (shippingCents === undefined || shippingCents < 0)) {
+  if ((resolvedType === 'FLAT_RATE' || resolvedType === 'DISCOUNTED') && (shippingCents === undefined || shippingCents === null || shippingCents < 0)) {
     return c.json({ statusCode: 400, error: 'Bad Request', message: 'shippingCents must be a non-negative number for FLAT_RATE or DISCOUNTED profiles' }, 400);
   }
 

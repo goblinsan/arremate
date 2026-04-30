@@ -396,6 +396,12 @@ export default function SellerShowFormPage() {
   const queuedItemIds = new Set(queue.map((q) => q.inventoryItemId));
   const availableItems = inventory.filter((item) => !queuedItemIds.has(item.id));
 
+  function formatShippingProfile(profile: ShippingProfile): string {
+    if (profile.shippingType === 'FREE') return 'Grátis';
+    const value = `R$ ${((profile.shippingCents ?? 0) / 100).toFixed(2)}`;
+    return profile.shippingType === 'FLAT_RATE' ? `Taxa fixa: ${value}` : `Desconto: ${value}`;
+  }
+
   return (
     <div className="max-w-3xl mx-auto px-4 py-12">
       <div className="mb-8 flex items-center gap-4">
@@ -515,7 +521,7 @@ export default function SellerShowFormPage() {
               <option value="">Sem perfil de frete</option>
               {shippingProfiles.map((p) => (
                 <option key={p.id} value={p.id}>
-                  {p.name} ({p.shippingType === 'FREE' ? 'Grátis' : p.shippingType === 'FLAT_RATE' ? `Taxa fixa: R$ ${((p.shippingCents ?? 0) / 100).toFixed(2)}` : `Desconto: R$ ${((p.shippingCents ?? 0) / 100).toFixed(2)}`})
+                  {p.name} ({formatShippingProfile(p)})
                 </option>
               ))}
             </select>
@@ -730,11 +736,7 @@ export default function SellerShowFormPage() {
                 <div>
                   <span className="text-sm font-medium text-gray-800">{profile.name}</span>
                   <span className="ml-2 text-xs text-gray-500">
-                    {profile.shippingType === 'FREE'
-                      ? 'Grátis'
-                      : profile.shippingType === 'FLAT_RATE'
-                        ? `Taxa fixa: R$ ${((profile.shippingCents ?? 0) / 100).toFixed(2)}`
-                        : `Desconto: R$ ${((profile.shippingCents ?? 0) / 100).toFixed(2)}`}
+                    {formatShippingProfile(profile)}
                   </span>
                 </div>
                 <button
