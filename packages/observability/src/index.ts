@@ -1,5 +1,9 @@
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
+// ─── Synthetic probes ─────────────────────────────────────────────────────────
+export { runProbe } from './probes.js';
+export type { ProbeResult, ProbeOptions } from './probes.js';
+
 // ─── Metrics ──────────────────────────────────────────────────────────────────
 
 export interface MetricDimensions {

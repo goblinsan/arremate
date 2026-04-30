@@ -79,6 +79,12 @@ export const TelemetryEvents = {
   // ── Database ───────────────────────────────────────────────────────────────
   /** A database query exceeded the slow-query threshold. */
   DB_SLOW_QUERY: 'db.slow_query',
+
+  // ── Synthetic probes ───────────────────────────────────────────────────────
+  /** A synthetic probe request completed successfully (HTTP 2xx). */
+  PROBE_OK: 'synthetic.probe.ok',
+  /** A synthetic probe request failed (non-2xx, network error, or timeout). */
+  PROBE_ERROR: 'synthetic.probe.error',
 } as const;
 
 /** Union type of all canonical event name strings. */
