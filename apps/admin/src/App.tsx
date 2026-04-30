@@ -16,6 +16,11 @@ import {
   FileText,
   FileDown,
   Scale,
+  Activity,
+  ShoppingBag,
+  Shield,
+  BarChart3,
+  CheckCircle2,
 } from 'lucide-react';
 import DashboardPage from './pages/DashboardPage';
 import LoginPage from './pages/LoginPage';
@@ -32,6 +37,11 @@ import PayoutBatchesPage from './pages/PayoutBatchesPage';
 import FiscalDocumentsPage from './pages/FiscalDocumentsPage';
 import FinanceExportPage from './pages/FinanceExportPage';
 import FinanceReconciliationPage from './pages/FinanceReconciliationPage';
+import EngineeringDashboardPage from './pages/EngineeringDashboardPage';
+import BusinessDashboardPage from './pages/BusinessDashboardPage';
+import SecurityDashboardPage from './pages/SecurityDashboardPage';
+import BudgetDashboardPage from './pages/BudgetDashboardPage';
+import TelemetryRolloutPage from './pages/TelemetryRolloutPage';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { AuthGuard } from './components/AuthGuard';
 
@@ -50,6 +60,11 @@ const navItems = [
   { to: '/fiscal-documents', label: 'Documentos Fiscais', icon: FileText },
   { to: '/finance/export', label: 'Exportação Financeira', icon: FileDown },
   { to: '/finance/reconciliation', label: 'Reconc. Financeira', icon: Scale },
+  { to: '/telemetry/engineering', label: 'Eng. Dashboard', icon: Activity },
+  { to: '/telemetry/business', label: 'Biz. Dashboard', icon: ShoppingBag },
+  { to: '/telemetry/security', label: 'Seg. Dashboard', icon: Shield },
+  { to: '/telemetry/budget', label: 'Orç. Dashboard', icon: BarChart3 },
+  { to: '/telemetry/rollout', label: 'Rollout Telemetria', icon: CheckCircle2 },
   { to: '/health', label: 'Saúde', icon: HeartPulse },
   { to: '/settings', label: 'Configurações', icon: Settings },
 ];
@@ -136,6 +151,11 @@ function AdminShell() {
             <Route path="/fiscal-documents" element={<FiscalDocumentsPage />} />
             <Route path="/finance/export" element={<FinanceExportPage />} />
             <Route path="/finance/reconciliation" element={<FinanceReconciliationPage />} />
+            <Route path="/telemetry/engineering" element={<EngineeringDashboardPage />} />
+            <Route path="/telemetry/business" element={<BusinessDashboardPage />} />
+            <Route path="/telemetry/security" element={<SecurityDashboardPage />} />
+            <Route path="/telemetry/budget" element={<BudgetDashboardPage />} />
+            <Route path="/telemetry/rollout" element={<TelemetryRolloutPage />} />
             <Route path="/health" element={<SystemHealthPage />} />
             <Route
               path="/settings"
