@@ -21,7 +21,7 @@ interface MenuItem {
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
 
-const MENU_SECTIONS: MenuSection[] = [
+const BUYER_MENU_SECTIONS: MenuSection[] = [
   {
     title: 'Compras',
     items: [
@@ -74,11 +74,67 @@ const MENU_SECTIONS: MenuSection[] = [
   },
 ];
 
+const SELLER_MENU_SECTIONS: MenuSection[] = [
+  {
+    title: 'Vendas',
+    items: [
+      {
+        icon: 'videocam-outline',
+        label: 'Shows',
+        description: 'Gerencie seus shows ao vivo',
+        href: '/seller-profile/shows',
+        color: '#f97316',
+      },
+      {
+        icon: 'receipt-outline',
+        label: 'Pedidos',
+        description: 'Pedidos recebidos dos seus compradores',
+        href: '/seller-profile/orders',
+        color: '#6366f1',
+      },
+    ],
+  },
+  {
+    title: 'Operações',
+    items: [
+      {
+        icon: 'cube-outline',
+        label: 'Estoque',
+        description: 'Itens disponíveis para venda',
+        href: '/seller-profile/inventory',
+        color: '#0ea5e9',
+      },
+      {
+        icon: 'car-outline',
+        label: 'Envios',
+        description: 'Acompanhe o status dos seus envios',
+        href: '/seller-profile/shipments',
+        color: '#7c3aed',
+      },
+    ],
+  },
+  {
+    title: 'Financeiro',
+    items: [
+      {
+        icon: 'cash-outline',
+        label: 'Financeiro',
+        description: 'Repasses, payables e extrato',
+        href: '/seller-profile/finances',
+        color: '#16a34a',
+      },
+    ],
+  },
+];
+
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
 export default function ProfileScreen() {
-  const { isAuthenticated, user, signOut } = useAuth();
+  const { isAuthenticated, user, currentRole, signOut } = useAuth();
   const router = useRouter();
+
+  const isSeller = currentRole === 'SELLER' || currentRole === 'ADMIN';
+  const MENU_SECTIONS = isSeller ? SELLER_MENU_SECTIONS : BUYER_MENU_SECTIONS;
 
   if (!isAuthenticated) {
     return (
@@ -105,11 +161,17 @@ export default function ProfileScreen() {
           </View>
           <View style={styles.profileInfo}>
             <Text style={styles.profileName} numberOfLines={1}>
-              {user?.email?.split('@')[0] ?? 'Comprador'}
+              {user?.email?.split('@')[0] ?? (isSeller ? 'Vendedor' : 'Comprador')}
             </Text>
             <Text style={styles.profileEmail} numberOfLines={1}>
               {user?.email}
             </Text>
+            {isSeller ? (
+              <View style={styles.roleBadge}>
+                <Ionicons name="storefront-outline" size={12} color="#f97316" />
+                <Text style={styles.roleBadgeText}>Perfil Vendedor</Text>
+              </View>
+            ) : null}
           </View>
         </View>
 
@@ -200,6 +262,18 @@ const styles = StyleSheet.create({
   profileInfo: { flex: 1 },
   profileName: { fontSize: 18, fontWeight: '700', color: '#111' },
   profileEmail: { fontSize: 13, color: '#6b7280', marginTop: 2 },
+  roleBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: 4,
+    alignSelf: 'flex-start',
+    backgroundColor: '#fff7ed',
+    borderRadius: 20,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+  },
+  roleBadgeText: { fontSize: 11, fontWeight: '600', color: '#f97316' },
   // Sections
   section: { marginTop: 24, paddingHorizontal: 20 },
   sectionTitle: {

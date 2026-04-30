@@ -43,6 +43,11 @@ export default function RootLayout() {
             <Stack.Screen name="profile/bids-offers" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="profile/account-health" options={{ animation: 'slide_from_right' }} />
             <Stack.Screen name="profile/saved-shows" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="seller-profile/shows" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="seller-profile/orders" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="seller-profile/inventory" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="seller-profile/shipments" options={{ animation: 'slide_from_right' }} />
+            <Stack.Screen name="seller-profile/finances" options={{ animation: 'slide_from_right' }} />
           </Stack>
         </AuthProvider>
       </SafeAreaProvider>
