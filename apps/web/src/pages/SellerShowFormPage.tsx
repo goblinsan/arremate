@@ -1,8 +1,8 @@
 import { useState, useEffect, useRef, type FormEvent, type ChangeEvent } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
-import { Radio, ArrowLeft, Upload, FileSpreadsheet } from 'lucide-react';
-import type { Show, ShowInventoryItem, InventoryItem } from '@arremate/types';
+import { Radio, ArrowLeft, Upload, FileSpreadsheet, Plus, Trash2 } from 'lucide-react';
+import type { Show, ShowInventoryItem, InventoryItem, ShowCategory, ShippingProfile } from '@arremate/types';
 
 const API_URL = (import.meta.env.VITE_API_URL as string | undefined) ?? 'http://localhost:4000';
 
@@ -10,6 +10,11 @@ interface ShowForm {
   title: string;
   description: string;
   scheduledAt: string;
+  category: ShowCategory | '';
+  bannerImageUrl: string;
+  videoUrl: string;
+  preBidsEnabled: boolean;
+  shippingProfileId: string;
 }
 
 // Queue entries as returned by the API always include the inventoryItem relation
@@ -23,10 +28,20 @@ export default function SellerShowFormPage() {
   const { getAccessToken, isAuthenticated } = useAuth();
   const navigate = useNavigate();
 
-  const [form, setForm] = useState<ShowForm>({ title: '', description: '', scheduledAt: '' });
+  const [form, setForm] = useState<ShowForm>({
+    title: '',
+    description: '',
+    scheduledAt: '',
+    category: '',
+    bannerImageUrl: '',
+    videoUrl: '',
+    preBidsEnabled: true,
+    shippingProfileId: '',
+  });
   const [show, setShow] = useState<Show | null>(null);
   const [queue, setQueue] = useState<QueueEntry[]>([]);
   const [inventory, setInventory] = useState<InventoryItem[]>([]);
+  const [shippingProfiles, setShippingProfiles] = useState<ShippingProfile[]>([]);
   const [isLoading, setIsLoading] = useState(!isNew);
   const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,6 +49,10 @@ export default function SellerShowFormPage() {
   const [addItemId, setAddItemId] = useState('');
   const [bulkRowsText, setBulkRowsText] = useState('');
   const [isBulkImporting, setIsBulkImporting] = useState(false);
+  const [newProfileName, setNewProfileName] = useState('');
+  const [newProfileType, setNewProfileType] = useState<'FREE' | 'FLAT_RATE' | 'DISCOUNTED'>('FREE');
+  const [newProfileCents, setNewProfileCents] = useState('');
+  const [isCreatingProfile, setIsCreatingProfile] = useState(false);
   // Tracks whether the current show was just created via POST (skip the redundant GET).
   const skipNextLoadRef = useRef(false);
 
@@ -47,6 +66,7 @@ export default function SellerShowFormPage() {
       }
     }
     loadInventory();
+    loadShippingProfiles();
   }, [isAuthenticated, id]);
 
   async function loadShow() {
@@ -66,6 +86,11 @@ export default function SellerShowFormPage() {
         scheduledAt: data.scheduledAt
           ? new Date(data.scheduledAt).toISOString().slice(0, 16)
           : '',
+        category: data.category ?? '',
+        bannerImageUrl: data.bannerImageUrl ?? '',
+        videoUrl: data.videoUrl ?? '',
+        preBidsEnabled: data.preBidsEnabled,
+        shippingProfileId: data.shippingProfileId ?? '',
       });
       setQueue((data.queueItems ?? []) as QueueEntry[]);
     } catch {
@@ -90,8 +115,27 @@ export default function SellerShowFormPage() {
     }
   }
 
-  function handleChange(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) {
-    setForm((prev) => ({ ...prev, [e.target.name]: e.target.value }));
+  async function loadShippingProfiles() {
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API_URL}/v1/seller/shipping-profiles`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const body = await res.json() as { data: ShippingProfile[] };
+        setShippingProfiles(body.data);
+      }
+    } catch {
+      // non-critical
+    }
+  }
+
+  function handleChange(e: ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) {
+    const { name, value, type } = e.target;
+    setForm((prev) => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+    }));
   }
 
   async function handleSave(e: FormEvent) {
@@ -106,6 +150,11 @@ export default function SellerShowFormPage() {
         title: form.title,
         description: form.description || undefined,
         scheduledAt: form.scheduledAt || undefined,
+        category: form.category || undefined,
+        bannerImageUrl: form.bannerImageUrl || undefined,
+        videoUrl: form.videoUrl || undefined,
+        preBidsEnabled: form.preBidsEnabled,
+        shippingProfileId: form.shippingProfileId || undefined,
       };
 
       let res: Response;
@@ -182,6 +231,58 @@ export default function SellerShowFormPage() {
       setAddItemId('');
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao adicionar item.');
+    }
+  }
+
+  async function handleCreateShippingProfile() {
+    if (!newProfileName.trim()) return;
+    setIsCreatingProfile(true);
+    setError(null);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API_URL}/v1/seller/shipping-profiles`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newProfileName.trim(),
+          shippingType: newProfileType,
+          shippingCents: newProfileType !== 'FREE' && newProfileCents ? Math.round(Number(newProfileCents) * 100) : undefined,
+        }),
+      });
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.message ?? 'Erro ao criar perfil de frete.');
+      }
+      const profile = await res.json() as ShippingProfile;
+      setShippingProfiles((prev) => [...prev, profile]);
+      setNewProfileName('');
+      setNewProfileType('FREE');
+      setNewProfileCents('');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao criar perfil de frete.');
+    } finally {
+      setIsCreatingProfile(false);
+    }
+  }
+
+  async function handleDeleteShippingProfile(profileId: string) {
+    setError(null);
+    try {
+      const token = getAccessToken();
+      const res = await fetch(`${API_URL}/v1/seller/shipping-profiles/${profileId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (!res.ok && res.status !== 204) {
+        const body = await res.json();
+        throw new Error(body.message ?? 'Erro ao remover perfil de frete.');
+      }
+      setShippingProfiles((prev) => prev.filter((p) => p.id !== profileId));
+      if (form.shippingProfileId === profileId) {
+        setForm((prev) => ({ ...prev, shippingProfileId: '' }));
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Erro ao remover perfil de frete.');
     }
   }
 
@@ -352,6 +453,86 @@ export default function SellerShowFormPage() {
               disabled={isReadOnly}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-500"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Categoria</label>
+            <select
+              name="category"
+              value={form.category}
+              onChange={handleChange}
+              disabled={isReadOnly}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-500"
+            >
+              <option value="">Selecione uma categoria…</option>
+              <option value="JEWELRY">Joias e Bijuterias</option>
+              <option value="TOYS">Brinquedos</option>
+              <option value="WOMENS_FASHION">Moda Feminina</option>
+              <option value="MENS_FASHION">Moda Masculina</option>
+              <option value="ELECTRONICS">Eletrônicos</option>
+              <option value="HOME_DECOR">Casa e Decoração</option>
+              <option value="BEAUTY">Beleza e Cosméticos</option>
+              <option value="SPORTS">Esportes</option>
+              <option value="COLLECTIBLES">Colecionáveis</option>
+              <option value="OTHER">Outros</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Imagem de capa (URL)</label>
+            <input
+              name="bannerImageUrl"
+              type="url"
+              value={form.bannerImageUrl}
+              onChange={handleChange}
+              disabled={isReadOnly}
+              placeholder="https://…"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+            {form.bannerImageUrl && (
+              <img src={form.bannerImageUrl} alt="Capa do show" className="mt-2 h-24 w-auto rounded-lg object-cover border border-gray-200" />
+            )}
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Vídeo do produto (URL)</label>
+            <input
+              name="videoUrl"
+              type="url"
+              value={form.videoUrl}
+              onChange={handleChange}
+              disabled={isReadOnly}
+              placeholder="https://…"
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-500"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Perfil de frete</label>
+            <select
+              name="shippingProfileId"
+              value={form.shippingProfileId}
+              onChange={handleChange}
+              disabled={isReadOnly}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500 disabled:bg-gray-50 disabled:text-gray-500"
+            >
+              <option value="">Sem perfil de frete</option>
+              {shippingProfiles.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({p.shippingType === 'FREE' ? 'Grátis' : p.shippingType === 'FLAT_RATE' ? `Taxa fixa: R$ ${((p.shippingCents ?? 0) / 100).toFixed(2)}` : `Desconto: R$ ${((p.shippingCents ?? 0) / 100).toFixed(2)}`})
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex items-center gap-3">
+            <input
+              id="preBidsEnabled"
+              name="preBidsEnabled"
+              type="checkbox"
+              checked={form.preBidsEnabled}
+              onChange={handleChange}
+              disabled={isReadOnly}
+              className="h-4 w-4 rounded border-gray-300 text-brand-500 focus:ring-brand-500"
+            />
+            <label htmlFor="preBidsEnabled" className="text-sm font-medium text-gray-700">
+              Permitir pré-lances antes do show iniciar
+            </label>
           </div>
         </div>
 
@@ -534,6 +715,84 @@ export default function SellerShowFormPage() {
           )}
         </div>
       )}
+
+      {/* Shipping profiles management */}
+      <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
+        <h2 className="text-base font-semibold text-gray-800 mb-4">Perfis de frete</h2>
+        <p className="text-xs text-gray-500 mb-4">Crie perfis de frete reutilizáveis para seus shows. Cada perfil define como o frete será cobrado.</p>
+
+        {shippingProfiles.length === 0 ? (
+          <p className="text-sm text-gray-400 mb-4">Nenhum perfil de frete cadastrado.</p>
+        ) : (
+          <ul className="space-y-2 mb-4">
+            {shippingProfiles.map((profile) => (
+              <li key={profile.id} className="flex items-center justify-between gap-3 bg-gray-50 rounded-xl px-4 py-2">
+                <div>
+                  <span className="text-sm font-medium text-gray-800">{profile.name}</span>
+                  <span className="ml-2 text-xs text-gray-500">
+                    {profile.shippingType === 'FREE'
+                      ? 'Grátis'
+                      : profile.shippingType === 'FLAT_RATE'
+                        ? `Taxa fixa: R$ ${((profile.shippingCents ?? 0) / 100).toFixed(2)}`
+                        : `Desconto: R$ ${((profile.shippingCents ?? 0) / 100).toFixed(2)}`}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteShippingProfile(profile.id)}
+                  className="p-1 text-red-400 hover:text-red-600"
+                  title="Remover perfil"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <div className="border-t border-gray-100 pt-4">
+          <h3 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+            <Plus className="w-4 h-4 text-brand-500" /> Novo perfil de frete
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input
+              type="text"
+              placeholder="Nome do perfil"
+              value={newProfileName}
+              onChange={(e) => setNewProfileName(e.target.value)}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            />
+            <select
+              value={newProfileType}
+              onChange={(e) => setNewProfileType(e.target.value as 'FREE' | 'FLAT_RATE' | 'DISCOUNTED')}
+              className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+            >
+              <option value="FREE">Frete grátis</option>
+              <option value="FLAT_RATE">Taxa fixa</option>
+              <option value="DISCOUNTED">Frete com desconto</option>
+            </select>
+            {newProfileType !== 'FREE' && (
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Valor (R$)"
+                value={newProfileCents}
+                onChange={(e) => setNewProfileCents(e.target.value)}
+                className="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500"
+              />
+            )}
+          </div>
+          <button
+            type="button"
+            onClick={handleCreateShippingProfile}
+            disabled={isCreatingProfile || !newProfileName.trim()}
+            className="mt-3 bg-brand-500 hover:bg-orange-600 disabled:opacity-60 text-white font-semibold px-4 py-2 rounded-lg text-sm transition-colors"
+          >
+            {isCreatingProfile ? 'Criando…' : 'Criar perfil'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

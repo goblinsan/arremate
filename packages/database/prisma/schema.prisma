@@ -53,6 +53,7 @@ model User {
   deviceTokens          DeviceToken[]           @relation("UserDeviceTokens")
   notificationPreference NotificationPreference?
   savedShows            SavedShow[]             @relation("UserSavedShows")
+  shippingProfiles      ShippingProfile[]       @relation("SellerShippingProfiles")
 
   @@map("users")
 }
@@ -189,16 +190,56 @@ enum ShowStatus {
   CANCELLED
 }
 
+enum ShowCategory {
+  JEWELRY
+  TOYS
+  WOMENS_FASHION
+  MENS_FASHION
+  ELECTRONICS
+  HOME_DECOR
+  BEAUTY
+  SPORTS
+  COLLECTIBLES
+  OTHER
+}
+
+enum ShippingType {
+  FREE
+  FLAT_RATE
+  DISCOUNTED
+}
+
+model ShippingProfile {
+  id            String       @id @default(cuid())
+  sellerId      String
+  seller        User         @relation("SellerShippingProfiles", fields: [sellerId], references: [id])
+  name          String
+  shippingType  ShippingType @default(FREE)
+  shippingCents Int?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  shows         Show[]
+
+  @@map("shipping_profiles")
+}
+
 model Show {
-  id          String     @id @default(cuid())
-  sellerId    String
-  seller      User       @relation("SellerShows", fields: [sellerId], references: [id])
-  title       String
-  description String?
-  status      ShowStatus @default(DRAFT)
-  scheduledAt DateTime?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id               String           @id @default(cuid())
+  sellerId         String
+  seller           User             @relation("SellerShows", fields: [sellerId], references: [id])
+  title            String
+  description      String?
+  status           ShowStatus       @default(DRAFT)
+  scheduledAt      DateTime?
+  category         ShowCategory?
+  bannerImageUrl   String?
+  videoUrl         String?
+  preBidsEnabled   Boolean          @default(true)
+  shippingProfileId String?
+  shippingProfile  ShippingProfile? @relation(fields: [shippingProfileId], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
 
   queueItems     ShowInventoryItem[]
   sessions       ShowSession[]
