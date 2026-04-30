@@ -73,6 +73,8 @@ export const TelemetryEvents = {
   SECURITY_RATE_LIMIT_EXCEEDED: 'security.rate_limit.exceeded',
   /** A request was rejected due to a suspicious or malformed payload. */
   SECURITY_INVALID_REQUEST: 'security.invalid_request',
+  /** A request exhibited a suspicious pattern (path traversal, injection probe, scanner fingerprint, etc.). */
+  SECURITY_SUSPICIOUS_REQUEST: 'security.suspicious_request',
   /** An admin action was taken that requires an audit trail. */
   SECURITY_ADMIN_ACTION: 'security.admin.action',
 

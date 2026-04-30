@@ -1,7 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { extractBearerToken, verifyCognitoToken } from '@arremate/auth';
 import type { CognitoJwtPayload } from '@arremate/auth';
-import { logger } from '@arremate/observability';
+import { logger, trackEvent, TelemetryEvents } from '@arremate/observability';
 import { bootstrapUser } from '../services/user-bootstrap.js';
 import type { AppEnv } from '../types.js';
 
@@ -59,8 +59,14 @@ function getCognitoConfig() {
  */
 export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
   const token = extractBearerToken(c.req.header('authorization'));
+  const requestId = c.req.header('x-request-id') ?? 'unknown';
 
   if (!token) {
+    trackEvent(TelemetryEvents.AUTH_LOGIN_FAILED, {
+      reason: 'MISSING_TOKEN',
+      requestId,
+      route: new URL(c.req.url).pathname,
+    });
     return c.json({ statusCode: 401, error: 'Unauthorized', message: 'Missing Authorization header' }, 401);
   }
 
@@ -75,6 +81,10 @@ export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
       tokenUse: 'access',
     });
   } catch {
+    trackEvent(TelemetryEvents.AUTH_TOKEN_INVALID, {
+      requestId,
+      route: new URL(c.req.url).pathname,
+    });
     return c.json({ statusCode: 401, error: 'Unauthorized', message: 'Invalid or expired token' }, 401);
   }
 
