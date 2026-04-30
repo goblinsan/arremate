@@ -59,7 +59,7 @@ app.get('/v1/admin/telemetry/review-summary', ...adminGuard, async (c) => {
     FROM payments p
     JOIN orders o ON o.id = p.order_id
     WHERE o.status = 'PAID'
-      AND o.updated_at >= ${windowStart}
+      AND p.created_at >= ${windowStart}
       AND p.status = 'PAID'
   `;
   const avgResolutionMs = latencyResult[0]?.avg_ms ?? null;
@@ -89,11 +89,11 @@ app.get('/v1/admin/telemetry/review-summary', ...adminGuard, async (c) => {
 
   // ── Security: webhook failures — PixWebhookLog entries with unexpected status ─
   // We consider any status that is not 'PAID' or 'PENDING' as a failure indicator.
-  const knownOkStatuses = ['PAID', 'PENDING'];
+  const nonFailureStatuses = ['PAID', 'PENDING'];
   const webhookFailureCount = await prisma.pixWebhookLog.count({
     where: {
       processedAt: { gte: windowStart },
-      eventStatus: { notIn: knownOkStatuses },
+      eventStatus: { notIn: nonFailureStatuses },
     },
   });
 
