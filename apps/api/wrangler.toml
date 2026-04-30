@@ -8,6 +8,12 @@ routes = [
 	{ pattern = "api.arrematelive.com/*", zone_name = "arrematelive.com" }
 ]
 
+# ── Cron Triggers ─────────────────────────────────────────────────────────────
+# Run synthetic probes every 5 minutes to validate key endpoints and generate
+# latency / availability signals independent of normal user traffic.
+[triggers]
+crons = ["*/5 * * * *"]
+
 # ── Environments ─────────────────────────────────────────────────────────────
 [env.production]
 name = "arremate-api-prod"
@@ -24,6 +30,7 @@ COGNITO_WEB_CLIENT_ID = "20t0nesdp1safrcr5adf71hrqa"
 AWS_REGION = "sa-east-1"
 S3_DOCUMENTS_BUCKET = "arremate-seller-documents"
 S3_UPLOAD_URL_EXPIRY_SECONDS = "300"
+SYNTHETIC_PROBE_ORIGIN = "https://api.arrematelive.com"
 
 [env.staging]
 name = "arremate-api-staging"
