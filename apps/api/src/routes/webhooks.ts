@@ -236,6 +236,8 @@ app.post('/v1/webhooks/live-video', async (c) => {
   trackEvent(TelemetryEvents.WEBHOOK_PROCESSED, {
     provider: providerName,
     providerSessionId,
+    sessionId: session.id,
+    showId: session.showId,
     eventType,
   });
 
