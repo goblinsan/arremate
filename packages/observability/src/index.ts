@@ -4,6 +4,16 @@ export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 export { runProbe } from './probes.js';
 export type { ProbeResult, ProbeOptions } from './probes.js';
 
+// ─── Alert rules ──────────────────────────────────────────────────────────────
+export {
+  AlertRules,
+  availabilityAlerts,
+  businessFailureAlerts,
+  securityAlerts,
+  budgetAlerts,
+} from './alerts.js';
+export type { AlertRule, AlertSeverity } from './alerts.js';
+
 // ─── Metrics ──────────────────────────────────────────────────────────────────
 
 export interface MetricDimensions {
