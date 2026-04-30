@@ -68,7 +68,7 @@ export default function PaymentsShippingScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Voltar">
           <Ionicons name="chevron-back" size={24} color="#111" />
         </Pressable>
-        <Text style={styles.headerTitle}>Pagamentos &amp; Envio</Text>
+        <Text style={styles.headerTitle}>Pagamentos & Envio</Text>
       </View>
 
       {isLoading ? (

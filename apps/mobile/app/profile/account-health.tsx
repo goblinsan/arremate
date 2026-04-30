@@ -71,7 +71,7 @@ function HealthMeter({ score }: { score: number | null }) {
         <Text style={[styles.meterLabel, { color }]}>{label}</Text>
       </View>
       <View style={styles.meterBar}>
-        <View style={[styles.meterFill, { width: `${score}%` as unknown as number, backgroundColor: color }]} />
+        <View style={[styles.meterFill, { width: `${score}%`, backgroundColor: color }]} />
       </View>
       <Text style={styles.meterHint}>
         Taxa de conclusão baseada em seus pedidos confirmados.

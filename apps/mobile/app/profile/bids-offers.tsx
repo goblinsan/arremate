@@ -55,7 +55,7 @@ export default function BidsOffersScreen() {
         <Pressable onPress={() => router.back()} style={styles.backBtn} accessibilityLabel="Voltar">
           <Ionicons name="chevron-back" size={24} color="#111" />
         </Pressable>
-        <Text style={styles.headerTitle}>Lances &amp; Ofertas</Text>
+        <Text style={styles.headerTitle}>Lances & Ofertas</Text>
         {data ? (
           <Text style={styles.totalCount}>{data.meta.total}</Text>
         ) : null}
