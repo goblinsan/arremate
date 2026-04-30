@@ -132,6 +132,30 @@ export interface UploadUrlResponse {
 export type ShowStatus = 'DRAFT' | 'SCHEDULED' | 'LIVE' | 'ENDED' | 'CANCELLED';
 export type ItemCondition = 'NEW' | 'USED' | 'REFURBISHED';
 
+export type ShowCategory =
+  | 'JEWELRY'
+  | 'TOYS'
+  | 'WOMENS_FASHION'
+  | 'MENS_FASHION'
+  | 'ELECTRONICS'
+  | 'HOME_DECOR'
+  | 'BEAUTY'
+  | 'SPORTS'
+  | 'COLLECTIBLES'
+  | 'OTHER';
+
+export type ShippingType = 'FREE' | 'FLAT_RATE' | 'DISCOUNTED';
+
+export interface ShippingProfile {
+  id: string;
+  sellerId: string;
+  name: string;
+  shippingType: ShippingType;
+  shippingCents: number | null;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
 export interface Show {
   id: string;
   sellerId: string;
@@ -140,6 +164,12 @@ export interface Show {
   description: string | null;
   status: ShowStatus;
   scheduledAt: Date | null;
+  category: ShowCategory | null;
+  bannerImageUrl: string | null;
+  videoUrl: string | null;
+  preBidsEnabled: boolean;
+  shippingProfileId: string | null;
+  shippingProfile?: ShippingProfile | null;
   createdAt: Date;
   updatedAt: Date;
   queueItems?: ShowInventoryItem[];
