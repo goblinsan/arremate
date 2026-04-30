@@ -101,8 +101,8 @@ const SUSPICIOUS_PATH_PATTERNS: readonly RegExp[] = [
  */
 export function isSuspiciousPath(pathname: string): boolean {
   // Decode percent-encoded sequences so that obfuscated variants (e.g.
-  // %2F for '/', %20UNION%20SELECT) are normalised before pattern matching.
-  // An invalid encoding leaves the original string unchanged.
+  // %2F for '/', %20UNION%20SELECT) are normalized before pattern matching.
+  // If decoding fails, the original string is used unchanged.
   let decoded: string;
   try {
     decoded = decodeURIComponent(pathname);
