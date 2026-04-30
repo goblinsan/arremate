@@ -10,6 +10,41 @@ export interface LogContext {
   [key: string]: unknown;
 }
 
+// ─── Event taxonomy re-export ─────────────────────────────────────────────────
+
+export { TelemetryEvents } from './events.js';
+export type { TelemetryEventName } from './events.js';
+
+// ─── Deployment context ───────────────────────────────────────────────────────
+
+export interface DeploymentContext {
+  /** Logical service name (e.g. `arremate-api`, `arremate-worker`). */
+  service?: string;
+  /** Human-readable deployment version tag (e.g. a SemVer or release label). */
+  deploymentVersion?: string;
+  /** Git commit SHA for the running build. */
+  gitSha?: string;
+}
+
+let _deploymentContext: DeploymentContext = {};
+
+/**
+ * Configure deployment metadata that will be automatically attached to every
+ * {@link trackEvent} and {@link trackMetric} record.
+ *
+ * Call this once at application startup before any telemetry is emitted:
+ *
+ * @example
+ * setDeploymentContext({
+ *   service: 'arremate-api',
+ *   deploymentVersion: process.env.DEPLOY_VERSION,
+ *   gitSha: process.env.GIT_SHA,
+ * });
+ */
+export function setDeploymentContext(ctx: DeploymentContext): void {
+  _deploymentContext = { ..._deploymentContext, ...ctx };
+}
+
 /** Replaceable error reporter. Set via {@link setErrorReporter}. */
 type ErrorReporter = (error: unknown, context?: LogContext) => void;
 
@@ -132,6 +167,77 @@ export function emitMetric(name: string, value: number, dimensions?: MetricDimen
     metric: name,
     value,
     ...dimensions,
+  });
+}
+
+// ─── trackMetric ──────────────────────────────────────────────────────────────
+
+/**
+ * Emit a structured metric record with an automatic timestamp and deployment
+ * metadata attached.
+ *
+ * This is the preferred high-level helper for emitting numeric measurements.
+ * It behaves like {@link emitMetric} but also includes the deployment context
+ * (service, deploymentVersion, gitSha) registered via
+ * {@link setDeploymentContext} so that every metric record is self-describing.
+ *
+ * @param name       Dot-separated metric name, e.g. `usage.request.count`.
+ * @param value      Numeric value (counter increment, gauge, duration, …).
+ * @param dimensions Optional key/value tags that annotate the measurement.
+ *
+ * @example
+ * trackMetric('usage.request.count', 1, { route: '/v1/orders', statusClass: '2xx' });
+ */
+export function trackMetric(name: string, value: number, dimensions?: MetricDimensions): void {
+  const deployment: MetricDimensions = {};
+  if (_deploymentContext.service !== undefined) {
+    deployment.service = _deploymentContext.service;
+  }
+  if (_deploymentContext.deploymentVersion !== undefined) {
+    deployment.deploymentVersion = _deploymentContext.deploymentVersion;
+  }
+  if (_deploymentContext.gitSha !== undefined) {
+    deployment.gitSha = _deploymentContext.gitSha;
+  }
+  emit('info', 'usage.metric', {
+    metric: name,
+    value,
+    ...deployment,
+    ...dimensions,
+  });
+}
+
+// ─── trackEvent ───────────────────────────────────────────────────────────────
+
+export interface EventPayload {
+  [key: string]: unknown;
+}
+
+/**
+ * Emit a structured domain event record with an automatic timestamp and
+ * deployment metadata attached.
+ *
+ * Use this helper to record meaningful business events (e.g. a bid placed, a
+ * payment confirmed, an auth failure).  The emitted record includes:
+ * - `event`   – the canonical event name (use {@link TelemetryEvents} constants)
+ * - `ts`      – ISO-8601 timestamp (always present, even in dev mode)
+ * - `service`, `deploymentVersion`, `gitSha` – from {@link setDeploymentContext}
+ * - …any additional fields supplied in `payload`
+ *
+ * @param name    Canonical event name (e.g. `TelemetryEvents.PAYMENT_PAID`).
+ * @param payload Optional key/value context for the event.
+ *
+ * @example
+ * trackEvent(TelemetryEvents.PAYMENT_PAID, { orderId, amountCents, provider: 'efipay' });
+ */
+export function trackEvent(name: string, payload?: EventPayload): void {
+  emit('info', name, {
+    event: name,
+    ts: new Date().toISOString(),
+    ...((_deploymentContext.service !== undefined) && { service: _deploymentContext.service }),
+    ...((_deploymentContext.deploymentVersion !== undefined) && { deploymentVersion: _deploymentContext.deploymentVersion }),
+    ...((_deploymentContext.gitSha !== undefined) && { gitSha: _deploymentContext.gitSha }),
+    ...payload,
   });
 }
 
