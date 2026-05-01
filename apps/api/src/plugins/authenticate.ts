@@ -119,6 +119,14 @@ export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
   }
 
   c.set('cognitoClaims', claims);
+  const cachedUser = getCachedUser(claims.sub);
+  if (cachedUser) {
+    setCachedUser(claims.sub, cachedUser);
+    c.set('currentUser', cachedUser);
+    await next();
+    return;
+  }
+
   const bootstrapStartedAt = Date.now();
   let currentUser;
   try {
