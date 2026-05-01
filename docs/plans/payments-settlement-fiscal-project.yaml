@@ -1,0 +1,325 @@
+project: "Arremate Payments, Settlement, and Fiscal Readiness"
+repository: "goblinsan/arremate"
+
+milestones:
+  - title: "Phase 0: Commercial Model and Charging Integrity"
+    description: "Lock the financial source of truth, align buyer charge semantics, and harden the core order and payment invariants before real-money collection."
+  - title: "Phase 1: Real Pix Integration"
+    description: "Replace the stub Pix flow with a production PSP adapter, robust webhooks, and provider-status reconciliation."
+  - title: "Phase 2: Seller Payables and Payout Settlement"
+    description: "Turn estimated seller payout into an operational payable and payout system with refund offsets and settlement tracking."
+  - title: "Phase 3: Fiscal Documents and Tax Configuration"
+    description: "Add the data model and workflow support needed for invoice responsibility, fiscal-document tracking, and accountant-approved tax configuration."
+  - title: "Phase 4: Accounting and Reconciliation Operations"
+    description: "Provide finance-grade exports, admin reconciliation views, and month-close tooling for payments, refunds, payouts, and retained platform revenue."
+
+epics:
+  - title: "Harden the financial source of truth for orders and buyer charges"
+    body: |
+      ## Context
+      The repo already snapshots commission, processor fees, shipping, buyer total,
+      and seller payout on each order. That is the right structure, but the
+      payment-creation path still charges `order.totalCents` instead of clearly
+      honoring the intended buyer-collected amount.
+
+      ## Required outcome
+      Lock the platform's commercial invariant so order economics, buyer charges,
+      and downstream reporting all agree on the same amount model.
+
+      ## Architecture notes
+      - Preserve immutable order snapshots.
+      - Do not mutate historical fee snapshots after order creation.
+      - Keep the distinction between subtotal, buyer total, and seller payout explicit.
+
+      ## Acceptance criteria
+      - The platform has a documented buyer-charge invariant.
+      - Order creation and payment creation use consistent amount semantics.
+      - Admin and seller reporting clearly reflect the chosen amount model.
+    milestone: "Phase 0: Commercial Model and Charging Integrity"
+    status: "Todo"
+    labels: ["payments", "architecture", "orders"]
+    children:
+      - title: "Document and codify the marketplace commercial model for buyer charge, seller proceeds, and platform revenue"
+        body: |
+          ## Instructions
+          Write the repo-facing architecture note that makes the commercial model
+          explicit, including what the buyer is charged, what the seller earns, and
+          what the platform retains.
+
+          ## Acceptance criteria
+          - The commercial model is documented in the repo.
+          - The payment, payout, and fiscal implications are called out explicitly.
+        labels: ["architecture", "docs", "payments"]
+      - title: "Align order payment creation with the stored buyer total invariant"
+        body: |
+          ## Instructions
+          Refactor the order payment creation path so the amount sent to the PSP
+          matches the platform's intended collected buyer amount.
+
+          ## Acceptance criteria
+          - Payment creation no longer ambiguously relies on `order.totalCents`.
+          - Tests cover orders with shipping and buyer-side processor pass-through.
+        labels: ["payments", "backend", "orders"]
+      - title: "Add validation and tests for order amount integrity across subtotal, buyer total, and seller payout"
+        body: |
+          ## Instructions
+          Add integration and unit coverage for the core financial identity on an
+          order so future changes cannot quietly drift the amount model.
+
+          ## Acceptance criteria
+          - Tests verify consistent amount relationships.
+          - Invalid or contradictory charge-state combinations are rejected.
+        labels: ["payments", "testing", "orders"]
+
+  - title: "Implement a production Pix provider adapter and payment reconciliation flow"
+    body: |
+      ## Context
+      The codebase already has a `createPixAdapter()` abstraction and a Pix webhook
+      route, but the current implementation is stub-only. Real cash collection
+      requires a production PSP integration with secure credentials, webhook
+      verification, and recoverable provider-state reconciliation.
+
+      ## Required outcome
+      Ship a real Pix adapter behind the existing abstraction and make payment
+      lifecycle management reliable enough for production operations.
+
+      ## Acceptance criteria
+      - A production Pix provider adapter exists.
+      - Webhooks are signature-verified and idempotent.
+      - Admin or automated reconciliation can recover payment truth from the PSP.
+    milestone: "Phase 1: Real Pix Integration"
+    status: "Todo"
+    labels: ["payments", "pix", "backend"]
+    children:
+      - title: "Implement the first real Pix adapter behind createPixAdapter"
+        body: |
+          ## Instructions
+          Add a production provider adapter that supports Pix charge creation,
+          webhook verification, status lookup, and refunds.
+
+          ## Acceptance criteria
+          - The stub remains available for local development.
+          - The production adapter is selected by environment configuration.
+          - Provider credentials stay server-side only.
+        labels: ["payments", "pix", "backend"]
+      - title: "Harden Pix webhook handling for idempotency, replay safety, and provider event storage"
+        body: |
+          ## Instructions
+          Upgrade the Pix webhook path so repeated or delayed provider events do not
+          corrupt platform state and are still auditable.
+
+          ## Acceptance criteria
+          - Duplicate provider events are safely ignored or coalesced.
+          - Raw provider outcomes can be audited after the fact.
+        labels: ["payments", "pix", "webhooks"]
+      - title: "Add PSP payment-status reconciliation tooling for stuck or disputed orders"
+        body: |
+          ## Instructions
+          Provide an admin-safe or scheduled reconciliation path that can query the
+          PSP for charge truth and bring local payment status back in sync.
+
+          ## Acceptance criteria
+          - The platform can recover from missed webhook windows.
+          - Stuck payments can be reconciled without manual database edits.
+        labels: ["payments", "admin", "reconciliation"]
+
+  - title: "Build seller payable and payout settlement lifecycle"
+    body: |
+      ## Context
+      The current repo can estimate seller payout, but it does not yet model real
+      seller liabilities, payout batches, or payout completion. That prevents the
+      system from operating as a finance-grade marketplace.
+
+      ## Required outcome
+      Introduce explicit seller payable and payout lifecycle records that tie back
+      to paid orders, refunds, and non-order settlement ledger entries.
+
+      ## Acceptance criteria
+      - Paid orders create seller payables.
+      - Payout batches and line items can be created and tracked.
+      - Seller statements can distinguish estimated from settled amounts.
+    milestone: "Phase 2: Seller Payables and Payout Settlement"
+    status: "Todo"
+    labels: ["payouts", "settlement", "database"]
+    children:
+      - title: "Add seller payable, payout batch, and payout entry models to the finance schema"
+        body: |
+          ## Instructions
+          Extend the finance data model with explicit payout lifecycle records while
+          preserving the existing immutable order snapshots.
+
+          ## Acceptance criteria
+          - New schema objects are additive and deploy-safe.
+          - Payout records can reference orders, refunds, and ledger entries.
+        labels: ["database", "settlement", "payouts"]
+      - title: "Create payout aggregation and batch generation logic from paid orders and ledger adjustments"
+        body: |
+          ## Instructions
+          Build the service layer that converts paid orders and adjustments into
+          seller payables and payout batches.
+
+          ## Acceptance criteria
+          - The platform can group owed amounts by seller and period.
+          - Non-order settlement entries are included correctly.
+        labels: ["backend", "settlement", "payouts"]
+      - title: "Expose seller payout statements and admin payout operations from the new settlement model"
+        body: |
+          ## Instructions
+          Update the seller and admin surfaces so payout data comes from the new
+          settlement lifecycle rather than only estimated order snapshots.
+
+          ## Acceptance criteria
+          - Sellers can see payable, paid, and offset amounts.
+          - Admin can inspect payout batches and line-item composition.
+        labels: ["frontend", "admin", "payouts"]
+
+  - title: "Integrate refund offsets and settlement reversals into seller balances"
+    body: |
+      ## Context
+      Refund math is already deterministic, but the platform does not yet fully
+      operationalize how seller clawbacks and payout offsets affect future
+      settlements.
+
+      ## Required outcome
+      Connect refund outcomes to seller payable and payout records so refund
+      reversals are reflected in the real settlement lifecycle.
+
+      ## Acceptance criteria
+      - Refunds create explicit settlement-side adjustments.
+      - Future payouts can absorb clawbacks safely.
+      - Admin can see why a seller balance changed.
+    milestone: "Phase 2: Seller Payables and Payout Settlement"
+    status: "Todo"
+    labels: ["refunds", "settlement", "finance"]
+    children:
+      - title: "Model refund-derived seller offsets as explicit settlement adjustments"
+        body: |
+          ## Instructions
+          Take the existing refund breakdown and persist the seller-side settlement
+          impact in a first-class adjustment record or payout-side representation.
+
+          ## Acceptance criteria
+          - Refund offsets are traceable to the originating refund.
+          - Seller balance changes are auditable.
+        labels: ["refunds", "database", "finance"]
+      - title: "Apply payout offsets automatically when generating future payout batches"
+        body: |
+          ## Instructions
+          Incorporate outstanding seller clawbacks and reversals into payout batch
+          creation so the system can net amounts correctly.
+
+          ## Acceptance criteria
+          - Positive and negative seller positions are handled deterministically.
+          - Payout generation explains netting behavior clearly.
+        labels: ["refunds", "backend", "payouts"]
+      - title: "Add settlement-side refund and offset visibility to seller and admin reporting"
+        body: |
+          ## Instructions
+          Extend seller and admin reporting so payout offsets are visible as part of
+          the payout story rather than hidden inside refund internals.
+
+          ## Acceptance criteria
+          - Seller payout statements show offset sources.
+          - Admin reconciliation can explain net payout changes.
+        labels: ["frontend", "admin", "refunds"]
+
+  - title: "Add fiscal-document support and tax-configuration primitives"
+    body: |
+      ## Context
+      The platform does not yet support fiscal-document lifecycle tracking or any
+      accountant-approved tax configuration. Those concerns should not be embedded
+      ad hoc inside order routes.
+
+      ## Required outcome
+      Add the data model and workflow support needed to track invoice
+      responsibility, fiscal-document status, and future issuance integrations.
+
+      ## Acceptance criteria
+      - Fiscal-document records can be stored and linked to the right business events.
+      - Invoice responsibility can differ between platform fees and underlying goods.
+      - Tax configuration is explicit and environment-safe.
+    milestone: "Phase 3: Fiscal Documents and Tax Configuration"
+    status: "Todo"
+    labels: ["fiscal", "tax", "database"]
+    children:
+      - title: "Add fiscal-document and invoice-responsibility models to the platform schema"
+        body: |
+          ## Instructions
+          Create the schema support for fiscal-document records and responsibility
+          assignment without hard-coding a specific issuer implementation.
+
+          ## Acceptance criteria
+          - Service-fee and goods-sale responsibilities can be represented separately.
+          - Fiscal-document status is trackable over time.
+        labels: ["fiscal", "database", "architecture"]
+      - title: "Introduce accountant-approved tax configuration primitives for platform fees and marketplace flows"
+        body: |
+          ## Instructions
+          Add configuration surfaces for tax-treatment inputs so the approved policy
+          can be represented without scattering constants through route code.
+
+          ## Acceptance criteria
+          - Tax configuration is explicit and reviewable.
+          - The system avoids hard-coded fiscal assumptions in order flow.
+        labels: ["tax", "backend", "configuration"]
+      - title: "Prepare admin workflow and docs for NFS-e and seller invoice responsibility handling"
+        body: |
+          ## Instructions
+          Add the operational workflow notes and admin-facing surfaces needed to
+          track platform fee invoicing and seller invoice responsibility.
+
+          ## Acceptance criteria
+          - Admin can see whether a transaction still needs fiscal action.
+          - Repo docs explain what is platform-issued versus seller-issued.
+        labels: ["fiscal", "admin", "docs"]
+
+  - title: "Deliver accounting exports and finance reconciliation operations"
+    body: |
+      ## Context
+      Finance needs a reliable month-close package, not only individual admin pages.
+      The platform should be able to export reconciled payment, refund, payout, and
+      retained-fee data without manual SQL work.
+
+      ## Required outcome
+      Add finance-grade export and reconciliation tooling tied to the canonical
+      platform models for payments, refunds, seller payables, payouts, and fiscal
+      document status.
+
+      ## Acceptance criteria
+      - Finance can export close-ready datasets from the product.
+      - Admin can reconcile PSP, seller, and platform views of the same period.
+      - Exceptions are visible rather than buried in raw records.
+    milestone: "Phase 4: Accounting and Reconciliation Operations"
+    status: "Todo"
+    labels: ["accounting", "reconciliation", "admin"]
+    children:
+      - title: "Build finance exports for payments, refunds, seller payables, payouts, and retained fees"
+        body: |
+          ## Instructions
+          Create machine-readable exports that finance can use for accounting close
+          and auditor-friendly review.
+
+          ## Acceptance criteria
+          - Exports are period-scoped and reproducible.
+          - Datasets map cleanly back to primary platform records.
+        labels: ["accounting", "admin", "exports"]
+      - title: "Add admin reconciliation views for PSP cash, seller liabilities, and platform retained revenue"
+        body: |
+          ## Instructions
+          Build the admin surfaces needed to compare what the PSP says, what the
+          platform says it collected, and what it says it owes sellers.
+
+          ## Acceptance criteria
+          - Reconciliation pages surface mismatches clearly.
+          - Finance can investigate exceptions without direct database access.
+        labels: ["accounting", "admin", "reconciliation"]
+      - title: "Document the monthly close procedure for payments, payouts, refunds, and fiscal exceptions"
+        body: |
+          ## Instructions
+          Turn the finance workflow into a repeatable runbook tied to the actual
+          exported data and admin tooling.
+
+          ## Acceptance criteria
+          - The month-close procedure is documented in-repo.
+          - The documented process aligns with platform data exports and dashboards.
+        labels: ["accounting", "docs", "operations"]
