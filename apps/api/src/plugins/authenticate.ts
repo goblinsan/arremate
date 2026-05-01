@@ -1,6 +1,7 @@
 import { createMiddleware } from 'hono/factory';
 import { extractBearerToken, verifyCognitoToken } from '@arremate/auth';
 import type { CognitoJwtPayload } from '@arremate/auth';
+import type { User } from '@arremate/database';
 import { logger, trackEvent, TelemetryEvents } from '@arremate/observability';
 import { bootstrapUser } from '../services/user-bootstrap.js';
 import type { AppEnv } from '../types.js';
@@ -8,6 +9,26 @@ import type { AppEnv } from '../types.js';
 interface CognitoGetUserResponse {
   Username?: string;
   UserAttributes?: Array<{ Name: string; Value: string }>;
+}
+
+const AUTH_USER_CACHE_TTL_MS = 60_000;
+const authUserCache = new Map<string, { user: User; expiresAt: number }>();
+
+function getCachedUser(sub: string): User | null {
+  const cached = authUserCache.get(sub);
+  if (!cached) return null;
+  if (cached.expiresAt <= Date.now()) {
+    authUserCache.delete(sub);
+    return null;
+  }
+  return cached.user;
+}
+
+function setCachedUser(sub: string, user: User): void {
+  authUserCache.set(sub, {
+    user,
+    expiresAt: Date.now() + AUTH_USER_CACHE_TTL_MS,
+  });
 }
 
 async function fetchCognitoUserProfile(region: string, accessToken: string): Promise<{ email?: string; username?: string }> {
@@ -107,6 +128,21 @@ export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
     try {
       currentUser = await bootstrapUser(claims);
     } catch (secondErr) {
+      const cachedUser = getCachedUser(claims.sub);
+      if (cachedUser) {
+        logger.warn('authenticate.bootstrapUser using cached user fallback', {
+          event: 'auth.bootstrap.cache_fallback',
+          requestId,
+          url: c.req.url,
+          elapsedMs: Date.now() - bootstrapStartedAt,
+          userId: cachedUser.id,
+          firstError: firstErr instanceof Error ? firstErr.message : String(firstErr),
+          secondError: secondErr instanceof Error ? secondErr.message : String(secondErr),
+        });
+        c.set('currentUser', cachedUser);
+        await next();
+        return;
+      }
       logger.error('authenticate.bootstrapUser failed', secondErr, {
         event: 'auth.bootstrap.failed',
         requestId: c.req.header('x-request-id') ?? 'unknown',
@@ -137,6 +173,7 @@ export const authenticate = createMiddleware<AppEnv>(async (c, next) => {
     });
   }
 
+  setCachedUser(claims.sub, currentUser);
   c.set('currentUser', currentUser);
   await next();
 });
