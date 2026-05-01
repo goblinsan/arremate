@@ -61,6 +61,7 @@ function shouldBeAdmin(claims: CognitoJwtPayload, email: string): boolean {
 export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
   const { sub } = claims;
 
+  const hasAuthoritativeEmail = Boolean(claims.email);
   const email = claims.email
     ?? claims.username
     ?? claims['cognito:username']
@@ -73,14 +74,44 @@ export async function bootstrapUser(claims: CognitoJwtPayload): Promise<User> {
     try {
       const existing = await prisma.user.findUnique({ where: { cognitoSub: sub } });
       if (existing) {
-        const emailUpToDate = existing.email === email;
+        const emailUpToDate = !hasAuthoritativeEmail || existing.email === email;
         const roleUpToDate = !adminPromotion || existing.role === 'ADMIN';
         if (emailUpToDate && roleUpToDate) {
           return existing;
         }
+
+        return prisma.user.update({
+          where: { id: existing.id },
+          data: {
+            ...(hasAuthoritativeEmail && existing.email !== email ? { email } : {}),
+            ...(adminPromotion && existing.role !== 'ADMIN' ? { role: 'ADMIN' as const } : {}),
+          },
+        });
       }
     } catch (fastPathErr) {
       if (!isMissingActiveRoleColumnError(fastPathErr)) throw fastPathErr;
+      const legacyExisting = await prisma.user.findUnique({
+        where: { cognitoSub: sub },
+        select: legacyUserSelect,
+      });
+      if (legacyExisting) {
+        const emailUpToDate = !hasAuthoritativeEmail || legacyExisting.email === email;
+        const roleUpToDate = !adminPromotion || legacyExisting.role === 'ADMIN';
+        if (emailUpToDate && roleUpToDate) {
+          return withNullActiveRole(legacyExisting);
+        }
+
+        const updatedLegacy = await prisma.user.update({
+          where: { id: legacyExisting.id },
+          data: {
+            ...(hasAuthoritativeEmail && legacyExisting.email !== email ? { email } : {}),
+            ...(adminPromotion && legacyExisting.role !== 'ADMIN' ? { role: 'ADMIN' as const } : {}),
+          },
+          select: legacyUserSelect,
+        });
+
+        return withNullActiveRole(updatedLegacy);
+      }
       // Legacy schema without activeRole column – fall through to the upsert
       // which handles the same error via legacyUserSelect.
     }
